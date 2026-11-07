@@ -26,6 +26,9 @@
   }
   #app { display: flex; flex-direction: column; width: 100%; max-width: 600px; margin-inline: auto; height: 100%; height: 100dvh;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  @media (pointer: coarse) and (max-width: 1000px) {
+    #app { max-width: none; }
+  }
   #hud { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center; gap: 6px; padding: 6px 8px; background: var(--panel); flex: none; }
   #hud .hudGroup { display: flex; align-items: center; gap: inherit; }
@@ -119,6 +122,7 @@
   }
   #stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
   canvas { display: block; touch-action: none; border-radius: 6px; }
+  #cv { width: 100%; border-radius: 0; }
   #bar { flex: none; background: var(--panel); padding: 6px 8px; min-height: 76px; }
   #build { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
   .tbtn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; touch-action: none; }
@@ -302,7 +306,7 @@
 </div>
 <div id="overlay" class="splash booting">
   <canvas id="splashCv" aria-hidden="true"></canvas>
-  <span id="gameVersion">v1.0.0</span>
+  <span id="gameVersion">v1.0.4</span>
   <div id="ovBox">
     <p id="bootStatus" role="status">Loading Alien Defense…</p>
     <button id="bootSound">Enable sound</button>
@@ -1353,13 +1357,16 @@ function syncSceneAudio(scene) {
   }
 }
 
-function saveRun() {
-  if (!S.started || S.over) return;
-  lsSet(KEY_RUN, {
+function runSnapshot() {
+  return {
     map: S.map, variant: S.variant, rows: ROWS, diff: S.diff, gold: S.gold, lives: S.lives, wave: S.wave, won: S.won,
     endless: S.endless, endlessCleared: S.endlessCleared,
     towers: S.towers.map(t => ({ type: t.type, x: t.x, y: t.y, level: t.level, spent: t.spent })),
-  });
+  };
+}
+function saveRun() {
+  if (!S.started || S.over) return;
+  lsSet(KEY_RUN, { ...runSnapshot(), waveCheckpoints: S.waveCheckpoints });
 }
 const isClearedRun = run => run?.won && !run.endless && run.wave <= VICTORY_WAVE;
 const nextSavedWorld = run => isClearedRun(run) && WORLDS[run.map + 1] ? run.map + 1 : null;
@@ -1377,6 +1384,7 @@ function loadRun() {
     const tw = { ...t, cd: 0, angle: 1.2 };
     S.grid[idx(t.x, t.y)] = tw; S.towers.push(tw);
   }
+  S.waveCheckpoints = r.waveCheckpoints ?? [];
   S.dist = computeDist(-1);
   updateHud();
   return true;
@@ -1443,7 +1451,7 @@ function newGame(map, diff, started, variant = started ? firstCurrentVariant(map
     countdown: BUILD_TIME, countdownMax: BUILD_TIME, wasIdle: true,
     awaitingStart: true,
     grid: new Array(COLS * ROWS).fill(null),
-    towers: [], enemies: [], shots: [], fx: [], spawnQ: [], pendingClear: [],
+    towers: [], enemies: [], shots: [], fx: [], spawnQ: [], pendingClear: [], waveCheckpoints: [],
     dist: null, speed: 1, over: false, won: false, endless: false, endlessCleared: 0, menu: false,
     buildType: null, selected: null, ghost: null, time: 0, portalFlare: [],
   };
@@ -1618,6 +1626,10 @@ function waveHpMul(n) {
 function startNextWave() {
   if (S.over || S.menu || (S.wave === 0 && S.awaitingStart) || (!S.won && S.wave >= VICTORY_WAVE)) return;
   if (S.enemies.length || S.spawnQ.length) S.gold += 5 + S.wave; // early-call bonus
+  else if (S.map === 0 && !S.won && !S.endless) {
+    S.waveCheckpoints[S.wave] = runSnapshot();
+    saveRun();
+  }
   S.wave++;
   if (S.wave > 1 && stageOf(S.wave) !== stageOf(S.wave - 1)) {
     const st = ALIENS.stages[stageOf(S.wave)];
@@ -2040,12 +2052,12 @@ function victory() {
   if (!hasNext) playCine(ENDING, debrief); else debrief();
 }
 
-// Campaign worlds after the first: 3 retries, then the next defeat sends you back to replay the world before.
+// From World 2 onward, the third defeat sends you back one world.
 const CAMPAIGN_RETRIES = 3;
 function campaignDefeat() {
   if (S.endless || S.map === 0) return null;
-  const used = (P.retries?.map === S.map ? P.retries.used : -1) + 1; // the first defeat doesn't use a retry
-  if (used > CAMPAIGN_RETRIES) {
+  const used = (P.retries?.map === S.map ? P.retries.used : 0) + 1;
+  if (used >= CAMPAIGN_RETRIES) {
     delete P.retries;
     P.campaignCheckpoint = { map: S.map - 1, diff: S.diff };
     saveProfile();
@@ -2061,10 +2073,16 @@ function gameOver() {
   playSound("defeat");
   lsDel(KEY_RUN);
   const setback = campaignDefeat();
+  // Snapshots represent the board before the next wave starts.
+  const checkpoints = S.waveCheckpoints.slice(0, Math.max(1, S.wave - 1));
+  const rewind = S.map === 0 && !S.won && !S.endless ? checkpoints.filter(Boolean).at(-1) : null;
+  if (rewind) {
+    lsSet(KEY_RUN, { ...rewind, waveCheckpoints: checkpoints });
+  }
   if (setback?.fellBack) {
     openMenu(`<h2>Relay Lost</h2>
     <p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>
-    <p><b>No retries left.</b> Fall back to ${WORLDS[S.map - 1].name} and clear it again to return here with ${CAMPAIGN_RETRIES} new retries.</p>
+    <p><b>Third defeat.</b> Fall back to ${WORLDS[S.map - 1].name} and clear it again to return here with a fresh attempt count.</p>
     <button class="big" data-act="fallback">Fall back to ${WORLDS[S.map - 1].name} ▶</button>
     <button class="big" data-act="main">Main menu</button>`);
     return;
@@ -2074,8 +2092,9 @@ function gameOver() {
       ? `<p>${MAPS[S.map].name} · D${S.diff} · Defeated on Wave ${S.wave}<br>
         Endless cleared this run: ${S.endlessCleared || "—"} · Best: ${P.endlessBest[S.map]?.[S.diff] || "—"}</p>`
       : `<p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>`}
-    ${setback ? `<p>${setback.left ? `Retries left on this world: <b>${setback.left} of ${CAMPAIGN_RETRIES}</b>` : `<b>Last chance:</b> lose again and you fall back to ${WORLDS[S.map - 1].name}.`}</p>` : ""}
-    <button class="big" data-act="retry">Try again</button>
+    ${setback ? `<p>${setback.left ? `Defeats until fallback: <b>${setback.left} of ${CAMPAIGN_RETRIES}</b>` : `<b>Last chance:</b> lose again and you fall back to ${WORLDS[S.map - 1].name}.`}</p>` : ""}
+    ${rewind ? `<p>Your towers, gold, and base health have been restored to the start of Wave ${rewind.wave + 1}.</p>` : ""}
+    <button class="big" data-act="retry">${rewind ? `Replay Wave ${rewind.wave + 1}` : "Try again"}</button>
     <button class="big" data-act="main">Main menu</button>`);
 }
 
@@ -2089,12 +2108,11 @@ let CELL = 30, DPR = 1;
 
 function resize() {
   const stage = $("stage");
-  const fillPhone = window.matchMedia("(orientation: portrait) and (max-width: 600px)").matches;
+  const fillPortrait = window.matchMedia("(orientation: portrait)").matches;
   CELL = Math.max(1, Math.min(stage.clientWidth / COLS, stage.clientHeight / ROWS));
   DPR = window.devicePixelRatio || 1;
   const width = COLS * CELL, height = ROWS * CELL;
-  cv.style.width = fillPhone ? "100%" : width + "px";
-  cv.style.height = fillPhone ? "100%" : height + "px";
+  cv.style.height = fillPortrait ? "100%" : height + "px";
   const pixelWidth = Math.round(width * DPR), pixelHeight = Math.round(height * DPR);
   if (cv.width !== pixelWidth || cv.height !== pixelHeight) {
     cv.width = pixelWidth;
@@ -4789,7 +4807,7 @@ function newGameMenu() {
       <b>Difficulty ${d}</b>
       <button data-act="dplus" ${d >= maxDiff(campaignMap) ? "disabled" : ""}>+</button></div>
     <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${diffMul(campaignMap, d).toFixed(2).replace(/0$/, "")}${d >= SECOND_PORTAL_DIFF ? " · 2 portals" : ""}<br>
-      Clear each world to advance to the next.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} retries left before you fall back a world.` : ""}</p>
+      Clear each world to advance to the next.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} defeats remaining before you fall back a world.` : ""}</p>
     <button class="big" data-act="start" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Deploy</button>
     <button class="big" data-act="main">Back</button>`);
 }
@@ -5118,7 +5136,7 @@ function tapHint(c, x, y, k) {
 }
 
 const TUTORIAL = [
-  { kicker: "How to play · 1 of 6", title: "Protect your base",
+  { kicker: "How to play · 1 of 7", title: "Protect your base",
     body: ["Aliens come out of a portal on the edge of the board. Each world has its own (an icy rift, a hive, a ring gate, a vortex), and it flares as each alien comes through.",
       "They head for your relay station. Every one that gets through costs base health ♥, and the station cracks, smokes and then burns as it weakens. Lose it all and the relay falls."],
     draw(c, t, W, H) {
@@ -5131,7 +5149,7 @@ const TUTORIAL = [
       c.fillText(`BASE ♥ ${Math.max(1, lives)}/20`, b.ox + 2.5 * b.cs, b.oy + 7 * b.cs + 20);
       if (p > 0.93) c.fillText("−1♥", b.ox + 3.6 * b.cs, b.oy + 6 * b.cs);
     } },
-  { kicker: "How to play · 2 of 6", title: "Build a maze",
+  { kicker: "How to play · 2 of 7", title: "Build a maze",
     body: ["Start with a Bolt covering the portal. Drag it onto the board, or select it and tap a cell twice.",
       "Use People to extend the route. Leave gaps on opposite sides so the second wall sends aliens across the board under fire. Always leave a path to the base.",
       "Rocks, buildings, tree groves, ponds and energy belts block both walking and building. Open ground and Earth's mown parks are free to build on."],
@@ -5155,7 +5173,7 @@ const TUTORIAL = [
       c.fillStyle = "#5dff9b"; c.font = "700 14px system-ui"; c.textAlign = "center";
       c.fillText(`Path: ${path.length - 1} steps`, W / 2, b.oy + rows * b.cs + 20);
     } },
-  { kicker: "How to play · 3 of 6", title: "Pick the right tower",
+  { kicker: "How to play · 3 of 7", title: "Pick the right tower",
     body: ["Compare tower stats as the preview cycles through upgrade levels.", "Each enemy card shows the best tower to use against it.",
       "<b style='color:#7ee8a0'>People</b> are cheap walls that attack ground aliens. <b style='color:#4fd1ff'>Bolt</b> is the all-rounder. <b style='color:#9be7ff'>Frost</b> slows everything near its target. <b style='color:#ffa45d'>Cannon</b> blasts groups but can't hit flyers. <b style='color:#c78bff'>Arc</b> does double damage to flyers, which fly straight over your maze."],
     draw(c, t, W, H) {
@@ -5182,7 +5200,7 @@ const TUTORIAL = [
         if (hp != null) c.fillText(`${hp} HP`, x, y + 61, cs);
       });
     } },
-  { kicker: "How to play · 4 of 6", title: "Upgrade and sell towers",
+  { kicker: "How to play · 4 of 7", title: "Upgrade and sell towers",
     body: ["Tap a tower to open its panel, then tap <b style='color:#5dff9b'>Upgrade</b> (it glows green when you can afford it). Each upgrade evolves the tower: salvaged scrap, then military hardware, then quantum tech.",
       `<b style='color:#ffd25d'>Sell</b> refunds <b>${Math.round(BASE_REFUND * 100)}%</b> of what you paid for the tower and its upgrades, rounded down to whole gold.`],
     draw(c, t, W, H) {
@@ -5231,7 +5249,7 @@ const TUTORIAL = [
       }
       if (lt >= 0.6 && lt < 1.5 && !sold) tapHint(c, tx, ty, (lt - 0.6) / 0.9);
     } },
-  { kicker: "How to play · 5 of 6", title: "Meet the Aliens",
+  { kicker: "How to play · 5 of 7", title: "Meet the Aliens",
     body: ["Scroll to meet the aliens from all four worlds. Cards show baseline stats.",
       "Tap <b>Next ›</b> in the top bar for the upcoming wave’s full breakdown. The wave preview’s enemy chips also open Wave Info."],
     content() {
@@ -5253,13 +5271,10 @@ const TUTORIAL = [
         <details><summary>Wave Info example</summary>${waveTable(8, "Wave 8")}</details>
       </div>`;
     } },
-  { kicker: "How to play · 6 of 6", title: "Waves and bosses",
+  { kicker: "How to play · 6 of 7", title: "Waves and bosses",
     body: [`After deploying, review the Wave 1 preview and press <b>Start</b> for ${BUILD_TIME} seconds to build. The top bar shows the countdown and <b>Send Now</b>.`,
       "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
-      `Higher difficulties make every alien tougher. Difficulty 1 is a little gentler, so it's a good place to learn each world. From Difficulty ${SECOND_PORTAL_DIFF} on, a second portal opens on the top row and the aliens take turns using both. Your maze must leave a route from each portal.`,
-      `From world 2 on you get ${CAMPAIGN_RETRIES} retries per world. Lose after that and you fall back to replay the world before it.`,
       `The wave ${VICTORY_WAVE} boss releases swarm aliens and a Flyer in each burst: ${broodSchedule()}. They’re shielded for ${BROOD.shieldTime}s. From wave ${TANK_SPLIT.firstWave} on, tanks release swarm aliens in bursts: ${broodSchedule()} and ${TANK_SPLIT.deathCount} more on defeat. They’re shielded for ${TANK_SPLIT.shieldTime}s.`],
-    doneLabel: "Got it ▶",
 
     draw(c, t, W, H) {
       const b = miniBoard(c, W, H, 5, 6); miniPortal(c, b, 2, 0, t);
@@ -5281,6 +5296,20 @@ const TUTORIAL = [
       miniBase(c, b, 2, 5, false);
       c.fillStyle = "#e6ecff"; c.font = "800 14px system-ui"; c.textAlign = "center";
       c.fillText(`Wave ${VICTORY_WAVE} · ${ALIENS.name("boss", stage)}`, W / 2, b.oy + 6 * b.cs + 20);
+    } },
+  { kicker: "How to play · 7 of 7", title: "Difficulty and retries",
+    body: [
+      "Choose difficulty on the <b>Campaign</b> screen before deploying. Clear a world to unlock its next difficulty.",
+      `Higher difficulties make aliens tougher. From <b>Difficulty ${SECOND_PORTAL_DIFF}</b> on, two portals alternate arrivals. Leave a route to the base from both.`,
+      "<b>World 1:</b> A defeat sends you back one wave and restores your saved towers, gold, and base health.",
+      `<b>Worlds 2–${WORLDS.length}:</b> The first two defeats restart the world. Your third defeat sends you back to the previous world.`,
+    ],
+    doneLabel: "Got it ▶",
+    draw(c, t, W, H) {
+      const b = miniBoard(c, W, H, 5, 5);
+      miniPortal(c, b, 1, 0, t);
+      miniPortal(c, b, 3, 0, t + 1);
+      miniBase(c, b, 2, 4, false);
     } },
 ];
 
@@ -5508,7 +5537,11 @@ const ACT = {
   fs: () => { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else enterFullscreen(); setTimeout(pauseMenu, 150); },
   resume: () => closeMenu(),
   quit: () => { S.started = false; mainMenu(); }, // last autosave (start of this wave) is kept
-  retry: () => { autoFullscreen(); newGame(S.map, S.diff, true); closeMenu(); },
+  retry: () => {
+    autoFullscreen();
+    if (S.map !== 0 || S.endless || !loadRun()) newGame(S.map, S.diff, true);
+    closeMenu();
+  },
   fallback: () => showCampaignDeploy(S.map - 1, S.diff),
 };
 $("ovBox").addEventListener("click", ev => {
