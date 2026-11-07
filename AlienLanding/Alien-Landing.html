@@ -6,139 +6,189 @@
 <meta name="theme-color" content="#070b16">
 <title>Alien Landing</title>
 <style>
-  :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d;
+    --pad: #4fd1ff; --runway: #ffb84d; --carrier: #c77dff; }
+  * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   #cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #hud { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 8px; align-items: flex-start; pointer-events: none;
-    padding: calc(8px + env(safe-area-inset-top)) 10px 0; }
-  .chip { background: rgba(10, 16, 34, 0.82); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px 5px; font-weight: 800; font-size: 16px; line-height: 1.15; }
-  .chip small { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; pointer-events: none;
+    padding: calc(8px + env(safe-area-inset-top)) 8px 0; }
+  .chip { background: rgba(10, 16, 34, 0.85); border: 1px solid var(--line); border-radius: 12px; padding: 4px 9px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hWaveChip { min-width: 96px; }
+  .bar { display: block; height: 5px; margin-top: 4px; border-radius: 3px; background: #1b2546; overflow: hidden; }
+  .bar b { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5dff9b, #4fd1ff); transition: width 0.25s; }
+  #hLives { color: var(--bad); letter-spacing: 0.05em; }
   #hud .spacer { flex: 1; }
-  #speedBtn { pointer-events: auto; background: rgba(10, 16, 34, 0.82); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 9px 12px; letter-spacing: -0.12em; }
-  #speedBtn.on { background: #3a2f0e; border-color: #c9a227; color: var(--gold); }
-  #pauseBtn { pointer-events: auto; background: rgba(10, 16, 34, 0.82); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 800; font-size: 15px; padding: 9px 14px; }
-  #bubble { position: fixed; left: 86px; bottom: calc(18px + env(safe-area-inset-bottom)); max-width: min(62vw, 300px); background: #f4f7ff; color: #10162c;
+  .hudBtn { pointer-events: auto; background: rgba(10, 16, 34, 0.85); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 9px 12px; }
+  #speedBtn { letter-spacing: -0.12em; }
+  #speedBtn.on { background: #3a2f0e; border-color: #c9a227; color: var(--gold); letter-spacing: 0; }
+  #bubble { position: fixed; left: 86px; bottom: calc(18px + env(safe-area-inset-bottom)); max-width: min(64vw, 300px); background: #f4f7ff; color: #10162c;
     border-radius: 14px 14px 14px 4px; padding: 8px 12px; font-size: 14px; font-weight: 650; line-height: 1.3; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
     opacity: 0; transform: translateY(8px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
   #bubble.on { opacity: 1; transform: none; }
   #bubble b { color: #1b5fd6; }
-  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 7, 16, 0.78); }
+  /* ---------- menus ---------- */
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(4, 7, 16, 0.8); }
   #overlay.hidden { display: none; }
-  #box { width: 100%; max-width: 380px; max-height: calc(100% - 24px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
-  #box h1 { margin: 4px 0 2px; font-size: 32px; letter-spacing: 0.02em; background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #box h2 { margin: 2px 0 8px; font-size: 24px; }
+  #box { width: 100%; max-width: 400px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; overscroll-behavior: contain; }
+  #box h1 { margin: 6px 0 0; font-size: 38px; line-height: 1.05; letter-spacing: 0.01em; background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { margin: 2px 0 6px; font-size: 24px; }
+  #box h3 { margin: 0; font-size: 16px; }
   #box p { color: #c9d3f0; font-size: 15px; line-height: 1.45; margin: 6px 0 12px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0; }
   .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
   .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  .big.warn { background: #4a1d2a; border-color: #7a2f45; color: #ffb3c2; }
   .big:disabled { opacity: 0.45; }
-  .level { display: flex; align-items: center; gap: 12px; text-align: left; }
-  .level canvas { width: 54px; height: 54px; border-radius: 10px; flex: none; }
-  .level span { flex: 1; }
-  .level small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
   .row { display: flex; gap: 8px; }
-  .seg { display: flex; gap: 4px; background: #0a1024; border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 10px 0 4px; }
+  .row .big { flex: 1; }
+  #titleArt { width: 100%; height: 150px; display: block; margin: -4px 0 4px; }
+  .seg { display: flex; gap: 4px; background: #0a1024; border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 8px 0 4px; }
   .seg button { flex: 1; padding: 9px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--dim); font: inherit; font-size: 15px; font-weight: 800; }
   .seg button.on { background: #1d4a3a; color: var(--good); }
   .segNote { font-size: 13px !important; color: var(--dim) !important; margin: 4px 0 8px !important; }
-  .row .big { flex: 1; }
-  .help { text-align: left; margin: 8px 0 12px; }
-  .help div { display: flex; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; color: #c9d3f0; line-height: 1.35; }
-  .help canvas { width: 44px; height: 44px; flex: none; }
-  .stat { font-size: 44px; font-weight: 900; margin: 4px 0 0; color: var(--gold); }
-  .ship-guide { display: grid; gap: 8px; margin: 12px 0; }
-  .ship-guide article { display: grid; grid-template-columns: 64px minmax(0, 1fr) 54px; gap: 8px;
-    align-items: center; padding: 8px; border: 1px solid #2c3760; border-radius: 10px; text-align: left; }
-  .ship-guide canvas, .ship-guide svg { display: block; width: 100%; }
-  .ship-guide h3 { font-size: 16px; margin: 0 0 2px; }
-  #box .ship-guide p { margin: 0; font-size: 13px; }
+  .stage { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .stage canvas { width: 64px; height: 64px; border-radius: 12px; flex: none; }
+  .stage span { flex: 1; min-width: 0; }
+  .stage .tag { float: right; font-size: 12px; color: var(--good); }
+  .ships { display: grid; gap: 8px; margin: 10px 0; text-align: left; }
+  .ships article { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px; border: 1px solid #2c3760; border-radius: 12px; background: #0b1228; }
+  .ships canvas { width: 56px; height: 56px; display: block; }
+  #box .ships p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; }
+  .fam { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  .guideStage { text-align: left; margin: 14px 0 4px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 800; }
+  #howCv { width: 100%; height: 220px; display: block; border-radius: 12px; background: #0a1024; border: 1px solid #22305a; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3a66; }
+  .dots i.on { background: var(--accent); }
+  .stat { font-size: 30px; font-weight: 900; margin: 2px 0 6px; color: var(--gold); }
+  .stats { display: flex; justify-content: center; gap: 18px; margin: 6px 0 10px; }
+  .stats div { font-size: 22px; font-weight: 900; }
+  .stats small { display: block; font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
 </head>
 <body>
 <canvas id="cv"></canvas>
 <div id="hud">
-  <div class="chip"><small>Landed</small><span id="hLanded">0</span></div>
-  <div class="chip"><small>Best</small><span id="hBest">0</span></div>
+  <div class="chip" id="hWaveChip"><small id="hStage">Wave</small><span id="hWave">1/10</span> <span id="hNeed" style="color:var(--dim);font-size:12px"></span><i class="bar"><b id="hBar"></b></i></div>
+  <div class="chip"><small>Lives</small><span id="hLives">♥♥♥</span></div>
   <div class="spacer"></div>
-  <button id="speedBtn" aria-label="Speed up">▶▶</button>
-  <button id="pauseBtn">Pause</button>
+  <button class="hudBtn" id="speedBtn" aria-label="Speed up">▶▶</button>
+  <button class="hudBtn" id="pauseBtn">Pause</button>
 </div>
 <div id="bubble"></div>
 <div id="overlay"><div id="box"></div></div>
 <script>
 "use strict";
 // ============================================================
-//  ALIEN LANDING: draw a route from each ship to its landing spot. Ships that touch crash.
+//  ALIEN LANDING
+//  Draw a route from each ship to its landing spot. 4 stages x 10 waves. Ships that touch crash and cost a life.
 // ============================================================
 const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
 const $ = id => document.getElementById(id);
-const TAU = Math.PI * 2;
+const TAU = Math.PI * 2, PI = Math.PI;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
+const pick = a => a[Math.floor(Math.random() * a.length)];
 let W = 0, H = 0, S = 0, DPR = 1;
 
-// ---------- ships ----------
-// r and speed are fractions of S (the short side of the play area)
-const TYPES = {
-  saucer: { name: "Saucer", color: "#4fd1ff", skin: "#5dff9b", r: 0.042, speed: 0.095, zone: "pad", where: "the blue landing pad" },
-  hauler: { name: "Hauler", color: "#ffb84d", skin: "#ff9b5d", r: 0.05, speed: 0.07, zone: "runway", where: "the orange runway, over the arrows" },
-  dart:   { name: "Dart",   color: "#c77dff", skin: "#ff8bd0", r: 0.034, speed: 0.135, zone: "dock", where: "the purple runway or docking ring" },
+// ============================================================
+//  SHIPS: three families, each with its own landing spot, and one ship per family per stage
+// ============================================================
+const FAM = {
+  pad:     { name: "Hovercraft",   color: "#4fd1ff", light: "#e8f8ff", dark: "#1b5a86", ink: "#0d2a44", spot: "blue landing pad",
+             how: "Draw the route into a blue pad. They hover straight down." },
+  runway:  { name: "Runway ships", color: "#ffb84d", light: "#ffe0a8", dark: "#a0601e", ink: "#4a2a0a", spot: "orange runway",
+             how: "Fly in over the arrows, heading the way they point." },
+  carrier: { name: "Carrier ships", color: "#c77dff", light: "#f0d8ff", dark: "#5b2a8a", ink: "#2a0f45", spot: "purple carrier",
+             how: "Draw the route onto the carrier's deck. The carrier keeps moving, so the ship chases it in." },
+};
+// r and speed are fractions of S (the short side of the screen). Silhouettes for the newer ships come from the Ship Guide.
+const SHIPS = {
+  saucer:     { name: "Saucer",        fam: "pad",     stage: 0, r: 0.042, speed: 0.095, skin: "#5dff9b", note: "Classic flying disc. Steady and easy." },
+  hauler:     { name: "Hauler",        fam: "runway",  stage: 0, r: 0.05,  speed: 0.07,  skin: "#ff9b5d", note: "Boxy cargo shuttle. Big and slow." },
+  dart:       { name: "Dart",          fam: "carrier", stage: 0, r: 0.034, speed: 0.125, skin: "#ff8bd0", note: "Quick little courier." },
+  hopper:     { name: "Bubble Hopper", fam: "pad",     stage: 1, r: 0.037, speed: 0.105, skin: "#ffd25d", quirk: "hop", note: "Hops in bursts: fast, then slow.",
+                path: "M-20 0Q-18-14 0-14T20 0Q18 13 0 13T-20 0Z" },
+  manta:      { name: "Manta",         fam: "runway",  stage: 1, r: 0.054, speed: 0.085, skin: "#5dff9b", note: "Wide wings. Give it extra room.",
+                path: "M26 0Q5-5-10-18L-25-14L-16 0L-25 14L-10 18Q5 5 26 0Z" },
+  keyhole:    { name: "Keyhole",       fam: "carrier", stage: 1, r: 0.04,  speed: 0.1,   skin: "#4fd1ff", note: "Docking tug with a forked nose.",
+                path: "M-23-10L-10-16H14L24-12V-6H9V6H24V12L14 16H-10L-23 10Z" },
+  twinlift:   { name: "Twinlift",      fam: "pad",     stage: 2, r: 0.045, speed: 0.1,   skin: "#ff8bd0", note: "Rescue craft with twin lift fans. Quick to arrive.",
+                path: "M-21-11H17Q25 0 17 11H-21L-15 0Z M-12-11V-21H8V-11Z M-12 11V21H8V11Z" },
+  needle:     { name: "Needlejet",     fam: "runway",  stage: 2, r: 0.036, speed: 0.155, skin: "#ffe05d", note: "Very fast. Plan its route early." },
+  gyro:       { name: "Gyro Pod",      fam: "carrier", stage: 2, r: 0.04,  speed: 0.075, skin: "#5dff9b", quirk: "wobble", note: "Wobbles side to side as it flies." },
+  skycrane:   { name: "Sky Crane",     fam: "pad",     stage: 3, r: 0.058, speed: 0.065, skin: "#ffd25d", note: "Heavy lifter. Huge and slow.",
+                path: "M-22-16H14L24-7V7L14 16H-22V9H3V-9H-22Z" },
+  starlifter: { name: "Starlifter",    fam: "runway",  stage: 3, r: 0.056, speed: 0.1,   skin: "#4fd1ff", note: "Long freighter. Fast for its size.",
+                path: "M24 0L16-7H-4L-17-21H-25L-17-7H-24V7H-17L-25 21H-17L-4 7H16Z" },
+  ferry:      { name: "Orbital Ferry", fam: "carrier", stage: 3, r: 0.046, speed: 0.085, skin: "#ff9b5d", quirk: "surge", note: "Passenger ferry. Speeds up the longer it flies.",
+                path: "M25 0L14-10H-16L-25 0L-16 10H14Z M-14-12L-18-20H8L16-12Z M-14 12L-18 20H8L16 12Z" },
 };
 
-// ---------- worlds ----------
-// zone x/y are fractions of the screen; sizes are fractions of S. Runway ang = landing direction.
-const LEVELS = [
-  { name: "Moon Base", theme: "moon", need: 0, sub: "Two runways and a pad",
-    types: ["saucer", "hauler", "dart"],
-    zones: [{ kind: "runway", type: "hauler", x: 0.72, y: 0.56, len: 0.6, wid: 0.12, ang: -Math.PI / 2 },
-            { kind: "runway", type: "dart", x: 0.4, y: 0.78, len: 0.42, wid: 0.1, ang: 0 },
-            { kind: "pad", type: "saucer", x: 0.28, y: 0.3, r: 0.08 }],
-    hardZones: [{ kind: "runway", type: "hauler", x: 0.64, y: 0.55, len: 0.6, wid: 0.12, ang: -Math.PI / 2 },
-            { kind: "runway", type: "dart", x: 0.36, y: 0.52, len: 0.42, wid: 0.1, ang: Math.PI / 2 },
-            { kind: "pad", type: "saucer", x: 0.5, y: 0.22, r: 0.075 }] },
-  { name: "Mars Outpost", theme: "mars", need: 15, sub: "Crossing runways",
-    types: ["saucer", "hauler", "dart", "saucer"],
-    tip: "Heads up: the runways <b>cross in the middle</b>. Two ships rolling through the crossing at once will collide!",
-    // an X of runways: Haulers land up and to the right, Darts up and to the left; two Saucer pads on the aprons
-    zones: [{ kind: "runway", type: "hauler", x: 0.5, y: 0.52, len: 0.74, wid: 0.12, ang: -Math.PI / 4 },
-            { kind: "runway", type: "dart", x: 0.5, y: 0.52, len: 0.58, wid: 0.1, ang: -Math.PI * 3 / 4 },
-            { kind: "pad", type: "saucer", x: 0.22, y: 0.24, r: 0.075 },
-            { kind: "pad", type: "saucer", x: 0.78, y: 0.8, r: 0.075 }],
-    hardZones: [{ kind: "runway", type: "hauler", x: 0.5, y: 0.5, len: 0.74, wid: 0.12, ang: -Math.PI / 4 },
-            { kind: "runway", type: "dart", x: 0.5, y: 0.5, len: 0.58, wid: 0.1, ang: -Math.PI * 3 / 4 },
-            { kind: "pad", type: "saucer", x: 0.3, y: 0.3, r: 0.07 },
-            { kind: "pad", type: "saucer", x: 0.7, y: 0.71, r: 0.07 }],
-    deco: [{ kind: "dome", x: 0.82, y: 0.17, r: 0.07 }, { kind: "hangar", x: 0.52, y: 0.86, w: 0.2 },
-           { kind: "tanks", x: 0.87, y: 0.5, r: 0.03 }, { kind: "dome", x: 0.13, y: 0.5, r: 0.045 }] },
-  { name: "Earth Spaceport", theme: "earth", need: 20, sub: "Two runways, heavy traffic",
-    types: ["saucer", "hauler", "dart", "hauler"],
-    zones: [{ kind: "runway", type: "hauler", x: 0.27, y: 0.6, len: 0.56, wid: 0.11, ang: -Math.PI / 2 },
-            { kind: "runway", type: "hauler", x: 0.73, y: 0.47, len: 0.56, wid: 0.11, ang: Math.PI / 2 },
-            { kind: "pad", type: "saucer", x: 0.5, y: 0.22, r: 0.075 },
-            { kind: "dock", type: "dart", x: 0.5, y: 0.8, r: 0.065 }],
-    hardZones: [{ kind: "runway", type: "hauler", x: 0.33, y: 0.58, len: 0.56, wid: 0.11, ang: -Math.PI / 2 },
-            { kind: "runway", type: "hauler", x: 0.67, y: 0.48, len: 0.56, wid: 0.11, ang: Math.PI / 2 },
-            { kind: "pad", type: "saucer", x: 0.5, y: 0.27, r: 0.07 },
-            { kind: "dock", type: "dart", x: 0.5, y: 0.76, r: 0.06 }] },
+// ============================================================
+//  STAGES (the same four worlds as Alien Defense)
+//  Spot positions are fractions of the screen; sizes are fractions of S. Runway ang = landing direction.
+//  Carriers slide between (x1,y1) and (x2,y2) and back every `period` seconds.
+// ============================================================
+const STAGES = [
+  { name: "The Oort Gate", where: "Oort Cloud · edge of the solar system", theme: "ice", ships: ["saucer", "hauler", "dart"],
+    brief: "A quiet outpost on the ice. Learn the three landing spots here.",
+    zones: [{ kind: "runway", fam: "runway", x: 0.72, y: 0.53, len: 0.58, wid: 0.12, ang: PI / 2 }, // Haulers come in from the top, clear of the carrier
+            { kind: "pad", fam: "pad", x: 0.27, y: 0.27, r: 0.08 },
+            { kind: "carrier", fam: "carrier", x1: 0.3, y1: 0.73, x2: 0.52, y2: 0.73, period: 18, len: 0.32, wid: 0.1, ang: PI }] },
+  { name: "Jupiter Storm", where: "Jupiter's orbit", theme: "jupiter", ships: ["hopper", "manta", "keyhole"], hazard: "storm",
+    brief: "A storm cell drifts across the field. Ships inside it slow to a crawl, so traffic bunches up.",
+    zones: [{ kind: "runway", fam: "runway", x: 0.46, y: 0.76, len: 0.52, wid: 0.12, ang: PI },
+            { kind: "pad", fam: "pad", x: 0.25, y: 0.25, r: 0.075 },
+            { kind: "pad", fam: "pad", x: 0.77, y: 0.36, r: 0.075 },
+            { kind: "carrier", fam: "carrier", x1: 0.2, y1: 0.38, x2: 0.2, y2: 0.56, period: 15, len: 0.3, wid: 0.1, ang: -PI / 2 }] },
+  { name: "Mars, the Red Wall", where: "Mars", theme: "mars", ships: ["twinlift", "needle", "gyro"],
+    brief: "Two runways cross in the middle. Ships rolling through the crossing at the same time collide.",
+    zones: [{ kind: "runway", fam: "runway", x: 0.5, y: 0.5, len: 0.66, wid: 0.12, ang: -PI / 4 },
+            { kind: "runway", fam: "runway", x: 0.5, y: 0.5, len: 0.58, wid: 0.11, ang: -PI * 3 / 4 },
+            { kind: "pad", fam: "pad", x: 0.2, y: 0.22, r: 0.072 },
+            { kind: "pad", fam: "pad", x: 0.82, y: 0.79, r: 0.072 },
+            { kind: "carrier", fam: "carrier", x1: 0.52, y1: 0.15, x2: 0.74, y2: 0.15, period: 13, len: 0.3, wid: 0.1, ang: 0 }],
+    deco: [{ kind: "dome", x: 0.86, y: 0.4, r: 0.05 }, { kind: "tanks", x: 0.1, y: 0.5, r: 0.026 }, { kind: "hangar", x: 0.42, y: 0.86, w: 0.18 }] },
+  { name: "Earth, Final Stand", where: "Earth", theme: "earth", ships: ["skycrane", "starlifter", "ferry"], mix: true,
+    brief: "The busiest spaceport of all. From wave 4, ships from every stage join the traffic.",
+    zones: [{ kind: "runway", fam: "runway", x: 0.16, y: 0.55, len: 0.52, wid: 0.11, ang: -PI / 2 },
+            { kind: "runway", fam: "runway", x: 0.42, y: 0.16, len: 0.5, wid: 0.11, ang: PI },
+            { kind: "pad", fam: "pad", x: 0.52, y: 0.4, r: 0.068 },
+            { kind: "pad", fam: "pad", x: 0.84, y: 0.55, r: 0.068 },
+            { kind: "carrier", fam: "carrier", x1: 0.46, y1: 0.75, x2: 0.7, y2: 0.75, period: 12, len: 0.3, wid: 0.1, ang: PI }],
+    roofs: true },
 ];
-// Easy = calm traffic, spots spread out. Hard = more ships, faster, spots packed closer together.
+const WAVES = 10;
+
+// Easy / Normal / Hard. Hard also pulls every landing spot in toward the middle.
 const DIFFS = [
-  { name: "Easy",   base: 3, per: 4, cap: 8,  gap: 5.2, minGap: 1.6, speed: 1,    hard: false },
-  { name: "Normal", base: 4, per: 3, cap: 10, gap: 4.2, minGap: 1.3, speed: 1.1,  hard: false },
-  { name: "Hard",   base: 5, per: 3, cap: 12, gap: 3.4, minGap: 1.05, speed: 1.22, hard: true },
+  { name: "Easy",   lives: 4, base: 2, gap: 5.6, minGap: 1.9, speed: 0.95, squeeze: 1,    note: "Calm traffic, spots spread out, 4 lives." },
+  { name: "Normal", lives: 3, base: 3, gap: 4.8, minGap: 1.5, speed: 1.05, squeeze: 1,    note: "Busier skies, a little faster, 3 lives." },
+  { name: "Hard",   lives: 2, base: 3, gap: 4.1, minGap: 1.2, speed: 1.15, squeeze: 0.86, note: "Fast and crowded, spots packed close, 2 lives." },
 ];
+// landings needed to clear wave n (1..10)
+const NEED = n => 3 + Math.ceil(n * 0.6); // 4, 5, 5, 6, 6, 7, 8, 8, 9, 9
 
-// ---------- save ----------
-const KEY = "alienLanding.v1";
-let SAVE = { best: [0, 0, 0], bestD: null, diff: 0, sound: true, seenHelp: false };
+// ============================================================
+//  SAVE
+// ============================================================
+const KEY = "alienLanding.v2";
+const blank = () => [0, 0, 0, 0];
+let SAVE = { diff: 0, sound: true, seenHelp: false, best: [blank(), blank(), blank()], cleared: [blank(), blank(), blank()], run: null };
 try { Object.assign(SAVE, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
-if (!SAVE.bestD) SAVE.bestD = [SAVE.best.slice(), [0, 0, 0], [0, 0, 0]]; // older saves were all Easy
-const best = (i, d = SAVE.diff) => SAVE.bestD[d][i] || 0;
-const bestAny = i => Math.max(...SAVE.bestD.map(b => b[i] || 0));
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
-const unlocked = i => i === 0 || bestAny(i - 1) >= LEVELS[i].need; // any difficulty counts
+const clearedAny = i => SAVE.cleared.some(c => c[i]);
+const unlocked = i => i === 0 || clearedAny(i - 1);
 
-// ---------- sound (tiny synth) ----------
+// ============================================================
+//  SOUND (tiny synth)
+// ============================================================
 let AC = null;
 function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
 function tone(freq, dur, type = "sine", vol = 0.12, delay = 0, slide = 0) {
@@ -163,106 +213,198 @@ const SFX = {
   arrive: () => tone(420, 0.25, "sine", 0.05, 0, 1.6),
   crash: () => { noise(0.9, 0.4); tone(160, 0.6, "sawtooth", 0.12, 0, 0.3); },
   mayday: () => { tone(740, 0.15, "sawtooth", 0.05); tone(560, 0.15, "sawtooth", 0.05, 0.17); },
+  wave: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, "triangle", 0.1, i * 0.09)),
+  clear: () => [523, 659, 784, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, "triangle", 0.1, i * 0.12)),
+  over: () => [392, 330, 262, 196].forEach((f, i) => tone(f, 0.35, "sawtooth", 0.06, i * 0.18)),
 };
 
-// ---------- state ----------
-let G = null;          // current game
+// ============================================================
+//  GAME STATE
+// ============================================================
+let G = null;          // current run
 let paused = true;     // menus pause the sim
 let fast = false;      // fast-forward: the sim runs twice per frame
 let bgKey = "";
 const bgCv = document.createElement("canvas"), bgc = bgCv.getContext("2d");
 
-function newGame(level, quiet = false) {
-  const D = DIFFS[SAVE.diff];
-  G = { level, L: LEVELS[level], D, zones: D.hard && LEVELS[level].hardZones || LEVELS[level].zones, ships: [], fx: [], texts: [], landed: 0, score: 0, time: 0, nextSpawn: 1.2, over: false, overAt: 0,
-        seen: {}, warnCd: 0, nextId: 1, crashAt: null };
-  $("hLanded").textContent = 0; $("hBest").textContent = best(level);
-  setFast(false);
-  bgKey = "";
-  if (!quiet) say(`Welcome to <b>${G.L.name}</b>! Drag from a ship to draw its route to the spot that matches its colour.`, 5);
+function stageZones(i, d) { // Hard pulls every spot in toward the middle of the screen
+  const k = DIFFS[d].squeeze, sq = (v, c) => c + (v - c) * k;
+  return STAGES[i].zones.map(z => z.kind === "carrier"
+    ? { ...z, x1: sq(z.x1, 0.5), x2: sq(z.x2, 0.5), y1: sq(z.y1, 0.5), y2: sq(z.y2, 0.5) }
+    : { ...z, x: sq(z.x, 0.5), y: sq(z.y, 0.5) });
 }
 
-// ---------- geometry ----------
-function zoneGeo(z) {
-  const g = { x: z.x * W, y: z.y * H };
-  if (z.kind === "runway") { g.len = z.len * S; g.wid = z.wid * S; g.dx = Math.cos(z.ang); g.dy = Math.sin(z.ang);
-    g.ex = g.x - g.dx * g.len / 2; g.ey = g.y - g.dy * g.len / 2; }
-  else g.r = z.r * S;
+function newRun(stage, wave = 1, quiet = false) {
+  const D = DIFFS[SAVE.diff];
+  G = { stage, ST: STAGES[stage], D, diff: SAVE.diff, zones: stageZones(stage, SAVE.diff), ships: [], fx: [], texts: [],
+        wave: 0, waveLanded: 0, need: 0, lives: D.lives, landed: 0, crashes: 0, time: 0, nextSpawn: 2, breather: 0,
+        over: false, cleared: false, seen: {}, warnCd: 0, nextId: 1, banner: null, storm: null, startWave: wave };
+  if (G.ST.hazard === "storm") G.storm = { x: W * 0.5, y: H * 0.45, vx: S * 0.03, vy: S * 0.02, r: S * TUNE.stormR };
+  bgKey = ""; setFast(false);
+  startWave(wave, quiet);
+}
+function startWave(n, quiet = false) {
+  G.wave = n; G.waveLanded = 0; G.need = NEED(n); G.waveDone = false;
+  if (!quiet) {
+    banner(`Wave ${n}`, n === WAVES ? "Final wave!" : `Land ${G.need} ships`);
+    SFX.wave();
+    SAVE.run = { stage: G.stage, diff: G.diff, wave: n }; save();
+    if (n === 1) say(`Welcome to <b>${G.ST.name}</b>. ${G.ST.brief}`, 5);
+    if (n === 2 && G.ST.hazard === "storm") say("Watch the <b>storm cell</b>. Ships inside it slow to a crawl.", 4);
+    if (n === 4 && G.ST.mix) say("Traffic from <b>every stage</b> is coming in now. Same colours, same spots.", 4.5);
+  }
+  hud();
+}
+function banner(text, sub, dur = 2.4) { G.banner = { text, sub, t: 0, dur }; }
+
+// ---------- what flies in each wave ----------
+function rosterFor(n) {
+  const [pad, run, car] = G.ST.ships;
+  const list = n === 1 ? [pad, pad, run] : [pad, run, car];
+  if (G.ST.mix && n >= 4) for (const k of Object.keys(SHIPS)) if (SHIPS[k].stage < 3) list.push(k); // every older ship can show up
+  return list;
+}
+// Pressure grows with every wave and every stage (tuned with the test bot)
+const TUNE = {
+  wavePer: 4,                        // one more ship in the air every this many waves
+  stageShips: [-1, 0, 2, 3],         // extra ships in the air per stage (Oort has one spot per family, so it gets fewer)
+  waveSpeed: 0.022,                  // ships get this much faster each wave
+  stageSpeed: [-0.06, 0, 0.17, 0.25],// and faster on later stages
+  gapWave: 0.2,                      // seconds cut from the arrival gap each wave
+  gapStage: [-0.3, 0, 1.1, 1.5],     // and shorter gaps on later stages
+  stormSlow: 0.62, stormR: 0.12,     // Jupiter's storm cell: speed inside it, and its size
+};
+const waveSpeed = () => G.D.speed * (1 + TUNE.waveSpeed * (G.wave - 1) + TUNE.stageSpeed[G.stage]);
+const maxShips = () => Math.min(9, Math.max(2, G.D.base + Math.floor((G.wave - 1) / TUNE.wavePer) + TUNE.stageShips[G.stage]));
+const spawnGap = () => Math.max(G.D.minGap, G.D.gap - TUNE.gapWave * (G.wave - 1) - TUNE.gapStage[G.stage]);
+
+// ============================================================
+//  GEOMETRY
+// ============================================================
+// Screen geometry of a landing spot at time t (carriers move)
+function zoneGeo(z, t = G ? G.time : 0) {
+  if (z.kind === "pad") return { x: z.x * W, y: z.y * H, r: z.r * S };
+  let x = z.x, y = z.y, vx = 0, vy = 0;
+  if (z.kind === "carrier") {
+    const ph = 0.5 - 0.5 * Math.cos(TAU * t / z.period), dph = 0.5 * Math.sin(TAU * t / z.period) * TAU / z.period;
+    x = z.x1 + (z.x2 - z.x1) * ph; y = z.y1 + (z.y2 - z.y1) * ph;
+    vx = (z.x2 - z.x1) * W * dph; vy = (z.y2 - z.y1) * H * dph;
+  }
+  const g = { x: x * W, y: y * H, vx, vy, len: z.len * S, wid: z.wid * S, ang: z.ang, dx: Math.cos(z.ang), dy: Math.sin(z.ang) };
+  g.ex = g.x - g.dx * g.len / 2; g.ey = g.y - g.dy * g.len / 2;
   return g;
 }
-// Does a route point (moving in direction mx,my) finish on this zone? Returns the point to steer to, or null.
+const fits = (z, s) => z.fam === s.T.fam;
+// a carrier ship touches down as soon as it is over the front half of the moving deck, heading roughly along it
+function overDeck(s, g) {
+  const ox = s.x - g.x, oy = s.y - g.y, u = ox * g.dx + oy * g.dy, v = -ox * g.dy + oy * g.dx;
+  return u > -g.len / 2 - s.r * 0.5 && u < g.len * 0.1 && Math.abs(v) < g.wid * 0.6 && Math.cos(s.h - g.ang) > 0.2;
+}
+// Does a route point (moving in direction mx,my) finish on this spot? Returns the point to steer to, or null.
 function zoneAccepts(z, px, py, mx, my) {
   const g = zoneGeo(z);
-  if (z.kind !== "runway") return Math.hypot(px - g.x, py - g.y) < g.r ? { x: g.x, y: g.y } : null;
+  if (z.kind === "pad") return Math.hypot(px - g.x, py - g.y) < g.r ? { x: g.x, y: g.y } : null;
   const ox = px - g.x, oy = py - g.y, u = ox * g.dx + oy * g.dy, v = -ox * g.dy + oy * g.dx, u0 = -g.len / 2;
-  const aligned = mx * g.dx + my * g.dy > 0.45; // must come in over the arrows, heading down the runway
-  if (aligned && u > u0 - 0.1 * S && u < u0 + g.len * 0.4 && Math.abs(v) < g.wid * 0.95) {
+  const aligned = mx * g.dx + my * g.dy > 0.45; // must come in over the arrows, heading the way they point
+  if (aligned && u > u0 - 0.1 * S && u < u0 + g.len * 0.45 && Math.abs(v) < g.wid * 0.95) {
     const uu = Math.max(u0, u); return { x: g.x + g.dx * uu, y: g.y + g.dy * uu };
   }
   return null;
 }
 
-// ---------- spawning ----------
+// ============================================================
+//  SPAWNING
+// ============================================================
 function spawnShip() {
-  const L = G.L, type = L.types[Math.floor(Math.random() * L.types.length)], T = TYPES[type];
-  const r = T.r * S;
-  for (let tries = 0; tries < 8; tries++) {
-    const side = Math.floor(Math.random() * 4), f = 0.15 + Math.random() * 0.7;
-    const top = 60; // keep clear of the HUD
+  const type = pick(rosterFor(G.wave)), T = SHIPS[type], r = T.r * S;
+  for (let tries = 0; tries < 10; tries++) {
+    const side = Math.floor(Math.random() * 4), f = 0.12 + Math.random() * 0.76, top = 64;
     const x = side === 0 ? -r * 2 : side === 1 ? W + r * 2 : f * W;
     const y = side === 2 ? top - r * 2 : side === 3 ? H + r * 2 : top + f * (H - top);
-    if (G.ships.some(s => Math.hypot(s.x - x, s.y - y) < S * 0.3)) continue;
+    if (side === 3 && x < 110) continue; // keep clear of the control tower
+    if (G.ships.some(s => Math.hypot(s.x - x, s.y - y) < S * 0.32)) continue;
     const tx = W * (0.3 + Math.random() * 0.4), ty = H * (0.3 + Math.random() * 0.4);
-    const dmg = G.landed >= 8 && Math.random() < 0.12;
-    const speed = T.speed * S * G.D.speed * (1 + Math.min(0.45, G.landed * 0.012)) * (dmg ? 1.15 : 1);
-    G.ships.push({ id: G.nextId++, type, T, r, x, y, h: Math.atan2(ty - y, tx - x), speed, path: [], lock: null, state: "incoming",
-                   t: 1.7, entered: false, dmg, warn: 0, spin: Math.random() * TAU, scale: 1, alpha: 1 });
+    const dmg = G.wave >= 4 && Math.random() < 0.08 + 0.01 * G.stage;
+    const speed = T.speed * S * waveSpeed() * (dmg ? 1.15 : 1);
+    G.ships.push({ id: G.nextId++, type, T, r, x, y, h: Math.atan2(ty - y, tx - x), speed, base: speed, path: [], lock: null, state: "incoming",
+                   t: 1.7, entered: false, dmg, warn: 0, spin: Math.random() * TAU, scale: 1, alpha: 1, age: 0 });
     SFX.arrive();
-    if (!G.seen[type]) { G.seen[type] = true; if (G.landed + G.ships.length > 1) say(`New arrival: <b>${T.name}</b>. Land it on ${T.where}.`, 4); }
+    if (!G.seen[type]) {
+      G.seen[type] = true;
+      if (G.time > 3) say(`New ship: <b>${T.name}</b>. ${T.note} It lands on the ${FAM[T.fam].spot}.`, 4.5);
+    }
     if (dmg) { setTimeout(() => SFX.mayday(), 300); say("Mayday! A damaged ship is coming in fast. Land it for <b>double points</b>!", 3.5); }
     return true;
   }
   return false;
 }
-const maxShips = () => Math.min(G.D.cap, G.D.base + Math.floor(G.landed / G.D.per));
-const spawnGap = () => Math.max(G.D.minGap, G.D.gap - G.landed * 0.11);
 
-// ---------- update ----------
+// ============================================================
+//  UPDATE
+// ============================================================
 function update(dt) {
   G.time += dt;
-  if (G.over) { updateFx(dt); if (G.time - G.overAt > 1.5 && !G.shownOver) { G.shownOver = true; gameOverMenu(); } return; }
-  if (G.L.tip && !G.tipShown && G.time > 6) { G.tipShown = true; say(G.L.tip, 5); }
-  G.nextSpawn -= dt;
-  const active = G.ships.filter(s => s.state !== "land").length;
-  if (G.nextSpawn <= 0) {
-    if (active < maxShips() && spawnShip()) G.nextSpawn = spawnGap() * (0.75 + Math.random() * 0.5);
-    else G.nextSpawn = 0.6;
+  if (G.banner) { G.banner.t += dt; if (G.banner.t > G.banner.dur) G.banner = null; }
+  updateFx(dt);
+  if (G.over || G.cleared) { if (!G.menuShown && G.time - G.endAt > 1.8) { G.menuShown = true; G.cleared ? stageClearMenu() : gameOverMenu(); } return; }
+  // storm cell drifts around the middle of the field
+  if (G.storm) { const st = G.storm; st.x += st.vx * dt; st.y += st.vy * dt;
+    if (st.x < W * 0.28 || st.x > W * 0.72) st.vx *= -1; if (st.y < H * 0.3 || st.y > H * 0.62) st.vy *= -1;
+    st.x = clamp(st.x, W * 0.28, W * 0.72); st.y = clamp(st.y, H * 0.3, H * 0.62); }
+  // waves: a short breather after each one
+  if (G.breather > 0) { G.breather -= dt; if (G.breather <= 0) startWave(G.wave + 1); }
+  else {
+    G.nextSpawn -= dt;
+    const active = G.ships.filter(s => s.state !== "land").length;
+    if (G.nextSpawn <= 0) {
+      if (active < maxShips() && spawnShip()) G.nextSpawn = spawnGap() * (0.75 + Math.random() * 0.5);
+      else G.nextSpawn = 0.6;
+    }
   }
   for (let i = G.ships.length - 1; i >= 0; i--) {
     const s = G.ships[i];
     if (s.state === "incoming") { s.t -= dt; if (s.t <= 0) s.state = "fly"; continue; }
     if (s.state === "land") { landStep(s, dt, i); continue; }
-    let step = s.speed * dt;
+    s.age += dt;
+    // quirks
+    let speed = s.base;
+    if (s.type === "hopper") speed *= 0.5 + 1.0 * Math.max(0, Math.sin(s.age * 3.4 + s.id));
+    if (s.type === "ferry") speed *= 1 + Math.min(0.5, s.age * 0.03);
+    if (G.storm && Math.hypot(s.x - G.storm.x, s.y - G.storm.y) < G.storm.r) speed *= TUNE.stormSlow;
+    s.speed = speed;
+    let step = speed * dt;
     while (step > 0 && s.path.length) {
       const p = s.path[0], dx = p.x - s.x, dy = p.y - s.y, d = Math.hypot(dx, dy);
       if (d > 0.01) s.h += angDiff(s.h, Math.atan2(dy, dx)) * Math.min(1, dt * 14);
       if (d <= step) { s.x = p.x; s.y = p.y; step -= d; s.path.shift(); }
       else { s.x += dx / d * step; s.y += dy / d * step; step = 0; }
     }
-    if (!s.path.length && s.lock && dragging?.ship !== s) { beginLanding(s); continue; }
+    if (s.lock && s.lock.zone.kind === "carrier" && dragging?.ship !== s && overDeck(s, zoneGeo(s.lock.zone))) { beginLanding(s); continue; }
+    if (!s.path.length && s.lock && dragging?.ship !== s) {
+      if (s.lock.zone.kind !== "carrier") { beginLanding(s); continue; }
+      // chase the moving carrier's entry point
+      const g = zoneGeo(s.lock.zone), dx = g.ex - s.x, dy = g.ey - s.y, d = Math.hypot(dx, dy);
+      if (d < Math.max(6, s.r * 0.7)) { beginLanding(s); continue; }
+      if (d > S * 0.6) { s.lock = null; } // lost it: fly on and re-route
+      else { s.h += angDiff(s.h, Math.atan2(dy, dx)) * Math.min(1, dt * 10); const m = Math.min(d, step); s.x += Math.cos(s.h) * m; s.y += Math.sin(s.h) * m; step -= m; }
+    }
     if (step > 0) { s.x += Math.cos(s.h) * step; s.y += Math.sin(s.h) * step; }
+    if (s.type === "gyro") { const w = 2.2, k = S * 0.03 * w * Math.cos(G.time * w + s.id) * dt; s.x -= Math.sin(s.h) * k; s.y += Math.cos(s.h) * k; s.spin += dt * 2.5; }
     // once fully on screen, ships without a route bounce off the edges
     const m = s.r;
-    if (!s.entered && s.x > m && s.x < W - m && s.y > m + 40 && s.y < H - m) s.entered = true;
-    if (s.entered && !s.path.length) {
-      if (s.x < m) { s.x = m; s.h = Math.PI - s.h; } else if (s.x > W - m) { s.x = W - m; s.h = Math.PI - s.h; }
-      if (s.y < m + 40) { s.y = m + 40; s.h = -s.h; } else if (s.y > H - m) { s.y = H - m; s.h = -s.h; }
+    if (!s.entered && s.x > m && s.x < W - m && s.y > m + 44 && s.y < H - m) s.entered = true;
+    if (s.entered && !s.path.length && !s.lock) {
+      if (s.x < m) { s.x = m; s.h = PI - s.h; } else if (s.x > W - m) { s.x = W - m; s.h = PI - s.h; }
+      if (s.y < m + 44) { s.y = m + 44; s.h = -s.h; } else if (s.y > H - m) { s.y = H - m; s.h = -s.h; }
     }
     if (s.dmg && Math.random() < dt * 14) G.fx.push({ x: s.x - Math.cos(s.h) * s.r, y: s.y - Math.sin(s.h) * s.r, vx: (Math.random() - 0.5) * 12, vy: (Math.random() - 0.5) * 12, life: 0.9, max: 0.9, size: s.r * 0.35, color: "rgba(150,150,160,", smoke: true });
   }
-  // proximity and collisions
-  const flying = G.ships.filter(s => s.state === "fly"); // once a ship touches down it is safe
-  for (const s of flying) s.warn = Math.max(0, s.warn - dt * 3);
+  collisions(dt);
+}
+
+function collisions(dt) {
+  const flying = G.ships.filter(s => s.state === "fly");
+  for (const s of G.ships) s.warn = Math.max(0, s.warn - dt * 3);
   let near = false;
   for (let a = 0; a < flying.length; a++) for (let b = a + 1; b < flying.length; b++) {
     const A = flying[a], B = flying[b], d = Math.hypot(A.x - B.x, A.y - B.y), rr = A.r + B.r;
@@ -270,81 +412,102 @@ function update(dt) {
     if (d < rr * 2.1) { A.warn = B.warn = 1; near = true; }
   }
   // ships rolling down different runways can meet where the runways cross
-  const rolling = G.ships.filter(s => s.state === "land" && s.zone.kind === "runway" && s.alpha > 0.4);
+  const rolling = G.ships.filter(s => s.state === "land" && s.zone && s.zone.kind === "runway" && s.alpha > 0.4);
   for (let a = 0; a < rolling.length; a++) for (let b = a + 1; b < rolling.length; b++) {
     const A = rolling[a], B = rolling[b];
     if (A.zone === B.zone) continue;
-    const d = Math.hypot(A.x - B.x, A.y - B.y), rr = (A.r * A.scale + B.r * B.scale);
+    const d = Math.hypot(A.x - B.x, A.y - B.y), rr = A.r * A.scale + B.r * B.scale;
     if (d < rr * 0.8) { crash(A, B); return; }
     if (d < rr * 1.8) { A.warn = B.warn = 1; near = true; }
   }
-  for (const s of rolling) s.warn = Math.max(0, s.warn - dt * 3);
   G.warnCd -= dt;
-  if (near && G.warnCd <= 0) { SFX.warn(); G.warnCd = 1.4; if (Math.random() < 0.35) say(pick(["Watch your spacing!", "Too close, too close!", "Eyes up, controller!", "Separate those ships!"]), 2); }
-  updateFx(dt);
+  if (near && G.warnCd <= 0) { SFX.warn(); G.warnCd = 1.4; if (Math.random() < 0.3) say(pick(["Watch your spacing!", "Too close, too close!", "Eyes up, controller!", "Separate those ships!"]), 2); }
 }
 
-function beginLanding(s) {
-  s.state = "land"; s.t = 0; s.zone = s.lock.zone; s.path = [];
-  s.sx = s.x; s.sy = s.y;
-}
+function beginLanding(s) { s.state = "land"; s.t = 0; s.zone = s.lock.zone; s.path = []; s.sx = s.x; s.sy = s.y; s.u = null; }
 function landStep(s, dt, i) {
+  if (!s.zone) return; // waved off at the end of a stage (faded in updateFx)
   s.t += dt;
   const z = s.zone, g = zoneGeo(z);
-  if (z.kind === "runway") {
-    // roll down the runway, slowing and settling
-    const ang = Math.atan2(g.dy, g.dx); s.h += angDiff(s.h, ang) * Math.min(1, dt * 8);
-    const v = s.speed * Math.max(0.6, 1 - s.t * 0.3);
-    s.x += g.dx * v * dt; s.y += g.dy * v * dt;
-    s.scale = Math.max(0.62, 1 - s.t * 0.35);
-    const u = (s.x - g.x) * g.dx + (s.y - g.y) * g.dy;
-    if (u > g.len * 0.38) s.alpha -= dt * 3;
-  } else {
-    // hover onto the pad centre, spin down and settle
+  if (z.kind === "pad") { // hover onto the pad centre, spin down and settle
     const k = Math.min(1, s.t / 0.9);
     s.x = s.sx + (g.x - s.sx) * k; s.y = s.sy + (g.y - s.sy) * k;
     s.spin += dt * (6 - s.t * 4); s.scale = 1 - 0.4 * Math.min(1, s.t / 1.2);
     if (s.t > 1.3) s.alpha -= dt * 3;
+  } else { // roll down the runway or carrier deck, slowing and settling
+    if (s.u == null) s.u = clamp((s.x - g.x) * g.dx + (s.y - g.y) * g.dy, -g.len / 2, g.len / 2);
+    s.h += angDiff(s.h, g.ang) * Math.min(1, dt * 8);
+    s.u += s.base * Math.max(0.6, 1 - s.t * 0.3) * dt;
+    s.x = g.x + g.dx * s.u; s.y = g.y + g.dy * s.u; // stays on the deck as the carrier moves
+    s.scale = Math.max(0.62, 1 - s.t * 0.35);
+    if (s.u > g.len * 0.36) s.alpha -= dt * 3;
   }
   if (s.alpha <= 0) {
     G.ships.splice(i, 1);
     const pts = s.dmg ? 2 : 1;
-    G.landed++; G.score += pts;
-    $("hLanded").textContent = G.landed;
-    if (G.landed > best(G.level)) { SAVE.bestD[SAVE.diff][G.level] = G.landed; $("hBest").textContent = G.landed; save(); }
-    G.texts.push({ x: s.x, y: s.y - s.r, t: 0, text: pts > 1 ? "+2 Mayday!" : "+1", color: s.dmg ? "#ffd25d" : s.T.color });
+    G.landed++;
+    if (!G.waveDone) G.waveLanded = Math.min(G.need, G.waveLanded + pts);
+    G.texts.push({ x: s.x, y: s.y - s.r, t: 0, text: pts > 1 ? "+2 Mayday!" : "+1", color: s.dmg ? "#ffd25d" : FAM[s.T.fam].color });
     SFX.land();
-    if (G.landed % 10 === 0) say(pick([`${G.landed} landed. Smooth flying!`, `${G.landed} ships down safe. Keep it up!`, "Textbook landing. The pilots love you."]), 2.5);
-    const nxt = LEVELS[G.level + 1];
-    if (nxt && G.landed === nxt.need && !G.knewUnlock) say(`<b>${nxt.name}</b> unlocked! Finish this shift or try it from the menu.`, 3.5);
+    if (!G.waveDone && G.waveLanded >= G.need) waveComplete();
+    hud();
   }
 }
 
+function waveComplete() {
+  G.waveDone = true;
+  const best = SAVE.best[G.diff];
+  best[G.stage] = Math.max(best[G.stage], G.wave);
+  if (G.wave >= WAVES) { stageClear(); return; }
+  banner(`Wave ${G.wave} cleared!`, G.wave + 1 === WAVES ? "One more to go" : "Get ready", 2.6);
+  SFX.wave();
+  G.breather = 3.2;
+  if (G.wave % 3 === 0) say(pick(["Smooth flying, controller!", "The pilots love you.", "Textbook work. Keep it up!", "Nice. They're getting busier out there."]), 2.5);
+  save();
+}
+function stageClear() {
+  G.cleared = true; G.endAt = G.time;
+  SAVE.cleared[G.diff][G.stage] = 1; SAVE.run = null; save();
+  for (const s of G.ships) if (s.state !== "land") { s.state = "land"; s.zone = null; s.t = 0; } // everyone else is waved off
+  banner("Stage secured!", G.ST.name, 3);
+  SFX.clear();
+  say(G.stage + 1 < STAGES.length ? `${G.ST.name} is secure! <b>${STAGES[G.stage + 1].name}</b> is waiting.` : "Every stage secure. The galaxy owes you one, controller!", 4);
+}
+
 function crash(A, B) {
-  G.over = true; G.overAt = G.time; G.crashAt = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
-  for (const s of [A, B]) {
-    s.state = "wreck";
-    for (let k = 0; k < 26; k++) { const a = Math.random() * TAU, v = 30 + Math.random() * 140;
-      G.fx.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, max: 1, size: 2 + Math.random() * 4, color: k % 3 ? s.T.color : "#ffd25d" }); }
+  G.crashes++; G.lives--;
+  G.ships = G.ships.filter(s => s !== A && s !== B);
+  for (const s of [A, B]) for (let k = 0; k < 26; k++) { const a = Math.random() * TAU, v = 30 + Math.random() * 140;
+    G.fx.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, max: 1, size: 2 + Math.random() * 4, color: k % 3 ? FAM[s.T.fam].color : "#ffd25d" }); }
+  G.ring = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2, t: G.time };
+  G.shake = 0.5; SFX.crash(); navigator.vibrate?.(200);
+  if (dragging && (dragging.ship === A || dragging.ship === B)) dragging = null;
+  if (G.lives <= 0) {
+    G.over = true; G.endAt = G.time; SFX.over();
+    say("That's the last of our margin. Let's run that wave again.", 3);
+  } else {
+    G.nextSpawn = Math.max(G.nextSpawn, 1.5);
+    say(pick(["Ouch! The pilots are okay, but that cost us.", "Mid-air bump! Keep them apart.", "Oh no. Somebody call the repair drones."]) + ` <b>${G.lives} ${G.lives === 1 ? "life" : "lives"} left.</b>`, 3);
   }
-  G.shake = 0.5;
-  SFX.crash(); navigator.vibrate?.(200);
-  say(pick(["Ouch... that's going in the report.", "Mid-air bump! The pilots are okay, but the shift is over.", "Oh no. Somebody call the repair drones."]), 3);
+  hud();
 }
 
 function updateFx(dt) {
   for (let i = G.fx.length - 1; i >= 0; i--) { const p = G.fx[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; if (p.life <= 0) G.fx.splice(i, 1); }
   for (let i = G.texts.length - 1; i >= 0; i--) { const t = G.texts[i]; t.t += dt; t.y -= 26 * dt; if (t.t > 1.1) G.texts.splice(i, 1); }
   if (G.shake) G.shake = Math.max(0, G.shake - dt);
+  // ships waved off at the end of a stage just fade
+  for (let i = G.ships.length - 1; i >= 0; i--) { const s = G.ships[i]; if (s.state === "land" && !s.zone) { s.alpha -= dt * 1.5; s.scale *= 1 - dt * 0.4; if (s.alpha <= 0) G.ships.splice(i, 1); } }
 }
 
-// ---------- input: draw routes ----------
+// ============================================================
+//  INPUT: draw routes
+// ============================================================
 let dragging = null;
-function pointer(e) { return { x: e.clientX, y: e.clientY }; }
 cv.addEventListener("pointerdown", e => {
   audio();
-  if (paused || !G || G.over) return;
-  const p = pointer(e);
+  if (paused || !G || G.over || G.cleared) return;
+  const p = { x: e.clientX, y: e.clientY };
   let best = null, bd = Infinity;
   for (const s of G.ships) {
     if (s.state !== "fly") continue;
@@ -360,17 +523,16 @@ cv.addEventListener("pointermove", e => {
   if (!dragging || e.pointerId !== dragging.id) return;
   const s = dragging.ship;
   if (s.lock || s.state !== "fly") return;
-  const p = pointer(e); p.x = clamp(p.x, 4, W - 4); p.y = clamp(p.y, 44, H - 4);
+  const p = { x: clamp(e.clientX, 4, W - 4), y: clamp(e.clientY, 48, H - 4) };
   const d = Math.hypot(p.x - dragging.last.x, p.y - dragging.last.y);
   if (d < 7) return;
   const mx = (p.x - dragging.last.x) / d, my = (p.y - dragging.last.y) / d;
-  // fill long jumps so the ship follows the finger closely
-  const n = Math.ceil(d / 10);
+  const n = Math.ceil(d / 10); // fill long jumps so the ship follows the finger closely
   for (let k = 1; k <= n; k++) s.path.push({ x: dragging.last.x + (p.x - dragging.last.x) * k / n, y: dragging.last.y + (p.y - dragging.last.y) * k / n });
   if (s.path.length > 900) s.path.splice(0, s.path.length - 900);
   dragging.last = p;
   for (const z of G.zones) {
-    if (z.type !== s.type) continue;
+    if (!fits(z, s)) continue;
     const at = zoneAccepts(z, p.x, p.y, mx, my);
     if (at) { s.path.push(at); s.lock = { zone: z }; SFX.lock(); navigator.vibrate?.(15); break; }
   }
@@ -379,187 +541,220 @@ const endDrag = e => { if (dragging && e.pointerId === dragging.id) dragging = n
 cv.addEventListener("pointerup", endDrag);
 cv.addEventListener("pointercancel", endDrag);
 
-// ---------- commander (the controller character) ----------
+// ============================================================
+//  COMMANDER ZIB (the controller character) & HUD
+// ============================================================
 let bubbleT = 0;
-function say(html, secs = 3) { const b = $("bubble"); b.innerHTML = html; b.classList.add("on"); bubbleT = secs; G && (G.talk = 0.6); }
-const pick = a => a[Math.floor(Math.random() * a.length)];
+function say(html, secs = 3) { const b = $("bubble"); b.innerHTML = html; b.classList.add("on"); bubbleT = secs; if (G) G.talk = 0.8; }
+function hud() {
+  if (!G) return;
+  $("hStage").textContent = G.ST.name.replace(/^The /, "").split(",")[0];
+  $("hWave").textContent = `Wave ${G.wave}/${WAVES}`;
+  $("hNeed").textContent = `${G.waveLanded}/${G.need}`;
+  $("hBar").style.width = (100 * G.waveLanded / G.need) + "%";
+  $("hLives").textContent = "♥".repeat(Math.max(0, G.lives)) + "♡".repeat(Math.max(0, G.D.lives - G.lives));
+}
 
 // ============================================================
 //  DRAWING
 // ============================================================
 function rand(seed) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
 function drawBackground() {
-  const key = [G.L.theme, G.D.name, W, H, DPR].join("|");
+  const key = [G.stage, G.diff, W, H, DPR].join("|");
   if (key === bgKey) return;
   bgKey = key;
   bgCv.width = W * DPR; bgCv.height = H * DPR;
-  const c = bgc; c.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const R = rand(7 + G.level * 31), th = G.L.theme;
-  const grad = c.createLinearGradient(0, 0, 0, H);
-  if (th === "moon") { grad.addColorStop(0, "#2a3046"); grad.addColorStop(1, "#1a1e2e"); }
-  else if (th === "mars") { grad.addColorStop(0, "#6e2f1f"); grad.addColorStop(1, "#3e1a14"); }
-  else { grad.addColorStop(0, "#1f3a33"); grad.addColorStop(1, "#16282a"); }
-  c.fillStyle = grad; c.fillRect(0, 0, W, H);
-  // ground speckle
-  for (let i = 0; i < W * H / 260; i++) {
-    c.fillStyle = th === "moon" ? `rgba(${200 + R() * 55},${200 + R() * 55},255,${0.03 + R() * 0.05})`
+  paintGround(bgc, W, H, G.ST, G.zones, 7 + G.stage * 31, true);
+}
+// Ground art for a stage (also used small on the menus)
+function paintGround(c, w, h, ST, zones, seed, full) {
+  c.setTransform(full ? DPR : 1, 0, 0, full ? DPR : 1, 0, 0);
+  const R = rand(seed), th = ST.theme, s = Math.min(w, h, 560);
+  const grad = c.createLinearGradient(0, 0, 0, h);
+  const sky = { ice: ["#1d3352", "#122238"], jupiter: ["#5a3420", "#2e1a12"], mars: ["#6e2f1f", "#3e1a14"], earth: ["#1f3a33", "#16282a"] }[th];
+  grad.addColorStop(0, sky[0]); grad.addColorStop(1, sky[1]);
+  c.fillStyle = grad; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < w * h / 260; i++) { // fine speckle
+    c.fillStyle = th === "ice" ? `rgba(200,230,255,${0.03 + R() * 0.05})` : th === "jupiter" ? `rgba(255,${180 + R() * 60},${120 + R() * 50},${0.03 + R() * 0.05})`
       : th === "mars" ? `rgba(255,${120 + R() * 80},${80 + R() * 40},${0.04 + R() * 0.06})` : `rgba(${120 + R() * 60},255,${170 + R() * 60},${0.03 + R() * 0.04})`;
-    c.fillRect(R() * W, R() * H, 1 + R() * 2, 1 + R() * 2);
+    c.fillRect(R() * w, R() * h, 1 + R() * 2, 1 + R() * 2);
   }
-  if (th === "moon") {
-    for (let i = 0; i < 14; i++) { const x = R() * W, y = R() * H, r = (0.03 + R() * 0.09) * S;
-      c.fillStyle = "rgba(10,12,24,0.35)"; c.beginPath(); c.ellipse(x, y, r, r * 0.8, 0, 0, TAU); c.fill();
-      c.strokeStyle = "rgba(200,210,240,0.12)"; c.lineWidth = r * 0.12; c.beginPath(); c.ellipse(x - r * 0.05, y - r * 0.08, r, r * 0.8, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }
-    // Earth hangs in the sky
-    const ex = W * 0.86, ey = H * 0.14, er = S * 0.07;
-    const eg = c.createRadialGradient(ex - er * 0.3, ey - er * 0.3, er * 0.1, ex, ey, er);
-    eg.addColorStop(0, "#9fd8ff"); eg.addColorStop(0.6, "#2f7ad0"); eg.addColorStop(1, "#173a7a");
-    c.fillStyle = eg; c.beginPath(); c.arc(ex, ey, er, 0, TAU); c.fill();
-    c.fillStyle = "rgba(93,200,120,0.75)"; c.beginPath(); c.ellipse(ex - er * 0.2, ey + er * 0.1, er * 0.35, er * 0.22, 0.5, 0, TAU); c.fill();
+  if (th === "ice") {
+    for (let i = 0; i < 16; i++) { const x = R() * w, y = R() * h, r = (0.03 + R() * 0.07) * s, n = 6 + Math.floor(R() * 3);
+      c.beginPath(); for (let k = 0; k < n; k++) { const a = k / n * TAU, rr = r * (0.7 + R() * 0.4); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.8); } c.closePath();
+      c.fillStyle = "rgba(0,0,0,0.25)"; c.save(); c.translate(3, 4); c.fill(); c.restore();
+      c.fillStyle = `rgba(${170 + R() * 40},${210 + R() * 30},255,0.22)`; c.fill(); c.strokeStyle = "rgba(230,245,255,0.25)"; c.lineWidth = 1.2; c.stroke(); }
+  } else if (th === "jupiter") {
+    for (let i = 0; i < 12; i++) { const y = R() * h, a = 6 + R() * 16, col = R() < 0.5 ? "255,190,130" : "160,90,60";
+      c.strokeStyle = `rgba(${col},${0.06 + R() * 0.08})`; c.lineWidth = 10 + R() * 26; c.beginPath();
+      for (let x = -20; x <= w + 20; x += 20) c.lineTo(x, y + Math.sin(x / (70 + R() * 20)) * a); c.stroke(); }
+    for (let i = 0; i < 5; i++) { const x = R() * w, y = R() * h, r = (0.04 + R() * 0.05) * s;
+      c.strokeStyle = "rgba(255,220,180,0.12)"; c.lineWidth = 3; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(x, y, r * (1 - k * 0.28), r * 0.5 * (1 - k * 0.28), 0.2, 0.3, TAU - 0.6); c.stroke(); } }
   } else if (th === "mars") {
-    for (let i = 0; i < 9; i++) { const y = R() * H, a = 8 + R() * 18;
+    for (let i = 0; i < 9; i++) { const y = R() * h, a = 8 + R() * 18;
       c.strokeStyle = `rgba(255,170,120,${0.05 + R() * 0.06})`; c.lineWidth = 6 + R() * 14; c.beginPath();
-      for (let x = -20; x <= W + 20; x += 20) c.lineTo(x, y + Math.sin(x / (60 + R() * 10)) * a); c.stroke(); }
-    for (let i = 0; i < 26; i++) { const x = R() * W, y = R() * H, r = (0.008 + R() * 0.02) * S;
+      for (let x = -20; x <= w + 20; x += 20) c.lineTo(x, y + Math.sin(x / (60 + R() * 10)) * a); c.stroke(); }
+    for (let i = 0; i < 26; i++) { const x = R() * w, y = R() * h, r = (0.008 + R() * 0.02) * s;
       c.fillStyle = "rgba(30,10,8,0.4)"; c.beginPath(); c.ellipse(x + r * 0.3, y + r * 0.3, r, r * 0.7, 0, 0, TAU); c.fill();
       c.fillStyle = "#9a4a32"; c.beginPath(); c.ellipse(x, y, r, r * 0.7, 0, 0, TAU); c.fill(); }
   } else {
-    // spaceport: concrete slabs with grass verges
-    const cs = S * 0.16;
-    for (let y = 0; y < H; y += cs) for (let x = 0; x < W; x += cs) {
-      if (R() < 0.5) { c.fillStyle = `rgba(190,205,210,${0.06 + R() * 0.05})`; c.fillRect(x + 2, y + 2, cs - 4, cs - 4); }
-    }
-    for (let i = 0; i < 30; i++) { const x = R() * W, y = R() * H, r = (0.012 + R() * 0.02) * S;
+    const cs = s * 0.16;
+    for (let y = 0; y < h; y += cs) for (let x = 0; x < w; x += cs) if (R() < 0.5) { c.fillStyle = `rgba(190,205,210,${0.06 + R() * 0.05})`; c.fillRect(x + 2, y + 2, cs - 4, cs - 4); }
+    for (let i = 0; i < 30; i++) { const x = R() * w, y = R() * h, r = (0.012 + R() * 0.02) * s;
       c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.arc(x + r * 0.3, y + r * 0.4, r, 0, TAU); c.fill();
       c.fillStyle = R() < 0.5 ? "#2f8a4f" : "#3fa060"; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
   }
-  if (G.L.deco) drawDeco(c, R);
-  // vignette
-  const v = c.createRadialGradient(W / 2, H / 2, S * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+  if (full) {
+    if (th === "earth") drawCity(c, R, zones);
+    else drawTaxiways(c, zones);
+    for (const d of ST.deco || []) drawDeco(c, d);
+  }
+  const v = c.createRadialGradient(w / 2, h / 2, s * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
   v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(0,0,0,0.45)");
-  c.fillStyle = v; c.fillRect(0, 0, W, H);
+  c.fillStyle = v; c.fillRect(0, 0, w, h);
 }
-
-// Taxiways from every pad to the runway crossing, then the outpost buildings.
-function drawDeco(c, R) {
-  const run = G.zones.find(z => z.kind === "runway"), hub = run && zoneGeo(run);
-  for (const z of G.zones) {
-    if (z.kind === "runway" || !hub) continue;
-    const g = zoneGeo(z);
-    c.strokeStyle = "rgba(40,22,18,0.55)"; c.lineWidth = S * 0.06; c.lineCap = "round";
+// Taxiways from every pad to the nearest runway
+function drawTaxiways(c, zones) {
+  const runs = zones.filter(z => z.kind === "runway").map(z => zoneGeo(z, 0));
+  if (!runs.length) return;
+  for (const z of zones) {
+    if (z.kind !== "pad") continue;
+    const g = zoneGeo(z, 0), hub = runs.reduce((a, b) => Math.hypot(a.x - g.x, a.y - g.y) < Math.hypot(b.x - g.x, b.y - g.y) ? a : b);
+    c.strokeStyle = "rgba(20,12,10,0.4)"; c.lineWidth = S * 0.055; c.lineCap = "round";
     c.beginPath(); c.moveTo(g.x, g.y); c.lineTo(g.x, hub.y); c.lineTo(hub.x, hub.y); c.stroke();
-    c.strokeStyle = "rgba(255,210,93,0.45)"; c.lineWidth = 2; c.setLineDash([8, 7]);
+    c.strokeStyle = "rgba(255,210,93,0.4)"; c.lineWidth = 2; c.setLineDash([8, 7]);
     c.beginPath(); c.moveTo(g.x, g.y); c.lineTo(g.x, hub.y); c.lineTo(hub.x, hub.y); c.stroke(); c.setLineDash([]);
   }
-  for (const d of G.L.deco) {
-    const x = d.x * W, y = d.y * H;
-    if (d.kind === "dome") {
-      const r = d.r * S;
-      c.fillStyle = "rgba(20,8,6,0.45)"; c.beginPath(); c.ellipse(x + r * 0.2, y + r * 0.25, r * 1.05, r, 0, 0, TAU); c.fill();
-      const g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
-      g.addColorStop(0, "#fff2e6"); g.addColorStop(0.6, "#d9b8a0"); g.addColorStop(1, "#8a5a44");
-      c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
-      c.strokeStyle = "rgba(90,50,35,0.5)"; c.lineWidth = 1.2;
-      for (let k = 1; k < 3; k++) { c.beginPath(); c.arc(x, y, r * k / 3, 0, TAU); c.stroke(); }
-      for (let k = 0; k < 6; k++) { const a = k / 6 * TAU; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); c.stroke(); }
-      c.fillStyle = "#4fd1ff"; for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; c.beginPath(); c.arc(x + Math.cos(a) * r * 0.82, y + Math.sin(a) * r * 0.82, Math.max(1.5, r * 0.06), 0, TAU); c.fill(); }
-    } else if (d.kind === "hangar") {
-      const w = d.w * S, h = w * 0.42;
-      for (const ox of [-w * 0.52, w * 0.52]) {
-        c.fillStyle = "rgba(20,8,6,0.45)"; c.fillRect(x + ox - w / 2 + 5, y - h / 2 + 6, w * 0.96, h);
-        const g = c.createLinearGradient(0, y - h / 2, 0, y + h / 2); g.addColorStop(0, "#c9b2a6"); g.addColorStop(0.5, "#f0e2d8"); g.addColorStop(1, "#8f7568");
-        c.fillStyle = g; c.fillRect(x + ox - w / 2, y - h / 2, w * 0.96, h);
-        c.strokeStyle = "rgba(80,50,40,0.45)"; c.lineWidth = 1;
-        for (let k = 1; k < 7; k++) { const xx = x + ox - w / 2 + w * 0.96 * k / 7; c.beginPath(); c.moveTo(xx, y - h / 2); c.lineTo(xx, y + h / 2); c.stroke(); }
-        c.fillStyle = "#ffb84d"; c.fillRect(x + ox - w / 2, y + h / 2 - 3, w * 0.96, 3);
-      }
-    } else if (d.kind === "tanks") {
-      const r = d.r * S;
-      for (const [ox, oy] of [[0, -r * 2.3], [0, 0], [0, r * 2.3]]) {
-        c.fillStyle = "rgba(20,8,6,0.45)"; c.beginPath(); c.arc(x + ox + r * 0.25, y + oy + r * 0.3, r, 0, TAU); c.fill();
-        const g = c.createRadialGradient(x + ox - r * 0.3, y + oy - r * 0.3, r * 0.1, x + ox, y + oy, r);
-        g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#9aa3b8");
-        c.fillStyle = g; c.beginPath(); c.arc(x + ox, y + oy, r, 0, TAU); c.fill();
-        c.strokeStyle = "#ff5d7a"; c.lineWidth = 2; c.beginPath(); c.arc(x + ox, y + oy, r * 0.62, 0, TAU); c.stroke();
-      }
+}
+// Earth: a street grid, a road under the carrier, and rooftops under the pads
+function drawCity(c, R, zones) {
+  const road = S * 0.07;
+  c.fillStyle = "rgba(20,28,32,0.55)";
+  for (const fx of [0.34, 0.68]) c.fillRect(fx * W - road / 2, 0, road, H);
+  for (const fy of [0.3, 0.56]) c.fillRect(0, fy * H - road / 2, W, road);
+  for (const z of zones) if (z.kind === "carrier") c.fillRect(0, z.y1 * H - S * 0.09, W, S * 0.18);
+  c.strokeStyle = "rgba(255,210,93,0.35)"; c.lineWidth = 1.5; c.setLineDash([10, 10]);
+  for (const fx of [0.34, 0.68]) { c.beginPath(); c.moveTo(fx * W, 0); c.lineTo(fx * W, H); c.stroke(); }
+  for (const fy of [0.3, 0.56]) { c.beginPath(); c.moveTo(0, fy * H); c.lineTo(W, fy * H); c.stroke(); }
+  c.setLineDash([]);
+  for (const z of zones) {
+    if (z.kind !== "pad") continue;
+    const g = zoneGeo(z, 0), half = g.r * 1.35, lift = S * 0.018;
+    c.fillStyle = "rgba(0,0,0,0.45)"; c.fillRect(g.x - half + lift * 1.4, g.y - half + lift * 1.8, half * 2, half * 2);
+    c.fillStyle = "#3d5560"; c.fillRect(g.x - half, g.y - half + lift, half * 2, half * 2);
+    const top = c.createLinearGradient(0, g.y - half, 0, g.y + half); top.addColorStop(0, "#9fb4bc"); top.addColorStop(1, "#6f8790");
+    c.fillStyle = top; c.fillRect(g.x - half, g.y - half, half * 2, half * 2);
+    c.strokeStyle = "rgba(20,30,36,0.6)"; c.lineWidth = 2; c.strokeRect(g.x - half, g.y - half, half * 2, half * 2);
+    c.fillStyle = "rgba(255,240,180,0.7)";
+    for (let k = 0; k < 5; k++) if (R() < 0.7) c.fillRect(g.x - half + 4 + k * (half * 2 - 8) / 5, g.y + half + lift * 0.25, (half * 2 - 8) / 5 - 3, lift * 0.5);
+  }
+}
+function drawDeco(c, d) {
+  const x = d.x * W, y = d.y * H;
+  if (d.kind === "dome") {
+    const r = d.r * S, g = c.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+    c.fillStyle = "rgba(20,8,6,0.45)"; c.beginPath(); c.ellipse(x + r * 0.2, y + r * 0.25, r * 1.05, r, 0, 0, TAU); c.fill();
+    g.addColorStop(0, "#fff2e6"); g.addColorStop(0.6, "#d9b8a0"); g.addColorStop(1, "#8a5a44");
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+    c.strokeStyle = "rgba(90,50,35,0.5)"; c.lineWidth = 1.2;
+    for (let k = 1; k < 3; k++) { c.beginPath(); c.arc(x, y, r * k / 3, 0, TAU); c.stroke(); }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * TAU; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); c.stroke(); }
+  } else if (d.kind === "hangar") {
+    const w = d.w * S, h = w * 0.42;
+    for (const ox of [-w * 0.52, w * 0.52]) {
+      c.fillStyle = "rgba(20,8,6,0.45)"; c.fillRect(x + ox - w / 2 + 5, y - h / 2 + 6, w * 0.96, h);
+      const g = c.createLinearGradient(0, y - h / 2, 0, y + h / 2); g.addColorStop(0, "#c9b2a6"); g.addColorStop(0.5, "#f0e2d8"); g.addColorStop(1, "#8f7568");
+      c.fillStyle = g; c.fillRect(x + ox - w / 2, y - h / 2, w * 0.96, h);
+      c.strokeStyle = "rgba(80,50,40,0.45)"; c.lineWidth = 1;
+      for (let k = 1; k < 7; k++) { const xx = x + ox - w / 2 + w * 0.96 * k / 7; c.beginPath(); c.moveTo(xx, y - h / 2); c.lineTo(xx, y + h / 2); c.stroke(); }
+    }
+  } else if (d.kind === "tanks") {
+    const r = d.r * S;
+    for (const oy of [-r * 2.3, 0, r * 2.3]) {
+      c.fillStyle = "rgba(20,8,6,0.45)"; c.beginPath(); c.arc(x + r * 0.25, y + oy + r * 0.3, r, 0, TAU); c.fill();
+      const g = c.createRadialGradient(x - r * 0.3, y + oy - r * 0.3, r * 0.1, x, y + oy, r); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#9aa3b8");
+      c.fillStyle = g; c.beginPath(); c.arc(x, y + oy, r, 0, TAU); c.fill();
+      c.strokeStyle = "#ff5d7a"; c.lineWidth = 2; c.beginPath(); c.arc(x, y + oy, r * 0.62, 0, TAU); c.stroke();
     }
   }
 }
 
-function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
-
-function drawZone(z, t, pass) {
+// ---------- landing spots ----------
+function drawStrip(c, L, Wd, col, t, glow) { // runway or carrier deck markings, drawn along +x with the entry at -L/2
+  c.strokeStyle = hexA(col, 0.5 + glow * 0.5); c.lineWidth = 2.5; c.strokeRect(-L / 2, -Wd / 2, L, Wd);
+  c.strokeStyle = "rgba(230,236,255,0.55)"; c.lineWidth = 2; c.setLineDash([L * 0.05, L * 0.04]);
+  c.beginPath(); c.moveTo(-L / 2 + L * 0.22, 0); c.lineTo(L / 2 - 8, 0); c.stroke(); c.setLineDash([]);
+  c.fillStyle = "rgba(230,236,255,0.6)";
+  for (let k = -2; k <= 2; k++) c.fillRect(-L / 2 + L * 0.13, k * Wd * 0.17 - Wd * 0.05, L * 0.05, Wd * 0.1);
+  for (let k = 0; k < 3; k++) { // arrival arrows
+    const a = ((t * 1.6 + k / 3) % 1), x = -L / 2 - Wd * 0.9 + a * Wd * 1.6;
+    c.strokeStyle = hexA(col, (0.3 + glow) * Math.sin(a * PI)); c.lineWidth = 4; c.lineCap = "round";
+    c.beginPath(); c.moveTo(x - Wd * 0.18, -Wd * 0.3); c.lineTo(x + Wd * 0.12, 0); c.lineTo(x - Wd * 0.18, Wd * 0.3); c.stroke();
+  }
+  for (let k = 0; k <= 10; k++) {
+    const x = -L / 2 + L * k / 10, on = Math.floor(t * 6) % 11 === k;
+    for (const y of [-Wd / 2, Wd / 2]) { c.fillStyle = on ? "#fff" : hexA(col, 0.8); c.beginPath(); c.arc(x, y, on ? 3 : 2, 0, TAU); c.fill(); }
+  }
+}
+function drawZone(c, z, g, t, pass, glow) {
+  const col = FAM[z.fam].color;
   if (pass === 0 && z.kind !== "runway") return; // pass 0: runway surfaces only, so crossings show both sets of markings
-  const g = zoneGeo(z), col = TYPES[z.type].color;
-  const wanted = dragging && dragging.ship.type === z.type && !dragging.ship.lock;
-  const glow = wanted ? 0.55 + 0.35 * Math.sin(t * 8) : 0.25;
-  ctx.save();
+  c.save();
   if (z.kind === "runway") {
-    ctx.translate(g.x, g.y); ctx.rotate(Math.atan2(g.dy, g.dx));
-    const L = g.len, Wd = g.wid;
+    c.translate(g.x, g.y); c.rotate(g.ang);
     if (pass === 0) {
-      ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(-L / 2 + 4, -Wd / 2 + 5, L, Wd);
-      ctx.fillStyle = "#262c3e"; ctx.fillRect(-L / 2, -Wd / 2, L, Wd);
-      ctx.restore(); return;
-    }
-    ctx.strokeStyle = hexA(col, 0.5 + glow * 0.5); ctx.lineWidth = 2.5; ctx.strokeRect(-L / 2, -Wd / 2, L, Wd);
-    // centre line
-    ctx.strokeStyle = "rgba(230,236,255,0.55)"; ctx.lineWidth = 2; ctx.setLineDash([L * 0.05, L * 0.04]);
-    ctx.beginPath(); ctx.moveTo(-L / 2 + L * 0.22, 0); ctx.lineTo(L / 2 - 8, 0); ctx.stroke(); ctx.setLineDash([]);
-    // threshold stripes
-    ctx.fillStyle = "rgba(230,236,255,0.6)";
-    for (let k = -2; k <= 2; k++) ctx.fillRect(-L / 2 + L * 0.15, k * Wd * 0.17 - Wd * 0.05, L * 0.05, Wd * 0.1);
-    // arrival arrows (animated) over the entry end
-    for (let k = 0; k < 3; k++) {
-      const a = ((t * 1.6 + k / 3) % 1), x = -L / 2 - Wd * 0.9 + a * Wd * 1.6;
-      ctx.strokeStyle = hexA(col, (0.25 + glow) * Math.sin(a * Math.PI)); ctx.lineWidth = 4; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(x - Wd * 0.18, -Wd * 0.3); ctx.lineTo(x + Wd * 0.12, 0); ctx.lineTo(x - Wd * 0.18, Wd * 0.3); ctx.stroke();
-    }
-    // edge lights
-    for (let k = 0; k <= 10; k++) {
-      const x = -L / 2 + L * k / 10, on = Math.floor(t * 6) % 11 === k;
-      for (const y of [-Wd / 2, Wd / 2]) { ctx.fillStyle = on ? "#fff" : hexA(col, 0.8); ctx.beginPath(); ctx.arc(x, y, on ? 3 : 2, 0, TAU); ctx.fill(); }
-    }
+      c.fillStyle = "rgba(0,0,0,0.35)"; c.fillRect(-g.len / 2 + 4, -g.wid / 2 + 5, g.len, g.wid);
+      c.fillStyle = "#262c3e"; c.fillRect(-g.len / 2, -g.wid / 2, g.len, g.wid);
+    } else drawStrip(c, g.len, g.wid, col, t, glow);
   } else if (z.kind === "pad") {
-    ctx.translate(g.x, g.y);
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.arc(4, 5, g.r, 0, TAU); ctx.fill();
-    ctx.fillStyle = "#262c3e"; ctx.beginPath(); ctx.arc(0, 0, g.r, 0, TAU); ctx.fill();
-    ctx.strokeStyle = hexA(col, 0.6 + glow * 0.4); ctx.lineWidth = 3; ctx.stroke();
-    ctx.shadowColor = col; ctx.shadowBlur = 10 + glow * 16;
-    ctx.strokeStyle = hexA(col, 0.35 + glow); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, g.r * 0.68, 0, TAU); ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.rotate(t * 0.8);
-    for (let k = 0; k < 8; k++) { ctx.rotate(TAU / 8); ctx.fillStyle = hexA(col, 0.7); ctx.fillRect(g.r * 0.78, -2, g.r * 0.14, 4); }
-    ctx.rotate(-t * 0.8);
-    // saucer icon in the middle
-    ctx.strokeStyle = hexA(col, 0.6); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.ellipse(0, g.r * 0.05, g.r * 0.36, g.r * 0.13, 0, 0, TAU); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, -g.r * 0.02, g.r * 0.16, Math.PI, 0); ctx.stroke();
-  } else { // dock: hexagonal ring
-    ctx.translate(g.x, g.y);
-    const hex = rr => { ctx.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + Math.PI / 6; ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } ctx.closePath(); };
-    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.save(); ctx.translate(4, 5); hex(g.r); ctx.fill(); ctx.restore();
-    ctx.fillStyle = "#262c3e"; hex(g.r); ctx.fill();
-    ctx.strokeStyle = hexA(col, 0.6 + glow * 0.4); ctx.lineWidth = 3; ctx.stroke();
-    ctx.shadowColor = col; ctx.shadowBlur = 10 + glow * 16;
-    ctx.strokeStyle = hexA(col, 0.35 + glow); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, g.r * 0.55, 0, TAU); ctx.stroke(); ctx.shadowBlur = 0;
-    for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + Math.PI / 6, on = Math.floor(t * 5) % 6 === k;
-      ctx.fillStyle = on ? "#fff" : hexA(col, 0.8); ctx.beginPath(); ctx.arc(Math.cos(a) * g.r * 0.82, Math.sin(a) * g.r * 0.82, on ? 3.5 : 2.5, 0, TAU); ctx.fill(); }
+    c.translate(g.x, g.y);
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.arc(4, 5, g.r, 0, TAU); c.fill();
+    c.fillStyle = "#262c3e"; c.beginPath(); c.arc(0, 0, g.r, 0, TAU); c.fill();
+    c.strokeStyle = hexA(col, 0.6 + glow * 0.4); c.lineWidth = 3; c.stroke();
+    c.shadowColor = col; c.shadowBlur = 10 + glow * 16;
+    c.strokeStyle = hexA(col, 0.35 + glow); c.lineWidth = 2; c.beginPath(); c.arc(0, 0, g.r * 0.68, 0, TAU); c.stroke(); c.shadowBlur = 0;
+    c.save(); c.rotate(t * 0.8);
+    for (let k = 0; k < 8; k++) { c.rotate(TAU / 8); c.fillStyle = hexA(col, 0.7); c.fillRect(g.r * 0.78, -2, g.r * 0.14, 4); }
+    c.restore();
+    c.strokeStyle = hexA(col, 0.6); c.lineWidth = 2;
+    c.beginPath(); c.ellipse(0, g.r * 0.05, g.r * 0.36, g.r * 0.13, 0, 0, TAU); c.stroke();
+    c.beginPath(); c.arc(0, -g.r * 0.02, g.r * 0.16, PI, 0); c.stroke();
+  } else { // carrier: a mothership hull carrying a landing deck
+    c.translate(g.x, g.y);
+    const moving = Math.hypot(g.vx, g.vy) > 1, mv = Math.atan2(g.vy, g.vx);
+    if (moving) { // soft engine wake behind the direction of travel
+      c.save(); c.rotate(mv);
+      const wg = c.createLinearGradient(-g.len * 1.1, 0, 0, 0); wg.addColorStop(0, hexA(col, 0)); wg.addColorStop(1, hexA(col, 0.16));
+      c.fillStyle = wg; c.beginPath(); c.ellipse(-g.len * 0.55, 0, g.len * 0.55, g.wid * 0.9, 0, 0, TAU); c.fill(); c.restore(); }
+    c.rotate(g.ang);
+    const hl = g.len * 0.62, hw = g.wid * 1.25;
+    c.fillStyle = "rgba(0,0,0,0.4)"; c.beginPath(); c.ellipse(6, 8, hl, hw, 0, 0, TAU); c.fill();
+    const hg = c.createLinearGradient(0, -hw, 0, hw); hg.addColorStop(0, "#8a5cc9"); hg.addColorStop(0.5, "#4b2a7a"); hg.addColorStop(1, "#2a1450");
+    c.fillStyle = hg; c.beginPath(); c.ellipse(0, 0, hl, hw, 0, 0, TAU); c.fill();
+    c.strokeStyle = hexA(col, 0.6 + glow * 0.4); c.lineWidth = 2.5; c.stroke();
+    for (let k = 0; k < 10; k++) { const a = k / 10 * TAU, on = Math.floor(t * 5 + k) % 3 === 0;
+      c.fillStyle = on ? "#fff" : hexA(col, 0.8); c.beginPath(); c.arc(Math.cos(a) * hl * 0.9, Math.sin(a) * hw * 0.82, 2.4, 0, TAU); c.fill(); }
+    c.fillStyle = "#241a3a"; c.fillRect(-g.len / 2, -g.wid / 2, g.len, g.wid);
+    if (glow > 0.3) { c.shadowColor = col; c.shadowBlur = 18 * glow; }
+    drawStrip(c, g.len, g.wid, col, t, glow);
+    c.shadowBlur = 0;
   }
-  ctx.restore();
+  c.restore();
 }
 
-// a little one-eyed pilot seen from above through the canopy
-function pilot(c, x, y, s, skin, look, t) {
+// ---------- ships ----------
+function pilot(c, x, y, s, skin, look, t) { // a little one-eyed pilot seen from above through the canopy
   c.fillStyle = skin; c.beginPath(); c.arc(x, y, s, 0, TAU); c.fill();
   c.strokeStyle = "rgba(0,0,0,0.35)"; c.lineWidth = Math.max(1, s * 0.12); c.stroke();
   const blink = (t % 3.3) < 0.12;
   c.fillStyle = "#fff"; c.beginPath(); c.ellipse(x + Math.cos(look) * s * 0.18, y + Math.sin(look) * s * 0.18, s * 0.55, blink ? s * 0.08 : s * 0.55, 0, 0, TAU); c.fill();
   if (!blink) { c.fillStyle = "#10162c"; c.beginPath(); c.arc(x + Math.cos(look) * s * 0.38, y + Math.sin(look) * s * 0.38, s * 0.24, 0, TAU); c.fill(); }
 }
-
-function drawShip(c, type, r, h, spin, t, skin, opts = {}) {
-  const T = TYPES[type], col = T.color;
+const PATH2D = {};
+function drawShip(c, type, r, h, spin, t) {
+  const T = SHIPS[type], F = FAM[T.fam], col = F.color, skin = T.skin;
   c.save();
   if (type === "saucer") {
     c.rotate(spin);
@@ -576,214 +771,429 @@ function drawShip(c, type, r, h, spin, t, skin, opts = {}) {
     c.fillStyle = "rgba(255,255,255,0.35)"; c.beginPath(); c.arc(-r * 0.18, -r * 0.2, r * 0.14, 0, TAU); c.fill();
   } else if (type === "hauler") {
     c.rotate(h);
-    c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.roundRect(-r * 1.1 + r * 0.2, -r * 0.62 + r * 0.25, r * 2.2, r * 1.24, r * 0.5); c.fill();
-    // engines
+    c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.roundRect(-r * 0.9, -r * 0.37, r * 2.2, r * 1.24, r * 0.5); c.fill();
     const fl = 0.7 + 0.3 * Math.sin(t * 30);
     c.fillStyle = `rgba(120,220,255,${0.7 * fl})`;
     for (const y of [-r * 0.35, r * 0.35]) { c.beginPath(); c.ellipse(-r * 1.2, y, r * 0.3 * fl, r * 0.16, 0, 0, TAU); c.fill(); }
-    // wings
     c.fillStyle = "#b8742a"; c.beginPath(); c.moveTo(-r * 0.4, -r * 0.5); c.lineTo(-r * 0.9, -r * 1.05); c.lineTo(-r * 0.05, -r * 0.5); c.closePath(); c.fill();
     c.beginPath(); c.moveTo(-r * 0.4, r * 0.5); c.lineTo(-r * 0.9, r * 1.05); c.lineTo(-r * 0.05, r * 0.5); c.closePath(); c.fill();
     const g = c.createLinearGradient(0, -r * 0.6, 0, r * 0.6); g.addColorStop(0, "#ffe0a8"); g.addColorStop(0.5, col); g.addColorStop(1, "#a0601e");
     c.fillStyle = g; c.beginPath(); c.roundRect(-r * 1.1, -r * 0.6, r * 2.2, r * 1.2, r * 0.5); c.fill();
     c.strokeStyle = "#4a2a0a"; c.lineWidth = Math.max(1.2, r * 0.07); c.stroke();
-    // cargo pods
     c.fillStyle = "rgba(74,42,10,0.35)"; for (const x of [-r * 0.75, -r * 0.35]) { c.beginPath(); c.roundRect(x, -r * 0.42, r * 0.3, r * 0.84, r * 0.08); c.fill(); }
     c.fillStyle = "rgba(200,240,255,0.45)"; c.beginPath(); c.arc(r * 0.52, 0, r * 0.4, 0, TAU); c.fill();
     pilot(c, r * 0.52, 0, r * 0.27, skin, 0, t);
-  } else {
+  } else if (type === "dart") {
     c.rotate(h);
-    c.fillStyle = "rgba(0,0,0,0.3)"; c.save(); c.translate(r * 0.2, r * 0.25);
-    c.beginPath(); c.moveTo(r * 1.25, 0); c.lineTo(-r * 0.95, -r * 0.9); c.lineTo(-r * 0.5, 0); c.lineTo(-r * 0.95, r * 0.9); c.closePath(); c.fill(); c.restore();
+    const tri = () => { c.beginPath(); c.moveTo(r * 1.25, 0); c.lineTo(-r * 0.95, -r * 0.9); c.lineTo(-r * 0.5, 0); c.lineTo(-r * 0.95, r * 0.9); c.closePath(); };
+    c.save(); c.translate(r * 0.2, r * 0.25); c.fillStyle = "rgba(0,0,0,0.3)"; tri(); c.fill(); c.restore();
     const fl = 0.7 + 0.3 * Math.sin(t * 34);
     c.fillStyle = `rgba(255,140,220,${0.75 * fl})`; c.beginPath(); c.ellipse(-r * 0.7, 0, r * 0.4 * fl, r * 0.18, 0, 0, TAU); c.fill();
     const g = c.createLinearGradient(-r, 0, r * 1.2, 0); g.addColorStop(0, "#5b2a8a"); g.addColorStop(0.6, col); g.addColorStop(1, "#f0d8ff");
-    c.fillStyle = g; c.beginPath(); c.moveTo(r * 1.25, 0); c.lineTo(-r * 0.95, -r * 0.9); c.lineTo(-r * 0.5, 0); c.lineTo(-r * 0.95, r * 0.9); c.closePath(); c.fill();
+    c.fillStyle = g; tri(); c.fill();
     c.strokeStyle = "#2a0f45"; c.lineWidth = Math.max(1.2, r * 0.08); c.stroke();
     c.fillStyle = "rgba(200,240,255,0.45)"; c.beginPath(); c.arc(r * 0.1, 0, r * 0.36, 0, TAU); c.fill();
     pilot(c, r * 0.1, 0, r * 0.24, skin, 0, t);
+  } else if (type === "needle") {
+    c.rotate(h);
+    const k = r / 24, wing = () => { c.beginPath(); c.moveTo(26 * k, 0); c.lineTo(4 * k, -5 * k); c.lineTo(-14 * k, -20 * k); c.lineTo(-20 * k, -20 * k); c.lineTo(-12 * k, -5 * k);
+      c.lineTo(-24 * k, -4 * k); c.lineTo(-24 * k, 4 * k); c.lineTo(-12 * k, 5 * k); c.lineTo(-20 * k, 20 * k); c.lineTo(-14 * k, 20 * k); c.lineTo(4 * k, 5 * k); c.closePath(); };
+    c.save(); c.translate(r * 0.2, r * 0.25); c.fillStyle = "rgba(0,0,0,0.3)"; wing(); c.fill(); c.restore();
+    const fl = 0.7 + 0.3 * Math.sin(t * 40);
+    c.fillStyle = `rgba(255,220,120,${0.8 * fl})`; c.beginPath(); c.ellipse(-r * 1.2, 0, r * 0.55 * fl, r * 0.14, 0, 0, TAU); c.fill();
+    const g = c.createLinearGradient(-r, 0, r * 1.1, 0); g.addColorStop(0, "#8a3a10"); g.addColorStop(0.55, "#ff8a3d"); g.addColorStop(1, "#ffe6c8");
+    c.fillStyle = g; wing(); c.fill();
+    c.strokeStyle = "#4a1e06"; c.lineWidth = Math.max(1.2, r * 0.07); c.stroke();
+    c.strokeStyle = "rgba(255,255,255,0.45)"; c.lineWidth = Math.max(1, r * 0.05); c.beginPath(); c.moveTo(-r * 0.7, 0); c.lineTo(r * 0.9, 0); c.stroke();
+    c.fillStyle = "rgba(200,240,255,0.5)"; c.beginPath(); c.ellipse(r * 0.35, 0, r * 0.34, r * 0.24, 0, 0, TAU); c.fill();
+    pilot(c, r * 0.35, 0, r * 0.2, skin, 0, t);
+  } else if (type === "gyro") {
+    c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.arc(r * 0.18, r * 0.25, r * 1.05, 0, TAU); c.fill();
+    c.save(); c.rotate(spin);
+    const k = r / 23; c.beginPath();
+    [[0, -23], [9, -15], [16, -15], [23, 0], [16, 15], [9, 15], [0, 23], [-9, 15], [-16, 15], [-23, 0], [-16, -15], [-9, -15]].forEach(([x, y]) => c.lineTo(x * k, y * k)); c.closePath();
+    c.fillStyle = "#3a2366"; c.fill(); c.strokeStyle = col; c.lineWidth = Math.max(1.5, r * 0.12); c.stroke();
+    for (let q = 0; q < 4; q++) { const a = q / 4 * TAU; c.fillStyle = Math.floor(t * 6 + q) % 2 ? "#fff" : col; c.beginPath(); c.arc(Math.cos(a) * r * 0.86, Math.sin(a) * r * 0.86, r * 0.1, 0, TAU); c.fill(); }
+    c.restore();
+    const g = c.createRadialGradient(-r * 0.25, -r * 0.25, r * 0.05, 0, 0, r * 0.66);
+    g.addColorStop(0, "#f3e8ff"); g.addColorStop(0.6, col); g.addColorStop(1, "#4b2a8a");
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, r * 0.62, 0, TAU); c.fill();
+    c.strokeStyle = "#24104a"; c.lineWidth = Math.max(1.2, r * 0.07); c.stroke();
+    c.fillStyle = "rgba(200,240,255,0.45)"; c.beginPath(); c.arc(0, 0, r * 0.4, 0, TAU); c.fill();
+    pilot(c, 0, 0, r * 0.27, skin, h, t);
+  } else { // Ship Guide silhouettes, shaded in the family colours
+    const p = PATH2D[type] ||= new Path2D(T.path), k = r / 24;
+    c.rotate(h); c.scale(k, k);
+    c.save(); c.translate(4, 5); c.fillStyle = "rgba(0,0,0,0.3)"; c.fill(p); c.restore();
+    const fl = 0.7 + 0.3 * Math.sin(t * 30);
+    c.fillStyle = `rgba(140,225,255,${0.75 * fl})`; c.beginPath(); c.ellipse(-25, 0, 9 * fl, 3.5, 0, 0, TAU); c.fill();
+    const g = c.createLinearGradient(0, -20, 0, 20); g.addColorStop(0, F.light); g.addColorStop(0.5, col); g.addColorStop(1, F.dark);
+    c.fillStyle = g; c.fill(p);
+    c.strokeStyle = F.ink; c.lineWidth = 1.6; c.stroke(p);
+    if (type === "twinlift" || type === "skycrane") { // spinning lift fans
+      for (const fy of type === "twinlift" ? [-16, 16] : [-12, 12]) { c.save(); c.translate(-2, fy); c.rotate(t * 18);
+        c.fillStyle = "rgba(255,255,255,0.45)"; c.fillRect(-7, -1.2, 14, 2.4); c.fillRect(-1.2, -7, 2.4, 14); c.restore(); }
+    }
+    c.strokeStyle = "rgba(255,255,255,0.35)"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-14, -3); c.lineTo(-7, -3); c.moveTo(-14, 3); c.lineTo(-7, 3); c.stroke();
+    c.fillStyle = "rgba(200,240,255,0.55)"; c.beginPath(); c.ellipse(6, 0, 8, 5.5, 0, 0, TAU); c.fill();
+    pilot(c, 6.5, 0, 3.8, skin, 0, t);
   }
   c.restore();
 }
 
 function drawRoute(s) {
-  if (!s.path.length) return;
+  const chasing = s.lock && s.lock.zone.kind === "carrier" && dragging?.ship !== s;
+  if (!s.path.length && !chasing) return;
   ctx.save();
-  ctx.strokeStyle = hexA(s.lock ? "#5dff9b" : s.T.color, 0.75); ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.setLineDash([2, 9]);
-  ctx.beginPath(); ctx.moveTo(s.x, s.y); for (const p of s.path) ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.setLineDash([]);
-  const e = s.path[s.path.length - 1];
+  ctx.strokeStyle = hexA(s.lock ? "#5dff9b" : FAM[s.T.fam].color, 0.75); ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.setLineDash([2, 9]);
+  ctx.beginPath(); ctx.moveTo(s.x, s.y); for (const p of s.path) ctx.lineTo(p.x, p.y);
+  let e = s.path[s.path.length - 1];
+  if (chasing) { const g = zoneGeo(s.lock.zone); ctx.lineTo(g.ex, g.ey); e = { x: g.ex, y: g.ey }; } // the chase line follows the moving deck
+  ctx.stroke(); ctx.setLineDash([]);
   if (s.lock) { ctx.fillStyle = "#5dff9b"; ctx.beginPath(); ctx.arc(e.x, e.y, 7, 0, TAU); ctx.fill();
     ctx.strokeStyle = "#0b2a1a"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(e.x - 3.5, e.y); ctx.lineTo(e.x - 1, e.y + 3); ctx.lineTo(e.x + 4, e.y - 3); ctx.stroke(); }
-  else { ctx.fillStyle = hexA(s.T.color, 0.8); ctx.beginPath(); ctx.arc(e.x, e.y, 4, 0, TAU); ctx.fill(); }
+  else if (e) { ctx.fillStyle = hexA(FAM[s.T.fam].color, 0.8); ctx.beginPath(); ctx.arc(e.x, e.y, 4, 0, TAU); ctx.fill(); }
   ctx.restore();
 }
 
-function drawIncoming(s, t) {
-  // edge marker: where the next ship will appear
-  const m = 22, x = clamp(s.x, m, W - m), y = clamp(s.y, m + 44, H - m), pulse = 0.6 + 0.4 * Math.sin(t * 10);
+function drawIncoming(s, t) { // edge marker: where the next ship will appear
+  const m = 22, x = clamp(s.x, m, W - m), y = clamp(s.y, m + 48, H - m), pulse = 0.6 + 0.4 * Math.sin(t * 10), col = s.dmg ? "#ff5d7a" : FAM[s.T.fam].color;
   ctx.save(); ctx.translate(x, y);
-  ctx.fillStyle = hexA(s.dmg ? "#ff5d7a" : s.T.color, 0.25 * pulse + 0.15); ctx.beginPath(); ctx.arc(0, 0, 18, 0, TAU); ctx.fill();
-  ctx.strokeStyle = s.dmg ? "#ff5d7a" : s.T.color; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.fillStyle = hexA(col, 0.25 * pulse + 0.15); ctx.beginPath(); ctx.arc(0, 0, 18, 0, TAU); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke();
   ctx.rotate(Math.atan2(H / 2 - y, W / 2 - x));
-  ctx.fillStyle = s.dmg ? "#ff5d7a" : s.T.color; ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(19, -6); ctx.lineTo(19, 6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(19, -6); ctx.lineTo(19, 6); ctx.closePath(); ctx.fill();
   ctx.restore();
-  ctx.save(); ctx.translate(x, y); ctx.scale(0.45, 0.45); drawShip(ctx, s.type, s.r * 1.4, s.h, s.spin, t, s.T.skin); ctx.restore();
+  ctx.save(); ctx.translate(x, y); ctx.scale(0.45, 0.45); drawShip(ctx, s.type, s.r * 1.4, s.h, s.spin, t); ctx.restore();
 }
 
-function drawCommander(t) {
-  // control tower in the bottom-left corner with Commander Zib at the window
-  const s = Math.min(1, S / 420), x = 14, y = H - 14 - 70 * s - (window.visualViewport ? 0 : 0);
-  const talk = (G?.talk || 0) > 0;
-  ctx.save(); ctx.translate(x, y + Math.min(0, 0)); ctx.scale(s, s);
+function drawStorm(t) {
+  const st = G.storm; if (!st) return;
+  ctx.save(); ctx.translate(st.x, st.y);
+  const g = ctx.createRadialGradient(0, 0, st.r * 0.1, 0, 0, st.r);
+  g.addColorStop(0, "rgba(255,230,200,0.28)"); g.addColorStop(0.7, "rgba(200,120,80,0.2)"); g.addColorStop(1, "rgba(200,120,80,0)");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, st.r, 0, TAU); ctx.fill();
+  ctx.strokeStyle = "rgba(255,225,190,0.35)"; ctx.lineWidth = 1.5; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.arc(0, 0, st.r, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+  ctx.rotate(t * 0.9);
+  for (let k = 0; k < 4; k++) { ctx.rotate(TAU / 4); ctx.strokeStyle = "rgba(255,225,190,0.4)"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(0, 0, st.r * (0.35 + k * 0.14), 0, 1.6); ctx.stroke(); }
+  ctx.restore();
+  if (Math.floor(t * 1.3) % 6 === 0) { ctx.strokeStyle = "rgba(255,255,220,0.8)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(st.x - 6, st.y - st.r * 0.4); ctx.lineTo(st.x + 3, st.y - 4); ctx.lineTo(st.x - 2, st.y + 2); ctx.lineTo(st.x + 7, st.y + st.r * 0.35); ctx.stroke(); }
+}
+
+function drawCommander(t) { // control tower in the bottom-left corner with Commander Zib at the window
+  const s = Math.min(1, S / 420), x = 14, y = H - 14 - 70 * s, talk = (G?.talk || 0) > 0;
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
   ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(36, 72, 34, 8, 0, 0, TAU); ctx.fill();
   ctx.fillStyle = "#2c3554"; ctx.beginPath(); ctx.moveTo(18, 72); ctx.lineTo(24, 34); ctx.lineTo(48, 34); ctx.lineTo(54, 72); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#3d4a74"; ctx.beginPath(); ctx.roundRect(4, 4, 64, 34, 12); ctx.fill();
   ctx.strokeStyle = "#5dff9b"; ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = "#0d1a2c"; ctx.beginPath(); ctx.roundRect(10, 9, 52, 24, 9); ctx.fill();
-  // Zib
   const bob = Math.sin(t * 3) * 1.2;
-  ctx.fillStyle = "#5dff9b"; ctx.beginPath(); ctx.arc(36, 30 + bob, 13, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = "#5dff9b"; ctx.beginPath(); ctx.arc(36, 30 + bob, 13, PI, 0); ctx.fill();
   ctx.strokeStyle = "#5dff9b"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(36, 17 + bob); ctx.lineTo(36, 10 + bob); ctx.stroke();
   ctx.fillStyle = "#ffd25d"; ctx.beginPath(); ctx.arc(36, 9 + bob, 2.5, 0, TAU); ctx.fill();
   const blink = (t % 4) < 0.12;
   ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(36, 24 + bob, 6, blink ? 1 : 6, 0, 0, TAU); ctx.fill();
   if (!blink) { ctx.fillStyle = "#10162c"; ctx.beginPath(); ctx.arc(37 + Math.sin(t * 0.7) * 2, 24 + bob, 2.8, 0, TAU); ctx.fill(); }
-  // headset
-  ctx.strokeStyle = "#1a2240"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(36, 25 + bob, 14, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  ctx.strokeStyle = "#1a2240"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(36, 25 + bob, 14, PI * 1.1, PI * 1.9); ctx.stroke();
   ctx.fillStyle = "#1a2240"; ctx.fillRect(21, 22 + bob, 4, 7);
   ctx.strokeStyle = "#1a2240"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(23, 29 + bob); ctx.quadraticCurveTo(26, 34, 31, 32 + bob); ctx.stroke();
   if (talk) { ctx.fillStyle = "#10162c"; ctx.beginPath(); ctx.ellipse(36, 32, 3, 1 + Math.abs(Math.sin(t * 18)) * 1.5, 0, 0, TAU); ctx.fill(); }
-  // beacon
   ctx.fillStyle = Math.floor(t * 2) % 2 ? "#ff5d7a" : "#5a2030"; ctx.beginPath(); ctx.arc(36, 2, 3, 0, TAU); ctx.fill();
   ctx.restore();
   $("bubble").style.left = (14 + 76 * s) + "px";
 }
 
+function drawBanner() {
+  const b = G.banner; if (!b) return;
+  const a = Math.min(1, b.t / 0.25, (b.dur - b.t) / 0.4), y = H * 0.3 - (1 - Math.min(1, b.t / 0.3)) * 20;
+  ctx.save(); ctx.globalAlpha = Math.max(0, a); ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(6,10,24,0.72)"; ctx.beginPath(); ctx.roundRect(W / 2 - Math.min(W * 0.42, 170), y - 40, Math.min(W * 0.84, 340), 68, 16); ctx.fill();
+  ctx.font = "900 30px system-ui"; ctx.fillStyle = "#fff"; ctx.fillText(b.text, W / 2, y);
+  ctx.font = "700 14px system-ui"; ctx.fillStyle = "#9fe8ff"; ctx.fillText(b.sub, W / 2, y + 20);
+  ctx.restore();
+}
+
 function draw(t) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  if (!G) return;
+  if (!G) { ctx.fillStyle = "#070b16"; ctx.fillRect(0, 0, W, H); return; }
   drawBackground();
   ctx.save();
   if (G.shake) ctx.translate((Math.random() - 0.5) * G.shake * 16, (Math.random() - 0.5) * G.shake * 16);
   ctx.drawImage(bgCv, 0, 0, W, H);
-  for (const pass of [0, 1]) for (const z of G.zones) drawZone(z, t, pass);
+  const dragFam = dragging && !dragging.ship.lock ? dragging.ship.T.fam : null;
+  for (const pass of [0, 1]) for (const z of G.zones) drawZone(ctx, z, zoneGeo(z), t, pass, z.fam === dragFam ? 0.55 + 0.35 * Math.sin(t * 8) : 0.25);
+  drawStorm(t);
   for (const s of G.ships) if (s.state === "fly") drawRoute(s);
   const order = [...G.ships].sort((a, b) => (b.state === "land") - (a.state === "land")); // landing ships sit under flying ones
   for (const s of order) {
     if (s.state === "incoming") { drawIncoming(s, t); continue; }
-    if (s.state === "wreck") continue;
     ctx.save(); ctx.globalAlpha = Math.max(0, s.alpha); ctx.translate(s.x, s.y); ctx.scale(s.scale, s.scale);
     if (s.warn > 0 || s.dmg) {
       const red = s.warn > 0 ? 0.35 + 0.35 * Math.sin(t * 16) : 0.25 + 0.2 * Math.sin(t * 6);
       ctx.strokeStyle = `rgba(255,93,122,${red})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, s.r * (s.warn > 0 ? 1.9 : 1.45), 0, TAU); ctx.stroke();
     }
     if (dragging?.ship === s) { ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, s.r * 1.35, 0, TAU); ctx.stroke(); }
-    drawShip(ctx, s.type, s.r, s.h, s.spin, t + s.id, s.T.skin);
+    drawShip(ctx, s.type, s.r, s.h, s.spin, t + s.id);
     ctx.restore();
     if (s.dmg && s.state === "fly") { ctx.fillStyle = "#ff5d7a"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.fillText("MAYDAY", s.x, s.y - s.r * 1.6); }
   }
   for (const p of G.fx) {
     const a = Math.max(0, p.life / p.max);
-    if (p.smoke) { ctx.fillStyle = p.color + (a * 0.45) + ")"; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - a), 0, TAU); ctx.fill(); }
+    if (p.smoke) { ctx.fillStyle = p.color + (a * 0.45).toFixed(3) + ")"; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - a), 0, TAU); ctx.fill(); }
     else { ctx.globalAlpha = a; ctx.fillStyle = p.color; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); ctx.globalAlpha = 1; }
   }
-  if (G.crashAt) { const k = Math.min(1, (G.time - G.overAt) / 0.5); ctx.strokeStyle = `rgba(255,210,93,${1 - k})`; ctx.lineWidth = 6 * (1 - k) + 1; ctx.beginPath(); ctx.arc(G.crashAt.x, G.crashAt.y, 20 + k * S * 0.25, 0, TAU); ctx.stroke(); }
+  if (G.ring) { const k = Math.min(1, (G.time - G.ring.t) / 0.5); if (k < 1) { ctx.strokeStyle = `rgba(255,210,93,${1 - k})`; ctx.lineWidth = 6 * (1 - k) + 1; ctx.beginPath(); ctx.arc(G.ring.x, G.ring.y, 20 + k * S * 0.25, 0, TAU); ctx.stroke(); } }
   for (const tx of G.texts) { ctx.globalAlpha = Math.max(0, 1 - tx.t / 1.1); ctx.fillStyle = tx.color; ctx.font = "900 18px system-ui"; ctx.textAlign = "center"; ctx.fillText(tx.text, tx.x, tx.y); ctx.globalAlpha = 1; }
   ctx.restore();
+  drawBanner();
   drawCommander(t);
 }
 
 // ============================================================
 //  MENUS
 // ============================================================
-function openMenu(html) { paused = true; dragging = null; $("box").innerHTML = html; $("overlay").classList.remove("hidden"); $("pauseBtn").style.visibility = $("speedBtn").style.visibility = "hidden"; wireMenu(); }
-function closeMenu() { paused = false; $("overlay").classList.add("hidden"); $("pauseBtn").style.visibility = $("speedBtn").style.visibility = ""; last = performance.now(); }
-
-function levelIcon(cvs, i) {
-  const c = cvs.getContext("2d"), n = 108; cvs.width = cvs.height = n;
-  const L = LEVELS[i]; c.fillStyle = L.theme === "moon" ? "#2a3046" : L.theme === "mars" ? "#6e2f1f" : "#1f3a33"; c.fillRect(0, 0, n, n);
-  const types = [...new Set(L.types)];
-  types.forEach((ty, k) => { c.save(); c.translate(n * (0.3 + 0.4 * (k % 2)), n * (types.length > 2 ? (k < 2 ? 0.32 : 0.72) : 0.5)); drawShip(c, ty, n * 0.16, -0.6, 0.3, 1, TYPES[ty].skin); c.restore(); });
+let menuAnim = null; // per-menu animation (title art, how-to demos)
+function openMenu(html, anim = null) {
+  paused = true; dragging = null; menuAnim = anim;
+  $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  $("hud").style.visibility = "hidden"; wireMenu();
 }
-function helpIcon(cvs, ty) { const c = cvs.getContext("2d"); cvs.width = cvs.height = 88; c.translate(44, 44); drawShip(c, ty, 26, -0.5, 0.3, 1, TYPES[ty].skin); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("hud").style.visibility = ""; last = performance.now(); hud(); }
 
-function mainMenu() {
-  openMenu(`<h1>Alien Landing</h1>
+function shipIcon(cvs, type, size = 112) { const c = cvs.getContext("2d"); cvs.width = cvs.height = size; c.translate(size / 2, size / 2); drawShip(c, type, size * 0.27, -0.5, 0.3, 1); }
+function stageIcon(cvs, i) {
+  const c = cvs.getContext("2d"), n = 128; cvs.width = cvs.height = n;
+  paintGround(c, n, n, STAGES[i], [], 3 + i * 31, false);
+  const sh = STAGES[i].ships;
+  [[0.3, 0.32], [0.7, 0.4], [0.45, 0.74]].forEach(([x, y], k) => { c.save(); c.translate(n * x, n * y); drawShip(c, sh[k], n * 0.13, -0.6, 0.3, 1); c.restore(); });
+  if (!unlocked(i)) { c.fillStyle = "rgba(5,8,18,0.65)"; c.fillRect(0, 0, n, n); c.fillStyle = "#c9d3f0"; c.font = "900 40px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 14); }
+}
+
+function titleMenu() {
+  const run = SAVE.run && STAGES[SAVE.run.stage] ? SAVE.run : null;
+  openMenu(`<canvas id="titleArt"></canvas>
+    <h1>Alien Landing</h1>
     <p>Friendly ships from across the galaxy need somewhere safe to land. You're the controller.</p>
+    ${run ? `<button class="big main" data-act="cont">Continue<small>${STAGES[run.stage].name} · ${DIFFS[run.diff].name} · Wave ${run.wave}</small></button>` : ""}
+    <button class="big ${run ? "" : "main"}" data-act="stages">Play</button>
+    <div class="row"><button class="big" data-act="howto" data-arg="title">How to play</button><button class="big" data-act="guide" data-arg="title">Ship Guide</button></div>
+    <button class="big" data-act="settings">Settings</button>`, titleAnim);
+}
+function titleAnim(t) { // ships circling the carrier above the logo
+  const cvs = $("titleArt"); if (!cvs) return;
+  const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+  const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
+  c.save(); c.translate(w / 2, h * 0.55); c.scale(1, 0.35);
+  c.strokeStyle = "rgba(79,209,255,0.25)"; c.lineWidth = 3; c.setLineDash([3, 9]); c.beginPath(); c.arc(0, 0, w * 0.38, 0, TAU); c.stroke(); c.setLineDash([]); c.restore();
+  const ships = ["saucer", "needle", "gyro", "manta", "hopper", "dart"].map((type, k) => { const a = t * 0.5 + k / 6 * TAU; return { type, a, k, y: Math.sin(a) }; });
+  const ring = s => { c.save(); c.translate(w / 2 + Math.cos(s.a) * w * 0.38, h * 0.55 + Math.sin(s.a) * w * 0.38 * 0.35); const sc = 0.75 + 0.25 * s.y; c.scale(sc, sc); drawShip(c, s.type, 15, s.a + PI / 2, t * 2, t + s.k); c.restore(); };
+  ships.filter(s => s.y < 0).forEach(ring); // behind the carrier
+  c.save(); c.translate(w / 2, h * 0.55); drawZone(c, { kind: "carrier", fam: "carrier" }, { x: 0, y: 0, vx: 0, vy: 0, len: 74, wid: 22, ang: 0, dx: 1, dy: 0 }, t, 1, 0.3); c.restore();
+  ships.filter(s => s.y >= 0).forEach(ring); // in front
+}
+
+function stagesMenu() {
+  openMenu(`<p class="kicker">Campaign</p><h2>Choose a stage</h2>
     <div class="seg">${DIFFS.map((D, d) => `<button data-act="diff" data-arg="${d}" class="${d === SAVE.diff ? "on" : ""}">${D.name}</button>`).join("")}</div>
-    <p class="segNote">${["Calm traffic, landing spots spread out.", "More ships, a little faster.", "Busy skies, faster ships, spots packed close together."][SAVE.diff]}</p>
-    ${LEVELS.map((L, i) => `<button class="big level" data-act="play" data-arg="${i}" ${unlocked(i) ? "" : "disabled"}>
-      <canvas data-icon="${i}"></canvas><span>${L.name}<small>${unlocked(i) ? `${L.sub} · Best ${best(i)}` : `Land ${L.need} at ${LEVELS[i - 1].name} to unlock`}</small></span></button>`).join("")}
-    <div class="row"><button class="big" data-act="help">How to play</button><button class="big" data-act="ships" data-arg="main">Ship Guide</button></div>
-    <button class="big" data-act="sound">Sound: ${SAVE.sound ? "On" : "Off"}</button>`);
+    <p class="segNote">${DIFFS[SAVE.diff].note}</p>
+    ${STAGES.map((st, i) => {
+      const best = SAVE.best[SAVE.diff][i], done = SAVE.cleared[SAVE.diff][i];
+      return `<button class="big stage" data-act="brief" data-arg="${i}" ${unlocked(i) ? "" : "disabled"}>
+        <canvas data-stage="${i}"></canvas><span>${done ? '<b class="tag">✓ Secured</b>' : ""}${st.name}
+        <small>${unlocked(i) ? `${st.ships.map(k => SHIPS[k].name).join(" · ")}<br>${done ? "All 10 waves cleared" : best ? `Best: wave ${best} of ${WAVES}` : "Not played yet"}` : `Secure ${STAGES[i - 1].name} to unlock`}</small></span></button>`;
+    }).join("")}
+    <button class="big" data-act="title">Back</button>`);
 }
-function helpMenu(then = "main") {
-  openMenu(`<h2>How to play</h2>
-    <div class="help">
-      <div><b style="font-size:22px">☝️</b><span><b>Drag from a ship</b> to draw its route. It follows your line.</span></div>
-      ${["saucer", "hauler", "dart"].map(ty => `<div><canvas data-help="${ty}"></canvas><span><b style="color:${TYPES[ty].color}">${TYPES[ty].name}s</b> land on ${TYPES[ty].where}.</span></div>`).join("")}
-      <div><b style="font-size:22px;color:#5dff9b">✓</b><span>The line turns <b style="color:#5dff9b">green</b> when it reaches the right spot.</span></div>
-      <div><b style="font-size:22px;color:#ff5d7a">!</b><span><b>Ships that touch crash</b> and end your shift. A red ring means too close.</span></div>
-    </div>
-    <button class="big main" data-act="${then === "play" ? "start" : then === "pause" ? "backPause" : "main"}">${then === "play" ? "Let's go ▶" : "Back"}</button>`);
+function briefMenu(i) {
+  const st = STAGES[i];
+  openMenu(`<p class="kicker">Stage ${i + 1} of ${STAGES.length} · ${DIFFS[SAVE.diff].name}</p><h2>${st.name}</h2>
+    <p>${st.brief}</p>
+    <div class="ships">${st.ships.map(k => { const T = SHIPS[k], F = FAM[T.fam];
+      return `<article><canvas data-ship="${k}"></canvas><div><span class="fam" style="color:${F.color}">${F.name} · ${F.spot}</span><h3>${T.name}</h3><p>${T.note}</p></div></article>`; }).join("")}</div>
+    <p style="font-size:13px;color:var(--dim)">${WAVES} waves · land the number of ships shown to clear each wave · ${DIFFS[SAVE.diff].lives} lives</p>
+    <button class="big main" data-act="deploy" data-arg="${i}">Deploy ▶</button>
+    <button class="big" data-act="stages">Back</button>`);
 }
-function shipGuide(back) {
-  const landing = {
-    pad: ["Landing pad", "Draw into the blue circle.", '<circle cx="27" cy="27" r="18"/><path d="M18 27h18m-9-9v18"/>'],
-    runway: ["Runway", "Enter over the arrows and follow their direction.", '<rect x="17" y="5" width="20" height="36" rx="2"/><path d="M27 12v19m-5 14 5-5 5 5m-10 6 5-5 5 5"/>'],
-    dock: ["Docking ring", "Draw into the purple ring.", '<circle cx="27" cy="27" r="19"/><circle cx="27" cy="27" r="11"/><circle cx="27" cy="27" r="3"/>'],
-  };
-  const cards = Object.entries(TYPES).map(([type, ship]) => {
-    const [name, instruction, diagram] = landing[ship.zone];
-    return `<article>
-      <canvas data-help="${type}" aria-hidden="true"></canvas>
-      <div><h3 style="color:${ship.color}">${ship.name} · ${name}</h3><p>${instruction}</p></div>
-      <svg viewBox="0 0 54 54" aria-hidden="true" fill="none" stroke="${ship.color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${diagram}</svg>
-    </article>`;
-  }).join("");
-  openMenu(`<h2>Ship Guide</h2><div class="ship-guide">${cards}</div>
-    <button class="big" data-act="${back === "pause" ? "backPause" : "main"}">Back</button>`);
+function settingsMenu() {
+  openMenu(`<h2>Settings</h2>
+    <button class="big" data-act="sound">Sound: ${SAVE.sound ? "On" : "Off"}</button>
+    <button class="big warn" data-act="resetAsk">Reset progress</button>
+    <button class="big" data-act="title">Back</button>`);
+}
+function resetAsk() {
+  openMenu(`<h2>Reset progress?</h2><p>This clears every secured stage and best wave on this device.</p>
+    <button class="big" data-act="settings">Cancel</button><button class="big warn" data-act="resetDo">Reset</button>`);
+}
+function guideMenu(back) {
+  const rows = STAGES.map((st, i) => `<div class="guideStage">Stage ${i + 1} · ${st.name}</div>
+    <div class="ships">${st.ships.map(k => { const T = SHIPS[k], F = FAM[T.fam];
+      return `<article><canvas data-ship="${k}"></canvas><div><span class="fam" style="color:${F.color}">${F.name} · ${F.spot}</span><h3>${T.name}</h3><p>${T.note}</p></div></article>`; }).join("")}</div>`).join("");
+  openMenu(`<h2>Ship Guide</h2>
+    <p>Every ship belongs to a colour family and lands on the spot of the same colour.</p>
+    <div class="ships">${Object.values(FAM).map(F => `<article style="grid-template-columns:1fr"><div><span class="fam" style="color:${F.color}">${F.name} → ${F.spot}</span><p>${F.how}</p></div></article>`).join("")}</div>
+    ${rows}
+    <button class="big" data-act="${back}">Back</button>`);
 }
 function pauseMenu() {
-  openMenu(`<h2>Paused</h2><p>${G.L.name} · ${G.D.name} · Landed ${G.landed}</p>
+  openMenu(`<p class="kicker">${G.ST.name} · ${G.D.name}</p><h2>Paused</h2><p>Wave ${G.wave} of ${WAVES} · ${G.waveLanded}/${G.need} landed this wave</p>
     <button class="big main" data-act="resume">Resume</button>
-    <button class="big" data-act="help2">How to play</button>
-    <button class="big" data-act="ships" data-arg="pause">Ship Guide</button>
+    <div class="row"><button class="big" data-act="howto" data-arg="pause">How to play</button><button class="big" data-act="guide" data-arg="pause">Ship Guide</button></div>
     <button class="big" data-act="sound2">Sound: ${SAVE.sound ? "On" : "Off"}</button>
-    <button class="big" data-act="main">Quit to menu</button>`);
+    <button class="big" data-act="restartWave">Restart wave ${G.wave}</button>
+    <button class="big" data-act="quit">Save &amp; quit</button>`);
 }
 function gameOverMenu() {
-  const nxt = LEVELS[G.level + 1], newly = nxt && G.landed >= nxt.need && !G.knewUnlock;
-  openMenu(`<h2>Shift over</h2><p>${G.L.name} · ${G.D.name}</p>
-    <div class="stat">${G.landed}</div><p>ships landed safely · best ${best(G.level)}</p>
-    ${newly ? `<p><b style="color:#5dff9b">${nxt.name} unlocked!</b></p>` : nxt && !unlocked(G.level + 1) ? `<p>Land ${nxt.need} here to unlock ${nxt.name}.</p>` : ""}
-    <button class="big main" data-act="play" data-arg="${G.level}">Try again</button>
-    ${newly ? `<button class="big" data-act="play" data-arg="${G.level + 1}">Go to ${nxt.name} ▶</button>` : ""}
-    <button class="big" data-act="main">Menu</button>`);
+  openMenu(`<p class="kicker">${G.ST.name} · ${G.D.name}</p><h2>Out of lives</h2>
+    <div class="stats"><div>${G.wave}<small>Wave</small></div><div>${G.landed}<small>Landed</small></div><div>${G.crashes}<small>Crashes</small></div></div>
+    <p>Your progress is saved at the start of wave ${G.wave}.</p>
+    <button class="big main" data-act="restartWave">Retry wave ${G.wave}</button>
+    <button class="big" data-act="stages">Stages</button>
+    <button class="big" data-act="title">Main menu</button>`);
 }
-let pendingLevel = 0;
+function stageClearMenu() {
+  const next = STAGES[G.stage + 1];
+  openMenu(`<p class="kicker">${G.D.name}</p><h2>Stage secured!</h2>
+    <div class="stat">${G.ST.name}</div>
+    <div class="stats"><div>${G.landed}<small>Landed</small></div><div>${G.crashes}<small>Crashes</small></div><div>${G.lives}<small>Lives left</small></div></div>
+    ${next ? `<p><b style="color:var(--good)">${next.name}</b> is unlocked, with three new ships.</p>
+      <button class="big main" data-act="brief" data-arg="${G.stage + 1}">Next: ${next.name} ▶</button>`
+      : `<p>Every stage is secure. Try a harder difficulty!</p>`}
+    <button class="big" data-act="stages">Stages</button>`);
+}
+
+// ---------- How to play: five short pages with live demos ----------
+const HOWTO = [
+  { title: "Draw a route", text: "Touch a ship and drag to draw its route. It follows your line. Lead it to the spot that matches its <b>colour</b>.", demo: demoRoute },
+  { title: "Runways", text: "<b style='color:var(--runway)'>Orange</b> runway ships must fly in <b>over the arrows</b>, heading the way they point. The line turns <b style='color:var(--good)'>green ✓</b> when the landing is set.", demo: demoRunway },
+  { title: "Pads and carriers", text: "<b style='color:var(--pad)'>Blue</b> hovercraft land on pads from any side. <b style='color:var(--carrier)'>Purple</b> ships land on a <b>moving carrier</b>: draw onto its deck over the arrows and the ship chases it in.", demo: demoCarrier },
+  { title: "Keep them apart", text: "A <b style='color:var(--bad)'>red ring</b> means two ships are too close. If they touch they crash and you lose a <b style='color:var(--bad)'>♥ life</b>. Lose them all and you replay the wave.", demo: demoCrash },
+  { title: "Waves and stages", text: "Land the number of ships shown to clear each wave. Clear <b>10 waves</b> to secure a stage and unlock the next, with new ships. Tap <b>▶▶</b> to speed up.", demo: demoWaves },
+];
+function howtoMenu(page, back) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "deployNow";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas>
+    <p>${p.text}</p>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="howto" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${first ? "deployNow" : back}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${back}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="howto" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    t => { const cvs = $("howCv"); if (!cvs) return; const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
+      if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+      const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.fillStyle = "#0e1838"; c.fillRect(0, 0, w, h); p.demo(c, t, w, h); });
+}
+// demo helpers
+const lerp = (a, b, k) => a + (b - a) * k;
+function along(pts, k) { // point and heading at fraction k along a polyline
+  let tot = 0; const seg = []; for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(l); tot += l; }
+  let d = clamp(k, 0, 1) * tot;
+  for (let i = 0; i < seg.length; i++) { if (d <= seg[i] || i === seg.length - 1) { const f = seg[i] ? Math.min(1, d / seg[i]) : 0, a = pts[i], b = pts[i + 1];
+    return { x: lerp(a[0], b[0], f), y: lerp(a[1], b[1], f), h: Math.atan2(b[1] - a[1], b[0] - a[0]) }; } d -= seg[i]; }
+  return { x: pts[0][0], y: pts[0][1], h: 0 };
+}
+function dotted(c, pts, k, col) { // route drawn up to fraction k
+  c.save(); c.strokeStyle = col; c.lineWidth = 3; c.lineCap = "round"; c.setLineDash([2, 8]); c.beginPath();
+  const n = 40; for (let i = 0; i <= n * k; i++) { const p = along(pts, i / n); i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y); } c.stroke(); c.restore();
+}
+function finger(c, x, y) { c.save(); c.fillStyle = "rgba(255,255,255,0.35)"; c.beginPath(); c.arc(x + 6, y + 10, 15, 0, TAU); c.fill(); c.fillStyle = "rgba(255,255,255,0.85)"; c.beginPath(); c.arc(x + 6, y + 10, 9, 0, TAU); c.fill(); c.restore(); }
+function demoRoute(c, t, w, h) {
+  const T = t % 6, g = { x: w * 0.75, y: h * 0.5, r: 30 };
+  drawZone(c, { kind: "pad", fam: "pad" }, g, t, 1, T < 3 ? 0.6 + 0.3 * Math.sin(t * 8) : 0.25);
+  const pts = [[w * 0.15, h * 0.75], [w * 0.35, h * 0.3], [w * 0.55, h * 0.3], [g.x, g.y]];
+  const drawK = Math.min(1, T / 2), fly = clamp((T - 2) / 2.6, 0, 1);
+  if (fly < 1) dotted(c, pts, drawK, drawK >= 1 ? "rgba(93,255,155,0.8)" : "rgba(79,209,255,0.8)");
+  if (T < 2) { const f = along(pts, drawK); finger(c, f.x, f.y); }
+  const p = along(pts, fly), sc = T > 4.6 ? Math.max(0.5, 1 - (T - 4.6)) : 1;
+  c.save(); c.translate(p.x, p.y); c.scale(sc, sc); c.globalAlpha = T > 5.3 ? Math.max(0, 1 - (T - 5.3) * 2) : 1; drawShip(c, "saucer", 18, p.h, t * (T > 4.6 ? 6 : 1), t); c.restore();
+}
+function demoRunway(c, t, w, h) {
+  const T = t % 6.5, z = { kind: "runway", fam: "runway" }, g = { x: w * 0.6, y: h * 0.55, len: w * 0.45, wid: 28, ang: 0, dx: 1, dy: 0 };
+  drawZone(c, z, g, t, 0, 0); drawZone(c, z, g, t, 1, T < 2.2 ? 0.6 : 0.25);
+  const ex = g.x - g.len / 2, pts = [[w * 0.12, h * 0.12], [w * 0.1, h * 0.55], [ex, g.y], [ex + g.len * 0.4, g.y]];
+  const drawK = Math.min(1, T / 2.2), fly = clamp((T - 2.2) / 2.8, 0, 1);
+  if (fly < 0.7) dotted(c, pts.slice(0, 3), drawK, drawK >= 0.95 ? "rgba(93,255,155,0.85)" : "rgba(255,184,77,0.85)");
+  if (T < 2.2) { const f = along(pts.slice(0, 3), drawK); finger(c, f.x, f.y); }
+  const p = along(pts, fly), sc = fly > 0.75 ? 1 - (fly - 0.75) * 1.4 : 1;
+  c.save(); c.translate(p.x, p.y); c.scale(sc, sc); c.globalAlpha = T > 5.6 ? Math.max(0, 1 - (T - 5.6) * 2) : 1; drawShip(c, "hauler", 17, p.h, 0, t); c.restore();
+  c.fillStyle = "#ffd25d"; c.font = "800 12px system-ui"; c.textAlign = "center"; c.fillText("in over the arrows ➜", ex + 30, g.y - 26);
+}
+function demoCarrier(c, t, w, h) {
+  const T = t % 7, cx = w * (0.62 + 0.12 * Math.sin(t * 0.8));
+  const g = { x: cx, y: h * 0.66, vx: Math.cos(t * 0.8) * 30, vy: 0, len: w * 0.3, wid: 24, ang: PI, dx: -1, dy: 0 };
+  g.ex = g.x + g.len / 2; g.ey = g.y;
+  drawZone(c, { kind: "pad", fam: "pad" }, { x: w * 0.16, y: h * 0.3, r: 26 }, t, 1, 0.25);
+  c.save(); c.translate(w * 0.16 + Math.cos(t) * 38, h * 0.3 + Math.sin(t) * 20); drawShip(c, "hopper", 13, t + PI / 2, 0, t); c.restore();
+  drawZone(c, { kind: "carrier", fam: "carrier" }, g, t, 1, 0.4);
+  const start = [w * 0.97, h * 0.1], k = clamp((T - 0.5) / 3.2, 0, 1);
+  const p = { x: lerp(start[0], g.ex + 14, k), y: lerp(start[1], g.ey, k) };
+  if (k < 1) { c.save(); c.strokeStyle = "rgba(93,255,155,0.8)"; c.lineWidth = 3; c.setLineDash([2, 8]); c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(g.ex, g.ey); c.stroke(); c.restore(); }
+  const roll = clamp((T - 3.7) / 2, 0, 1), sx = k < 1 ? p.x : g.ex - roll * g.len * 0.6, sy = k < 1 ? p.y : g.ey;
+  c.save(); c.translate(sx, sy); c.scale(1 - roll * 0.35, 1 - roll * 0.35); c.globalAlpha = roll > 0.8 ? 1 - (roll - 0.8) * 5 : 1;
+  drawShip(c, "dart", 15, k < 1 ? Math.atan2(g.ey - p.y, g.ex - p.x) : PI, 0, t); c.restore();
+}
+function demoCrash(c, t, w, h) {
+  const T = t % 5, k = Math.min(1, T / 2.4);
+  const a = { x: lerp(w * 0.1, w * 0.48, k), y: h * 0.55 }, b = { x: lerp(w * 0.9, w * 0.52, k), y: h * 0.55 };
+  if (T < 2.4) {
+    const close = Math.abs(a.x - b.x) < 90;
+    for (const [s, type, hh] of [[a, "needle", 0], [b, "saucer", PI]]) {
+      c.save(); c.translate(s.x, s.y);
+      if (close) { c.strokeStyle = `rgba(255,93,122,${0.5 + 0.4 * Math.sin(t * 16)})`; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 30, 0, TAU); c.stroke(); }
+      drawShip(c, type, 16, hh, 0, t); c.restore();
+    }
+  } else {
+    const e = T - 2.4;
+    for (let i = 0; i < 24; i++) { const ang = i / 24 * TAU, r = e * (60 + (i % 5) * 20); c.globalAlpha = Math.max(0, 1 - e / 1.6); c.fillStyle = i % 3 ? "#ffb84d" : "#4fd1ff"; c.fillRect(w / 2 + Math.cos(ang) * r, h * 0.55 + Math.sin(ang) * r, 5, 5); }
+    c.globalAlpha = 1;
+  }
+  c.font = "900 22px system-ui"; c.textAlign = "center"; c.fillStyle = "#ff5d7a";
+  c.fillText(T < 2.4 ? "♥ ♥ ♥" : "♥ ♥ ♡", w / 2, h * 0.2);
+}
+function demoWaves(c, t, w, h) {
+  const T = t % 6, n = Math.min(6, Math.floor(T * 1.6)), x0 = w * 0.12, bw = w * 0.76;
+  c.fillStyle = "#e6ecff"; c.font = "900 20px system-ui"; c.textAlign = "center";
+  c.fillText(n >= 6 ? "Wave 3 cleared!" : "Wave 3 of 10", w / 2, h * 0.22);
+  c.fillStyle = "#1b2546"; c.beginPath(); c.roundRect(x0, h * 0.32, bw, 14, 7); c.fill();
+  const gr = c.createLinearGradient(x0, 0, x0 + bw, 0); gr.addColorStop(0, "#5dff9b"); gr.addColorStop(1, "#4fd1ff");
+  if (n) { c.fillStyle = gr; c.beginPath(); c.roundRect(x0, h * 0.32, bw * n / 6, 14, 7); c.fill(); }
+  c.fillStyle = "#8f9cc4"; c.font = "700 13px system-ui"; c.fillText(`${n}/6 landed`, w / 2, h * 0.32 + 32);
+  ["saucer", "hopper", "twinlift", "skycrane"].forEach((type, k) => { c.save(); c.translate(w * (0.2 + k * 0.2), h * 0.74); drawShip(c, type, 15, -PI / 2 + Math.sin(t + k) * 0.3, t, t + k); c.restore();
+    c.fillStyle = "#8f9cc4"; c.font = "700 10px system-ui"; c.fillText(`Stage ${k + 1}`, w * (0.2 + k * 0.2), h * 0.74 + 30); });
+}
+
+// ---------- menu actions ----------
+let pendingStage = 0;
 const ACT = {
-  main: () => { G && (G.over = true); mainMenu(); },
-  play: i => { pendingLevel = +i; if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("play"); } else ACT.start(); },
-  start: () => { newGame(pendingLevel); G.knewUnlock = LEVELS[pendingLevel + 1] && unlocked(pendingLevel + 1); closeMenu(); },
-  help: () => helpMenu("main"),
-  diff: d => { SAVE.diff = +d; save(); mainMenu(); },
-  help2: () => helpMenu("pause"),
-  ships: shipGuide,
-  sound: () => { SAVE.sound = !SAVE.sound; save(); mainMenu(); },
+  title: () => titleMenu(),
+  stages: () => stagesMenu(),
+  settings: () => settingsMenu(),
+  resetAsk: () => resetAsk(),
+  resetDo: () => { SAVE.best = [blank(), blank(), blank()]; SAVE.cleared = [blank(), blank(), blank()]; SAVE.run = null; save(); titleMenu(); },
+  diff: d => { SAVE.diff = +d; save(); stagesMenu(); },
+  brief: i => briefMenu(+i),
+  deploy: i => { pendingStage = +i; if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); howtoMenu(0, "deployNow"); } else ACT.deployNow(); },
+  deployNow: () => { newRun(pendingStage); closeMenu(); },
+  cont: () => { const r = SAVE.run; SAVE.diff = r.diff; newRun(r.stage, r.wave); closeMenu(); },
+  howto: arg => { const [back, page] = String(arg).split("|"); howtoMenu(+(page || 0), back); },
+  guide: back => guideMenu(back === "pause" ? "pause" : "title"),
+  sound: () => { SAVE.sound = !SAVE.sound; save(); settingsMenu(); },
   sound2: () => { SAVE.sound = !SAVE.sound; save(); pauseMenu(); },
+  pause: () => pauseMenu(),
   resume: () => closeMenu(),
-  backPause: () => pauseMenu(),
+  restartWave: () => { SAVE.diff = G.diff; newRun(G.stage, G.wave); closeMenu(); },
+  quit: () => { G.over = true; titleMenu(); },
 };
 function wireMenu() {
   for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
-  for (const c of $("box").querySelectorAll("[data-icon]")) levelIcon(c, +c.dataset.icon);
-  for (const c of $("box").querySelectorAll("[data-help]")) helpIcon(c, c.dataset.help);
+  for (const c of $("box").querySelectorAll("[data-stage]")) stageIcon(c, +c.dataset.stage);
+  for (const c of $("box").querySelectorAll("[data-ship]")) shipIcon(c, c.dataset.ship);
 }
-$("pauseBtn").onclick = () => { if (G && !G.over) pauseMenu(); };
+$("pauseBtn").onclick = () => { if (G && !G.over && !G.cleared) pauseMenu(); };
 function setFast(on) { fast = on; $("speedBtn").classList.toggle("on", on); $("speedBtn").textContent = on ? "2×" : "▶▶"; }
 $("speedBtn").onclick = () => { audio(); setFast(!fast); };
-document.addEventListener("visibilitychange", () => { if (document.hidden && G && !G.over && !paused) pauseMenu(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && G && !G.over && !G.cleared && !paused) pauseMenu(); });
 
 // ============================================================
 //  LOOP
@@ -792,7 +1202,10 @@ function resize() {
   const oW = W, oH = H;
   W = window.innerWidth; H = window.innerHeight; S = Math.min(W, H, 560); DPR = Math.min(2.5, window.devicePixelRatio || 1);
   cv.width = W * DPR; cv.height = H * DPR;
-  if (G && oW && oH) for (const s of G.ships) { s.x *= W / oW; s.y *= H / oH; s.path.forEach(p => { p.x *= W / oW; p.y *= H / oH; }); }
+  if (G && oW && oH) {
+    for (const s of G.ships) { s.x *= W / oW; s.y *= H / oH; s.path.forEach(p => { p.x *= W / oW; p.y *= H / oH; }); }
+    if (G.storm) { G.storm.x *= W / oW; G.storm.y *= H / oH; G.storm.r = S * TUNE.stormR; }
+  }
 }
 window.addEventListener("resize", resize);
 resize();
@@ -800,14 +1213,15 @@ resize();
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (G && !paused) { update(dt); if (fast && !G.over) update(dt); }
+  if (G && !paused) { update(dt); if (fast && !G.over && !G.cleared) update(dt); }
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
   if (G && G.talk > 0) G.talk -= dt;
   draw(now / 1000);
+  if (menuAnim) menuAnim(now / 1000);
   requestAnimationFrame(frame);
 }
-newGame(0, true); paused = true; // a live board sits behind the menu
-mainMenu();
+newRun(0, 1, true); paused = true; // a live board sits behind the menus
+titleMenu();
 requestAnimationFrame(frame);
 </script>
 </body>
