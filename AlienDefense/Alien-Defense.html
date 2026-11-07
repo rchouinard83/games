@@ -213,6 +213,25 @@
   #ovBox .big { display: block; width: 100%; margin: 8px 0; padding: 12px; font-size: 17px; }
   #ovBox .big small { font-weight: 500; color: var(--muted); font-size: 12px; }
   #ovBox .sel { outline: 2px solid var(--accent); background: #243058; }
+  #overlay.splash {
+    background:
+      radial-gradient(circle at 16% 24%, #c9dcff 0 1px, transparent 2px) 0 0 / 139px 151px,
+      radial-gradient(circle at 76% 62%, #8399ca 0 1px, transparent 2px) 0 0 / 193px 131px,
+      radial-gradient(ellipse at 50% 90%, #192648 0%, #0b1225 42%, #050810 76%);
+  }
+  #overlay.splash #ovBox { position: relative; max-width: 360px; background: #10182be8; box-shadow: 0 16px 60px #0009; }
+  #overlay.splash h1 { font-size: clamp(32px, 8vw, 48px); line-height: 1; text-transform: uppercase; }
+  #overlay.booting { display: flex; }
+  #ovBox .loadingBar { width: min(75%, 210px); height: 8px; accent-color: var(--accent); }
+  #splashCv { display: none; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; pointer-events: none; }
+  #overlay.splash:not(.booting) #splashCv { display: block; }
+  #ovBox .splashLinks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
+  #ovBox .splashLinks button { min-width: 0; font-size: 14px; }
+  #ovBox .splashLinks button:last-child { grid-column: 1 / -1; }
+  @media (min-height: 620px) {
+    #overlay.splash:not(.booting) #ovBox { margin-bottom: 10vh; }
+  }
+  #ovBox .campaignBtn { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   .diff { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0 4px; font-size: 18px; }
   .diff button { width: 44px; font-size: 20px; }
   #toast { position: fixed; left: 50%; top: 120px; transform: translateX(-50%); background: var(--panel-2);
@@ -298,7 +317,14 @@
     <div id="hint"></div>
   </div>
 </div>
-<div id="overlay"><div id="ovBox"></div></div>
+<div id="overlay" class="splash booting">
+  <canvas id="splashCv" aria-hidden="true"></canvas>
+  <div id="ovBox">
+    <h1>Alien Defense</h1>
+    <p role="status">Loading game…</p>
+    <progress class="loadingBar" aria-label="Loading Alien Defense"></progress>
+  </div>
+</div>
 <div id="toast"></div>
 <div id="cine">
   <canvas id="cineCv"></canvas>
@@ -3049,10 +3075,12 @@ cv.addEventListener("pointerdown", ev => {
 // ============================================================
 const mSel = { map: 0, diff: 1 };
 
-function openMenu(html) {
+function openMenu(html, splash = false) {
   if (S) { S.menu = true; S.ghost = null; drag = null; }
   $("ovBox").innerHTML = html;
-  $("overlay").style.display = "flex";
+  const overlay = $("overlay");
+  overlay.classList.toggle("splash", splash);
+  overlay.style.display = "flex";
 }
 function closeMenu() {
   S.menu = false;
@@ -3062,12 +3090,57 @@ function closeMenu() {
 function mainMenu() {
   const run = lsGet(KEY_RUN);
   openMenu(`<h1>Alien Defense</h1>
-    <p>Four worlds. One fleet. Hold the line.</p>
+    <p>Defend four worlds from the invading fleet.</p>
     ${run && MAPS[run.map] ? `<button class="big" data-act="cont">Continue<br><small>${WORLDS[run.map].name} · D${run.diff} · Wave ${run.wave}</small></button>` : ""}
-    <button class="big" data-act="newmenu" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Campaign</button>
-    <button class="big" data-act="howto">How to play</button>
-    <button class="big" data-act="story">Story</button>
-    <button class="big" data-act="guide" data-arg="main">Tower Guide</button>`);
+    <button class="big campaignBtn" data-act="newmenu">Campaign</button>
+    <div class="splashLinks">
+      <button data-act="howto">How to play</button>
+      <button data-act="story">Story</button>
+      <button data-act="guide" data-arg="main">Tower Guide</button>
+    </div>`, true);
+}
+
+const splashPatrol = [
+  { type: "normal", stage: 0, lane: 0.84, pace: 0.08, offset: 0.22 },
+  { type: "fast", stage: 1, lane: 0.93, pace: 0.19, offset: 0.48 },
+  { type: "swarm", stage: 0, lane: 0.89, pace: 0.11, offset: 0.12 },
+  { type: "flying", stage: 2, lane: 0.17, pace: 0.12, offset: 0.68 },
+  { type: "tank", stage: 3, lane: 0.86, pace: 0.055, offset: 0.81 },
+];
+const splashMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+function drawSplash(canvas, now) {
+  const width = canvas.clientWidth, height = canvas.clientHeight;
+  if (!width || !height) return;
+  const scale = Math.min(2, window.devicePixelRatio || 1);
+  const pixelWidth = Math.round(width * scale), pixelHeight = Math.round(height * scale);
+  const resized = canvas.width !== pixelWidth || canvas.height !== pixelHeight;
+  if (resized) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
+  if (splashMotion?.matches && canvas.dataset.painted && !resized) return;
+  const t = splashMotion?.matches ? 0 : now / 1000;
+  const c = canvas.getContext("2d");
+  c.setTransform(scale, 0, 0, scale, 0, 0);
+  starfield(c, t, width, height, 7);
+  nebula(c, width * 0.23, height * 0.3, width * 0.45, "rgba(83,65,172,0.24)");
+  planet(c, "earth", width * 0.84, height * 0.24, Math.min(width * 0.19, height * 0.23), t);
+  c.fillStyle = "#121d32";
+  c.beginPath(); c.moveTo(0, height * 0.82);
+  for (let x = 0; x <= width; x += 12) {
+    c.lineTo(x, height * 0.79 + Math.sin(x * 0.011) * 15 + Math.sin(x * 0.037) * 7);
+  }
+  c.lineTo(width, height); c.lineTo(0, height); c.closePath(); c.fill();
+  c.strokeStyle = "#25354f"; c.lineWidth = 1;
+  for (const lane of [0.88, 0.95]) {
+    c.beginPath(); c.moveTo(0, height * lane); c.lineTo(width, height * lane); c.stroke();
+  }
+  const board = { ox: 0, oy: 0, cs: Math.max(36, Math.min(78, width * 0.13, height * 0.17)) };
+  miniPortal(c, board, 0.12, height * 0.84 / board.cs - 0.5, t);
+  for (const { type, stage, lane, pace, offset } of splashPatrol) {
+    const x = ((t * pace + offset) % 1) * (width + board.cs) - board.cs * 0.5;
+    const y = height * lane + (type === "flying" ? Math.sin(t * 2.5) * height * 0.07 : 0);
+    miniAlien(c, board, x / board.cs, y / board.cs, type, stage, t, 1);
+  }
+  if (splashMotion?.matches) canvas.dataset.painted = "1";
+  else delete canvas.dataset.painted;
 }
 
 function newGameMenu() {
@@ -3610,23 +3683,29 @@ function frame(now) {
   if (S.selEnemy && ++enemyInfoTick % 8 === 0) refreshBar(); // live HP readout
   updateStartCard();
   updateSides();
-  draw();
+  const overlay = $("overlay");
+  if (overlay.style.display === "flex" && overlay.classList.contains("splash")) drawSplash($("splashCv"), now);
+  else draw();
   requestAnimationFrame(frame);
 }
 
-window.addEventListener("resize", resize);
-if (window.ResizeObserver) new ResizeObserver(() => resize()).observe($("stage")); // strip/bar height changes
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden && S.started && !S.over && !S.menu) pauseMenu();
-});
+function initializeGame() {
+  newGame(0, 1, false);
+  buildIcons();
+  resize();
+  mainMenu();
+  $("overlay").classList.remove("booting");
 
-newGame(0, 1, false);
-buildIcons();
-resize();
-mainMenu();
-// First launch: story intro, then how to play (both skippable, replay from the main menu)
-if (!P.seenIntro) playIntro(() => (P.seenTutorial ? mainMenu() : playTutorial(() => mainMenu())));
-requestAnimationFrame(frame);
+  window.addEventListener("resize", resize);
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe($("stage"));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && S.started && !S.over && !S.menu) pauseMenu();
+  });
+  requestAnimationFrame(frame);
+}
+
+// Let the browser paint the loading screen before building the game assets.
+requestAnimationFrame(() => requestAnimationFrame(initializeGame));
 </script>
 </body>
 </html>
