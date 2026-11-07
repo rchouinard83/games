@@ -133,7 +133,6 @@
   #upBtn.can { background: #1d4a3a; border-color: var(--good); color: var(--good); animation: pulse 1.1s ease-in-out infinite; }
   #upBtn .short { color: var(--bad); }
   #sellBtn { color: var(--gold); border-color: rgba(255,210,93,0.5); }
-  #sellBtn.full { background: #3a3415; }
   #info { display: none; align-items: center; gap: 6px; }
   #info .desc { flex: 1; font-size: 13px; line-height: 1.3; min-width: 0; }
   #info .desc b { font-size: 15px; }
@@ -194,6 +193,8 @@
   #bootStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   #splashCv { display: none; position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 0; pointer-events: none; }
   #overlay.splash #splashCv { display: block; }
+  #gameVersion { display: none; position: absolute; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); color: #d5ddef; font-size: 12px; pointer-events: none; }
+  #overlay.splash #gameVersion { display: block; }
   #ovBox .splashLinks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
   #ovBox .splashLinks button { min-width: 0; font-size: 14px; }
   @media (min-height: 620px) {
@@ -301,9 +302,10 @@
 </div>
 <div id="overlay" class="splash booting">
   <canvas id="splashCv" aria-hidden="true"></canvas>
+  <span id="gameVersion">v1.0.0</span>
   <div id="ovBox">
     <p id="bootStatus" role="status">Loading Alien Defense…</p>
-    <button id="bootSound">Sound: On</button>
+    <button id="bootSound">Enable sound</button>
     <button id="bootButton">Skip intro</button>
   </div>
 </div>
@@ -356,7 +358,7 @@ const WORLDS = [
     win: "Jupiter's storms swallow what's left of the attack. The survivors take to their ships and burn for Mars.",
     rows: ["....S.....", "..........", "..........", "~~~~~~..~~", "..........", "..#....#..", "..........", "~~..~~~~~~",
            "..........", "..#....#..", "..........", "~~~~~~..~~", "..........", "..........", "....E....."] },
-  { name: "Mars, the Red Wall", where: "Mars · 1.5 AU from the Sun", theme: "mars", stage: 2, hpOffset: 6, startGold: 200, goldMul: 1.35,
+  { name: "Mars, the Red Wall", where: "Mars · 1.5 AU from the Sun", theme: "mars", stage: 2, hpOffset: 6, startGold: 190, goldMul: 1.35,
     desc: "Canyon walls and red desert.",
     story: ["The inner solar system. Mars is the last natural barrier before Earth.",
       "The canyons are your kill zones: make them walk the long way through the crevices while your towers fire from above.",
@@ -365,7 +367,7 @@ const WORLDS = [
     win: "The Red Wall holds. But not every ship was stopped. The Armada is heading for Earth.",
     rows: [".........S", "..........", "..#.......", "..#..###..", "..#.......", "..#.......", "..#####...", "..........",
            "..........", "....#####.", ".......#..", ".......#..", "..###..#..", "..........", "E........."] },
-  { name: "Earth, Final Stand", where: "Earth · 1 AU from the Sun", theme: "earth", stage: 3, hpOffset: 9, startGold: 350, goldMul: 1.6,
+  { name: "Earth, Final Stand", where: "Earth · 1 AU from the Sun", theme: "earth", stage: 3, hpOffset: 9, startGold: 330, goldMul: 1.6,
     desc: "City blocks and narrow streets.",
     story: ["You're home. The fleet is here. Cities burn and the sky is full of their ships.",
       "Your towers are the future you're fighting for: energy weapons, plasma, quantum targeting. Build in the streets between the buildings.",
@@ -997,7 +999,7 @@ function drawScenery(c, theme, x, y) {
 //  CONFIG: tweak balance here
 // ============================================================
 const START_GOLD = 60, START_LIVES = 20;
-const BASE_REFUND = 0.7;
+const BASE_REFUND = 0.75;
 const HP_GROWTH = 1.16;          // enemy HP multiplier per wave
 const DIFF_HP = 0.2;             // +20% enemy HP per difficulty level above 1
 const diffStep = map => map === 3 ? 0.15 : DIFF_HP; // Earth steps up a little less, so its hardest setting stays winnable
@@ -1009,13 +1011,14 @@ const VICTORY_WAVE = 10;
 const BUILD_TIME = 15;           // seconds to build before wave 1
 // Boss brood: each time the boss drops below one of these HP fractions it spits out babies
 // (Swarm units of the boss's stage: Goo, Skitters, Probes, Nanites)
-const TANK_SPLIT = { firstWave: 6, at: [0.75, 0.5, 0.25], count: 2, deathCount: 3, hpFrac: 0.5, shieldTime: 1 };
-const BROOD = { at: [0.8, 0.6, 0.4, 0.2], count: 4, mothershipCount: 8, hpFrac: 0.6, flyerHpFrac: 0.25, shieldTime: 3 };
-const broodThresholds = config => config.at.map(f => f * 100).join("/") + "% HP";
+const BROOD_BURSTS = [{ hp: 0.75, count: 2 }, { hp: 0.5, count: 4 }, { hp: 0.25, count: 6 }];
+const TANK_SPLIT = { firstWave: 6, deathCount: 3, hpFrac: 0.5, shieldTime: 1 };
+const BROOD = { hpFrac: 0.6, flyerHpFrac: 0.25, shieldTime: 3 };
+const broodSchedule = () => BROOD_BURSTS.map(({ hp, count }) => `${count} at ${hp * 100}% HP`).join(", ");
 
 const TOWERS = {
   people: {
-    name: "People", levelNames: ["Spearmen", "Rifle Squad", "Exo Troopers"], color: "#7ee8a0", cost: 8, ground: true, air: true,
+    name: "People", levelNames: ["Spearmen", "Rifle Squad", "Exo Troopers"], color: "#7ee8a0", cost: 8, ground: true, air: false,
     best: "Maze support", desc: "Cheap blockers that extend the route. Start with Bolt for damage, then add People to shape the maze.",
     levels: [
       { dmg: 5, range: 2.0, reload: 0.714 },
@@ -1185,6 +1188,12 @@ function unlockAudio() {
       audioGain = audio.createGain();
       audioGain.gain.value = 0.38;
       audioGain.connect(audio.destination);
+      audio.onstatechange = () => {
+        for (const id of ["bootSound", "menuSound"]) {
+          const button = $(id);
+          if (button) button.textContent = soundLabel();
+        }
+      };
     }
     if (audio.state !== "running") audio.resume().catch(() => {});
   } catch { /* Sound is optional on browsers without a working audio device. */ }
@@ -1246,7 +1255,11 @@ function syncSound() {
   if (audioGain) audioGain.gain.setTargetAtTime(P.sound ? 0.38 : 0, audio.currentTime, 0.02);
 }
 
-const soundLabel = () => P.sound ? "Sound: On" : "Sound: Off";
+const soundLabel = () => !P.sound ? "Sound: Off" : audio?.state === "running" ? "Sound: On" : "Enable sound";
+function useSplashSoundButton() {
+  if (P.sound && audio?.state !== "running") unlockAudio();
+  else toggleSound();
+}
 function toggleSound() {
   P.sound = !P.sound;
   saveProfile();
@@ -1345,7 +1358,7 @@ function saveRun() {
   lsSet(KEY_RUN, {
     map: S.map, variant: S.variant, rows: ROWS, diff: S.diff, gold: S.gold, lives: S.lives, wave: S.wave, won: S.won,
     endless: S.endless, endlessCleared: S.endlessCleared,
-    towers: S.towers.map(t => ({ type: t.type, x: t.x, y: t.y, level: t.level, spent: t.spent, fresh: t.fresh || 0 })),
+    towers: S.towers.map(t => ({ type: t.type, x: t.x, y: t.y, level: t.level, spent: t.spent })),
   });
 }
 const isClearedRun = run => run?.won && !run.endless && run.wave <= VICTORY_WAVE;
@@ -1481,7 +1494,7 @@ function canPlace(type, x, y) {
 function placeTower(type, x, y) {
   const def = TOWERS[type];
   if (S.gold < def.cost || !canPlace(type, x, y)) return false;
-  const t = { type, x, y, level: 0, cd: 0, spent: def.cost, fresh: def.cost, angle: 1.2 }; // faces the viewer until it has a target
+  const t = { type, x, y, level: 0, cd: 0, spent: def.cost, angle: 1.2 }; // faces the viewer until it has a target
   S.grid[idx(x, y)] = t;
   S.towers.push(t);
   S.gold -= def.cost;
@@ -1499,11 +1512,8 @@ function tryPlace(c) {
   return true;
 }
 
-// Gold spent since the last wave started comes back in full; older spending at the normal rate.
-const refund = t => {
-  const fresh = t.fresh || 0;
-  return fresh + Math.floor((t.spent - fresh) * BASE_REFUND);
-};
+// Refund the total paid for the tower and its upgrades, rounded down to whole gold.
+const refund = t => Math.floor(t.spent * BASE_REFUND);
 function sellTower(t) {
   S.grid[idx(t.x, t.y)] = null;
   S.towers.splice(S.towers.indexOf(t), 1);
@@ -1519,7 +1529,7 @@ function sellTower(t) {
 function upgradeTower(t) {
   const next = TOWERS[t.type].levels[t.level + 1];
   if (!next || S.gold < next.cost) return;
-  S.gold -= next.cost; t.spent += next.cost; t.fresh = (t.fresh || 0) + next.cost; t.level++;
+  S.gold -= next.cost; t.spent += next.cost; t.level++;
   t.evolveAt = S.time; // plays the upgrade flash
   floatText(t.x + 0.5, t.y + 0.3, `−${next.cost}`, "#ff8b9e");
   playSound("upgrade");
@@ -1613,7 +1623,6 @@ function startNextWave() {
     const st = ALIENS.stages[stageOf(S.wave)];
     toast(`${st.title}: ${st.sub.split(" · ")[0]}`);
   }
-  for (const t of S.towers) t.fresh = 0; // towers are now committed: normal sell rate
   const hpMul = waveHpMul(S.wave);
   const arrivals = [];
   waveGroups(S.wave).forEach((group, i) => {
@@ -1668,7 +1677,6 @@ function makeEnemy(type, wave, hpMul, portal = 0) {
 // Boss spits out babies as it loses HP
 const hasBroodShield = e => S.time < (e.shieldUntil ?? 0);
 const onSpawnTile = e => isPortalCell(Math.floor(e.x), Math.floor(e.y));
-const broodCount = stage => stage === WORLDS[WORLDS.length - 1].stage ? BROOD.mothershipCount : BROOD.count;
 
 const tankSplits = wave => wave >= TANK_SPLIT.firstWave;
 const offspringHpFraction = (type, parent) => parent === "tank" ? TANK_SPLIT.hpFrac
@@ -1700,9 +1708,8 @@ function releaseOffspring(parent, count) {
 
 function bossBrood(boss) {
   boss.brood = boss.brood || 0;
-  while (boss.brood < BROOD.at.length && boss.hp / boss.maxHp <= BROOD.at[boss.brood]) {
-    boss.brood++;
-    releaseOffspring(boss, broodCount(boss.stage));
+  while (boss.brood < BROOD_BURSTS.length && boss.hp / boss.maxHp <= BROOD_BURSTS[boss.brood].hp) {
+    releaseOffspring(boss, BROOD_BURSTS[boss.brood++].count);
     if (!S.broodSeen) { S.broodSeen = true; toast(`${enemyName("boss", boss.wave)} is spitting out babies!`); }
   }
 }
@@ -1719,21 +1726,37 @@ function spawnEnemy(s) {
 //  UPDATE
 // ============================================================
 const TANK_GAP = 1.35;
+const PORTAL_LANE_LIMIT = 3;
+
+function portalCrowded(spawn) {
+  const portal = PORTALS[spawn.portal || 0];
+  const flying = !!ENEMIES[spawn.type].flying;
+  let nearby = 0;
+  for (const e of S.enemies) {
+    if (spawn.type === "tank" && e.type === "tank" &&
+        Math.hypot(e.x - portal.spawn.x, e.y - portal.spawn.y) < TANK_GAP) return true;
+    if (e.flying !== flying) continue;
+    const x = Math.floor(e.x), y = Math.floor(e.y);
+    const atEntry = x === portal.entry.x && y === portal.entry.y;
+    const approaching = x === Math.floor(portal.spawn.x) && y === Math.floor(portal.spawn.y);
+    if ((atEntry || approaching) && ++nearby >= PORTAL_LANE_LIMIT) return true;
+  }
+  return false;
+}
 
 function update(dt) {
   S.time += dt;
   if (S.baseHit > 0) S.baseHit -= dt;
-  const delayedTanks = [];
+  const delayedSpawns = [];
   while (S.spawnQ.length && S.spawnQ[0].at <= S.time) {
     const spawn = S.spawnQ.shift();
-    if (spawn.type === "tank" && S.enemies.some(e =>
-      e.type === "tank" && Math.hypot(e.x - PORTALS[spawn.portal || 0].spawn.x, e.y - PORTALS[spawn.portal || 0].spawn.y) < TANK_GAP)) {
+    if (portalCrowded(spawn)) {
       spawn.at = S.time + 0.15;
-      delayedTanks.push(spawn);
+      delayedSpawns.push(spawn);
     } else spawnEnemy(spawn);
   }
-  if (delayedTanks.length) {
-    S.spawnQ.push(...delayedTanks);
+  if (delayedSpawns.length) {
+    S.spawnQ.push(...delayedSpawns);
     S.spawnQ.sort((a, b) => a.at - b.at);
   }
 
@@ -1926,9 +1949,8 @@ function damage(e, amt) {
   const splits = e.type === "tank" && tankSplits(e.wave);
   if (splits && S.enemies.includes(e)) {
     e.brood ??= 0;
-    while (e.brood < TANK_SPLIT.at.length && e.hp / e.maxHp <= TANK_SPLIT.at[e.brood]) {
-      e.brood++;
-      releaseOffspring(e, TANK_SPLIT.count);
+    while (e.brood < BROOD_BURSTS.length && e.hp / e.maxHp <= BROOD_BURSTS[e.brood].hp) {
+      releaseOffspring(e, BROOD_BURSTS[e.brood++].count);
     }
   }
   if (e.hp > 0) return;
@@ -1969,6 +1991,7 @@ function checkWaveClear() {
   const alive = new Set();
   for (const e of S.enemies) alive.add(e.wave);
   for (const s of S.spawnQ) alive.add(s.wave);
+  const pending = S.pendingClear.length;
   S.pendingClear = S.pendingClear.filter(w => {
     if (alive.has(w)) return true;
     const bonus = clearBonus(w);
@@ -1978,7 +2001,8 @@ function checkWaveClear() {
     return false;
   });
   if (S.wave >= VICTORY_WAVE && !S.won && !S.pendingClear.length) victory();
-  updateHud();
+  if (S.pendingClear.length !== pending) updateHud();
+  else updateWaveBar();
 }
 
 function recordEndlessClear(wave) {
@@ -2745,13 +2769,17 @@ const alienSprite = document.createElement("canvas");
 alienSprite.width = alienSprite.height = 96;
 const alienPaint = alienSprite.getContext("2d");
 
+// On crowded boards, reuse a few animation poses across aliens of the same type.
+const crowdSprites = new Map();
+const crowdCanvases = [];
+let crowdFrame = -1;
+
 function drawEnemy(e) {
   const s = e.def.size, x = ex(e), y = ey(e);
   const face = e.face < 0 ? -1 : 1, tank = e.type === "tank";
   const t = S.time + (e.seed || 0);
   const hit = Math.max(0, 1 - (S.time - (e.hitAt ?? -Infinity)) / 0.32);
   const span = Math.max(1.2, s * 4), half = span / 2;
-  const scale = alienSprite.width / span;
 
   // Keep the shadow on the ground while the sprite moves above it.
   ctx.fillStyle = "rgba(3,7,16,0.48)";
@@ -2759,33 +2787,31 @@ function drawEnemy(e) {
   ctx.ellipse(x, y + s * 0.8, s, s * 0.29, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  alienPaint.setTransform(scale, 0, 0, scale, alienSprite.width / 2, alienSprite.height / 2);
-  alienPaint.clearRect(-half, -half, span, span);
-  alienPaint.save();
-  const step = Math.sin(t * (tank ? 3.5 : 7));
-  const lift = e.flying ? 0.045 : Math.max(0, step) * (tank ? 0.022 : 0.052);
-  alienPaint.translate(0, -lift);
-  alienPaint.rotate(e.flying ? Math.sin(t * 2.6) * 0.14 : step * 0.035 - (tank ? face * hit * 0.15 : 0));
-  const ripple = e.type === "swarm" ? step * 0.09 : 0;
-  alienPaint.scale(face * (1 + ripple), 1 - ripple);
-  ALIENS.draw(alienPaint, e.type, e.stage || 0, t, s, scale, false, hit);
-  alienPaint.restore();
-
-  // Tint only the alien's silhouette, without coloring the tile around it.
-  alienPaint.globalCompositeOperation = "source-atop";
-  alienPaint.fillStyle = "rgba(204,231,255,0.08)";
-  alienPaint.fillRect(-half, -half, span, span);
-  if (hit > 0) {
-    alienPaint.fillStyle = `rgba(255,80,107,${hit * 0.46})`;
-    alienPaint.fillRect(-half, -half, span, span);
+  let sprite = alienSprite;
+  if (S.enemies.length >= 24 && hit === 0) {
+    const frame = Math.floor(S.time * 15);
+    if (crowdFrame !== frame) {
+      crowdFrame = frame;
+      crowdSprites.clear();
+    }
+    const pose = Math.floor((e.seed || 0) % 3);
+    const key = `${e.type}:${e.stage}:${s}:${face}:${pose}`;
+    sprite = crowdSprites.get(key);
+    if (!sprite) {
+      const slot = crowdSprites.size;
+      sprite = crowdCanvases[slot];
+      if (!sprite) {
+        sprite = document.createElement("canvas");
+        sprite.width = sprite.height = alienSprite.width;
+        crowdCanvases.push(sprite);
+      }
+      paintAlien(sprite, sprite.getContext("2d"), e, frame / 15 + pose, s, span, face, tank, hit);
+      crowdSprites.set(key, sprite);
+    }
+  } else {
+    paintAlien(sprite, alienPaint, e, t, s, span, face, tank, hit);
   }
-  alienPaint.globalCompositeOperation = "source-over";
-
-  ctx.save();
-  ctx.shadowColor = "#070b13";
-  ctx.shadowOffsetY = DPR;
-  ctx.drawImage(alienSprite, x - half, y - half, span, span);
-  ctx.restore();
+  ctx.drawImage(sprite, x - half, y - half, span, span);
   if (hasBroodShield(e)) drawBroodShield(ctx, x, y, s);
   if (e.slowT > 0) { // frost ring at its feet
     ctx.strokeStyle = "rgba(155,231,255,0.9)"; ctx.lineWidth = 0.05; ctx.setLineDash([0.12, 0.08]);
@@ -2797,6 +2823,31 @@ function drawEnemy(e) {
     ctx.fillStyle = e.hp / e.maxHp > 0.4 ? "#5dff9b" : "#ff5d7a";
     ctx.fillRect(x - w / 2, by, w * Math.max(0, e.hp / e.maxHp), 0.08);
   }
+}
+function paintAlien(sprite, paint, e, t, s, span, face, tank, hit) {
+  const half = span / 2, scale = sprite.width / span;
+  paint.setTransform(scale, 0, 0, scale, sprite.width / 2, sprite.height / 2);
+  paint.clearRect(-half, -half, span, span);
+  paint.save();
+  const step = Math.sin(t * (tank ? 3.5 : 7));
+  const lift = e.flying ? 0.045 : Math.max(0, step) * (tank ? 0.022 : 0.052);
+  paint.translate(0, -lift);
+  paint.rotate(e.flying ? Math.sin(t * 2.6) * 0.14 : step * 0.035 - (tank ? face * hit * 0.15 : 0));
+  const ripple = e.type === "swarm" ? step * 0.09 : 0;
+  paint.scale(face * (1 + ripple), 1 - ripple);
+  ALIENS.draw(paint, e.type, e.stage || 0, t, s, scale, false, hit);
+  paint.restore();
+
+  // Tint only the alien's silhouette, without coloring the tile around it.
+  paint.globalCompositeOperation = "source-atop";
+  paint.fillStyle = "rgba(204,231,255,0.08)";
+  paint.fillRect(-half, -half, span, span);
+  if (hit > 0) {
+    paint.fillStyle = `rgba(255,80,107,${hit * 0.46})`;
+    paint.fillRect(-half, -half, span, span);
+  }
+  paint.globalCompositeOperation = "source-over";
+
 }
 function hexToRgba(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
@@ -4278,24 +4329,34 @@ for (const [key, def] of Object.entries(TOWERS)) {
   b.className = "tbtn"; b.dataset.type = key;
   b.innerHTML = `<img class="ic" alt=""><span class="nm">${def.name}</span><span class="dp"></span><span class="cs">◆${def.cost}</span>`;
   b.addEventListener("pointerdown", ev => {
-    if (S.over || S.menu) return;
-    drag = { type: key, moved: false, wasSel: S.buildType === key, touch: ev.pointerType !== "mouse" };
+    if (S.over || S.menu || drag || ev.button !== 0) return;
+    drag = { pointerId: ev.pointerId, x: ev.clientX, y: ev.clientY, moved: false,
+      wasSel: S.buildType === key, lift: ev.pointerType === "mouse" ? 0 : 1.2 };
     b.setPointerCapture(ev.pointerId);
     selectBuild(key);
   });
   b.addEventListener("pointermove", ev => {
-    if (!drag) return;
+    if (drag?.pointerId !== ev.pointerId) return;
+    if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 8) return;
+    drag.moved = true;
     // on touch, lift the ghost above the finger so you can see it
-    const c = cellFromPoint(ev.clientX, ev.clientY, drag.touch ? 1.2 : 0);
-    if (inGrid(c.x, c.y)) { drag.moved = true; S.ghost = c; } else S.ghost = null;
+    const c = cellFromPoint(ev.clientX, ev.clientY, drag.lift);
+    S.ghost = inGrid(c.x, c.y) ? c : null;
   });
-  b.addEventListener("pointerup", () => {
-    if (!drag) return;
+  b.addEventListener("pointerup", ev => {
+    if (drag?.pointerId !== ev.pointerId) return;
     const d = drag; drag = null;
-    if (d.moved) { if (S.ghost) tryPlace(S.ghost); S.ghost = null; }
+    if (d.moved) {
+      const finger = cellFromPoint(ev.clientX, ev.clientY);
+      const target = cellFromPoint(ev.clientX, ev.clientY, d.lift);
+      if (inGrid(finger.x, finger.y) && inGrid(target.x, target.y)) tryPlace(target);
+      S.ghost = null;
+    }
     else if (d.wasSel) selectBuild(null);
   });
-  b.addEventListener("pointercancel", () => { drag = null; S.ghost = null; });
+  b.addEventListener("lostpointercapture", ev => {
+    if (drag?.pointerId === ev.pointerId) { drag = null; S.ghost = null; }
+  });
   buildEl.appendChild(b);
 }
 
@@ -4330,17 +4391,14 @@ function refreshBar() {
     $("upBtn").innerHTML = !next ? "Max<br>level" : canUp ? `Upgrade<br>−${next.cost}◆` : `Upgrade<br><span class="short">−${next.cost}◆</span>`;
     $("upBtn").disabled = !canUp;
     $("upBtn").classList.toggle("can", canUp); // highlight when affordable
-    const full = refund(t) === t.spent;
     $("sellBtn").innerHTML = `Sell<br>+${refund(t)}◆`;
-    $("sellBtn").classList.toggle("full", full);
     let up;
     if (next) {
       const npw = power(t.type, t.level + 1);
       up = `Upgrade to <b>${def.levelNames[t.level + 1]}</b> for ${next.cost}◆: <b>${fmt(npw)} ${unit}</b> <span class="up">(+${fmt(npw - pw)})</span> · ${speedText(t.type, t.level + 1)}`;
     } else up = "Fully upgraded.";
     hintEl.innerHTML = `Now: <b>${fmt(pw)} ${unit}</b>${def.airMul ? ` (${fmt(pw * def.airMul)} vs flyers)` : ""} · ${speedText(t.type, t.level)}` +
-      `${def.walkable ? "" : ` · range ${fmt(st.range)}`}<br>${up}` +
-      (full ? `<br><span class="val">Full refund until the next wave starts.</span>` : "");
+      `${def.walkable ? "" : ` · range ${fmt(st.range)}`}<br>${up}`;
   } else {
     buildEl.style.display = "grid"; infoEl.style.display = "none";
     if (S.buildType) {
@@ -4361,7 +4419,7 @@ hintEl.addEventListener("click", ev => {
   if (ev.target.closest("[data-guide]") && !S.menu && !S.over) guideMenu("resume");
 });
 
-let waveBarKey = "";
+let waveBarKey = "", wavePreviewKey = "";
 const hpOf = (type, n) => Math.round(ENEMIES[type].hp * waveHpMul(n));
 const num = n => Math.round(n).toLocaleString();
 function waveChips(n, withHits) {
@@ -4386,12 +4444,15 @@ function updateWaveBar() {
   const nw = S.wave + 1;
   $("waveWorld").textContent = `${S.map + 1} · ${WORLDS[S.map].name}`;
   $("waveNow").textContent = `Wave ${of(idle ? nw : S.wave)}${idle ? "" : ` · ${left} left`}`;
-  $("nextEnemyChips").innerHTML = waveChips(nw);
-  // Middle-of-board start card
-  $("scChips").innerHTML = waveChips(nw, true);
+  const previewKey = [S.map, S.diff, nw, Object.keys(ENEMY_ICONS).length].join("|");
+  if (previewKey !== wavePreviewKey) {
+    wavePreviewKey = previewKey;
+    $("nextEnemyChips").innerHTML = waveChips(nw);
+    $("scChips").innerHTML = waveChips(nw, true);
+  }
   $("scHint").textContent = S.wave === 0
     ? `Press Start, then you have ${BUILD_TIME} seconds to build.`
-    : waveGroups(nw).some(g => g.type === "boss") ? `Boss bursts at ${broodThresholds(BROOD)} include a Flyer.`
+    : waveGroups(nw).some(g => g.type === "boss") ? `Boss bursts: ${broodSchedule()}. Each includes a Flyer.`
     : tankSplits(nw) && waveGroups(nw).some(g => g.type === "tank") ? tankSplitText(nw) + "."
     : "Need more defense? Tap a tower below to build." + (P.autoStart ? "" : " Auto-start is off (Pause menu).");
   const nb = $("nextBtn");
@@ -4451,15 +4512,15 @@ function drawStartCardPortraits(now) {
 // Enemies of the wave(s) in progress, grouped by wave + type: on the field, still to spawn, HP left
 const offspringSource = parent => parent === "tank" ? "from a tank" : "from the boss";
 const babyHp = (type, wave, parent) => Math.max(1, Math.round(ENEMIES[type].hp * waveHpMul(wave) * offspringHpFraction(type, parent)));
-const tankSplitText = wave => `Releases ${TANK_SPLIT.count}× ${enemyName("swarm", wave)} at ${broodThresholds(TANK_SPLIT)} and ${TANK_SPLIT.deathCount} more on defeat`;
+const tankSplitText = wave => `Releases ${enemyName("swarm", wave)}: ${broodSchedule()} and ${TANK_SPLIT.deathCount} more on defeat`;
 function broodRow(type, wave) {
   const style = 'class="erow" style="color:#ff8bd0;font-weight:700"';
   if (type === "tank" && tankSplits(wave)) {
     return `<div ${style}>${tankSplitText(wave)} · ${num(babyHp("swarm", wave, "tank"))} HP each · shielded for ${TANK_SPLIT.shieldTime}s</div>`;
   }
   if (type !== "boss") return "";
-  return `<div ${style}>Spawns ${broodCount(stageOf(wave)) - 1}× ${enemyName("swarm", wave)} (${num(babyHp("swarm", wave, "boss"))} HP) + ` +
-    `1× ${enemyName("flying", wave)} (${num(babyHp("flying", wave, "boss"))} HP) at ${broodThresholds(BROOD)} · shielded for ${BROOD.shieldTime}s</div>`;
+  return `<div ${style}>Spawns ${broodSchedule()}: ${enemyName("swarm", wave)} (${num(babyHp("swarm", wave, "boss"))} HP) + ` +
+    `1× ${enemyName("flying", wave)} (${num(babyHp("flying", wave, "boss"))} HP) per burst · shielded for ${BROOD.shieldTime}s</div>`;
 }
 
 // Steps the closest matching enemy still has to go before it reaches your base
@@ -5096,7 +5157,7 @@ const TUTORIAL = [
     } },
   { kicker: "How to play · 3 of 6", title: "Pick the right tower",
     body: ["Compare tower stats as the preview cycles through upgrade levels.", "Each enemy card shows the best tower to use against it.",
-      "<b style='color:#7ee8a0'>People</b> are cheap walls that fight a little. <b style='color:#4fd1ff'>Bolt</b> is the all-rounder. <b style='color:#9be7ff'>Frost</b> slows everything near its target. <b style='color:#ffa45d'>Cannon</b> blasts groups but can't hit flyers. <b style='color:#c78bff'>Arc</b> does double damage to flyers, which fly straight over your maze."],
+      "<b style='color:#7ee8a0'>People</b> are cheap walls that attack ground aliens. <b style='color:#4fd1ff'>Bolt</b> is the all-rounder. <b style='color:#9be7ff'>Frost</b> slows everything near its target. <b style='color:#ffa45d'>Cannon</b> blasts groups but can't hit flyers. <b style='color:#c78bff'>Arc</b> does double damage to flyers, which fly straight over your maze."],
     draw(c, t, W, H) {
       c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
       const types = Object.keys(TOWERS), cs = Math.min(W / (types.length * 1.24), H * 0.22), y0 = H * 0.12;
@@ -5123,7 +5184,7 @@ const TUTORIAL = [
     } },
   { kicker: "How to play · 4 of 6", title: "Upgrade and sell towers",
     body: ["Tap a tower to open its panel, then tap <b style='color:#5dff9b'>Upgrade</b> (it glows green when you can afford it). Each upgrade evolves the tower: salvaged scrap, then military hardware, then quantum tech.",
-      `<b style='color:#ffd25d'>Sell</b> refunds <b>${Math.round(BASE_REFUND * 100)}%</b> of committed gold. Gold spent since the last wave started is refunded in full until you send the next wave.`],
+      `<b style='color:#ffd25d'>Sell</b> refunds <b>${Math.round(BASE_REFUND * 100)}%</b> of what you paid for the tower and its upgrades, rounded down to whole gold.`],
     draw(c, t, W, H) {
       c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
       const cs = Math.min(W * 0.22, H * 0.13), b = { cs, ox: W / 2 - cs * 1.5, oy: H * 0.06 };
@@ -5197,7 +5258,7 @@ const TUTORIAL = [
       "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
       `Higher difficulties make every alien tougher. Difficulty 1 is a little gentler, so it's a good place to learn each world. From Difficulty ${SECOND_PORTAL_DIFF} on, a second portal opens on the top row and the aliens take turns using both. Your maze must leave a route from each portal.`,
       `From world 2 on you get ${CAMPAIGN_RETRIES} retries per world. Lose after that and you fall back to replay the world before it.`,
-      `The wave ${VICTORY_WAVE} boss releases swarm aliens and a Flyer at ${broodThresholds(BROOD)}. They’re shielded for ${BROOD.shieldTime}s. From wave ${TANK_SPLIT.firstWave} on, tanks release ${TANK_SPLIT.count} swarm aliens at ${broodThresholds(TANK_SPLIT)} and ${TANK_SPLIT.deathCount} more on defeat. They’re shielded for ${TANK_SPLIT.shieldTime}s.`],
+      `The wave ${VICTORY_WAVE} boss releases swarm aliens and a Flyer in each burst: ${broodSchedule()}. They’re shielded for ${BROOD.shieldTime}s. From wave ${TANK_SPLIT.firstWave} on, tanks release swarm aliens in bursts: ${broodSchedule()} and ${TANK_SPLIT.deathCount} more on defeat. They’re shielded for ${TANK_SPLIT.shieldTime}s.`],
     doneLabel: "Got it ▶",
 
     draw(c, t, W, H) {
@@ -5206,7 +5267,7 @@ const TUTORIAL = [
       const y = 1.2 + elapsed * 0.36;
       miniAlien(c, b, 2.5, y, "boss", stage, t);
       const age = elapsed - 1;
-      const count = broodCount(stage);
+      const count = BROOD_BURSTS[0].count;
       for (let k = 0; age >= 0 && k < count; k++) {
         const a = k / count * TAU2 + 0.5;
         const x = 2.5 + Math.cos(a) * (0.55 + age * 0.14);
@@ -5401,7 +5462,8 @@ const ACT = {
   waves: back => waveInfoMenu(back),
   pause: () => pauseMenu(),
   sound: back => {
-    toggleSound();
+    if (back === "main") useSplashSoundButton();
+    else toggleSound();
     if (back === "pause") pauseMenu(); else mainMenu();
   },
   auto: () => {
@@ -5698,7 +5760,7 @@ function initializeGame() {
   const bootSound = $("bootSound");
   bootSound.textContent = soundLabel();
   bootSound.addEventListener("click", () => {
-    toggleSound();
+    useSplashSoundButton();
     bootSound.textContent = soundLabel();
   });
   $("bootButton").addEventListener("click", mainMenu);
