@@ -148,8 +148,9 @@
   }
   #startCard { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; display: none;
     background: rgba(20,26,43,0.94); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px;
-    text-align: center; width: max-content; max-width: calc(100% - 32px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    text-align: center; width: min(350px, calc(100% - 32px)); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
   #startCard .sc-title { font-weight: 800; font-size: 18px; margin-bottom: 8px; }
+  #scPortraits { display: block; width: min(300px, 100%); height: 114px; margin: 0 auto 6px; }
   #startCard .chips { justify-content: center; margin-bottom: 4px; }
   #startCard .chip { font-size: 14px; padding: 4px 7px; }
   #startCard .chip img { width: 20px; height: 20px; }
@@ -298,6 +299,7 @@
   <div id="stage"><aside class="side" id="sideL"><div id="slotHud"></div><div class="sideInfo" id="sideLInfo"></div></aside><canvas id="cv"></canvas><aside class="side" id="sideR"><div class="sideInfo" id="sideRInfo" title="Tap for full wave info"></div><div id="slotBar"></div></aside>
     <div id="startCard">
       <div class="sc-title" id="scTitle"></div>
+      <canvas id="scPortraits" aria-hidden="true"></canvas>
       <div class="chips" id="scChips"></div>
       <div class="sc-sub">enemy HP · base damage if one gets through · hits to destroy it · <b style="color:var(--accent)">tap for details ›</b></div>
       <button id="startPreview" hidden>Start ▶</button>
@@ -681,6 +683,7 @@ const BASE_REFUND = 0.7;
 const HP_GROWTH = 1.16;          // enemy HP multiplier per wave
 const DIFF_HP = 0.3;             // +30% enemy HP per difficulty level above 1
 const VICTORY_WAVE = 10;
+const WAVE_PREVIEW_DEMO_TIME = 2.4;
 const BUILD_TIME = 15;           // seconds to build before wave 1
 // Boss brood: each time the boss drops below one of these HP fractions it spits out babies
 // (Swarm units of the boss's stage: Goo, Skitters, Probes, Nanites)
@@ -794,6 +797,8 @@ delete P.points; delete P.research; // left over from the removed Research Lab
 const AUTO_OPTIONS = [10, 15, 30, 0]; // seconds before the next wave starts by itself; 0 = off
 const saveProfile = () => lsSet(KEY_PROFILE, P);
 const maxDiff = m => P.unlocked[m] || 1;
+const campaignWorld = () => Math.min(WORLDS.length - 1, P.world || 0);
+const campaignComplete = () => P.campaignComplete === true || maxDiff(WORLDS.length - 1) > 1;
 
 function saveRun() {
   if (!S.started || S.over) return;
@@ -1257,11 +1262,13 @@ function victory() {
   const i = S.map, unlockedNow = maxDiff(i) <= S.diff, hasNext = i + 1 < WORLDS.length;
   if (unlockedNow) P.unlocked[i] = S.diff + 1;
   if (hasNext) P.world = Math.max(P.world || 0, i + 1);
+  else P.campaignComplete = true;
   saveProfile();
   const btns = [];
   if (hasNext) btns.push({ label: `Next: ${WORLDS[i + 1].name} ▶`, act: "nextworld", main: true });
   btns.push({ label: "Keep going (endless)", act: "endless", main: !hasNext }, { label: "Main menu", act: "menu" });
   const scenes = debriefScene(i, btns);
+  if (!hasNext) scenes[0].body.push("Campaign complete. You can now replay any world from the Campaign menu.");
   if (unlockedNow) scenes[0].body.push(`Difficulty ${S.diff + 1} unlocked for ${WORLDS[i].name}.`);
   const debrief = () => playCine(scenes, r => {
     if (r === "nextworld") ACT.nextworld(); else if (r === "endless") closeMenu(); else { S.started = false; mainMenu(); }
@@ -2779,6 +2786,7 @@ function updateWaveBar() {
 
 // Show the wave preview between waves and clear the board while the player builds.
 let startCardState = "";
+let portraitStart;
 function updateStartCard() {
   const idle = !S.enemies.length && !S.spawnQ.length;
   const preview = S.wave === 0 && S.awaitingStart;
@@ -2790,6 +2798,7 @@ function updateStartCard() {
     startCardState = state;
     const card = $("startCard");
     card.classList.toggle("show", show);
+    if (!show) portraitStart = undefined;
     $("startPreview").hidden = !preview;
     const nw = S.wave + 1;
     if (nw > 1 && stageOf(nw) !== stageOf(nw - 1)) $("scTitle").textContent = `⚠ Wave ${nw}: ${ALIENS.stages[stageOf(nw)].title}`;
@@ -2799,6 +2808,20 @@ function updateStartCard() {
   }
   if (show && P.autoStart) $("cdBar").style.width = `${Math.max(0, 100 * S.countdown / S.countdownMax)}%`;
   updateWaveBar();
+}
+
+function drawStartCardPortraits(now) {
+  if (!$("startCard").classList.contains("show")) return;
+  portraitStart ??= now;
+  const canvas = $("scPortraits"), width = canvas.clientWidth, height = canvas.clientHeight;
+  if (!width || !height) return;
+  const scale = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.round(width * scale), h = Math.round(height * scale);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const c = canvas.getContext("2d");
+  c.setTransform(scale, 0, 0, scale, 0, 0);
+  c.clearRect(0, 0, width, height);
+  drawWavePortraits(c, S.wave + 1, (now - portraitStart) / 1000, width, 0);
 }
 
 // ---- Side panels (wide screens) ----
@@ -3144,17 +3167,22 @@ function drawSplash(canvas, now) {
 }
 
 function newGameMenu() {
-  const worlds = WORLDS.map((w, i) => {
-    const locked = i > (P.world || 0);
-    return `<button class="big ${i === mSel.map ? "sel" : ""}" data-act="map" data-arg="${i}" ${locked ? "disabled" : ""}>
-      ${locked ? "🔒 " : ""}${i + 1}. ${w.name}<br><small>${locked ? `Hold ${WORLDS[i - 1].name} to unlock` : `${w.desc} · Unlocked: D${maxDiff(i)}`}</small></button>`;
-  }).join("");
+  const complete = campaignComplete();
+  if (!complete) mSel.map = campaignWorld();
+  mSel.diff = Math.min(mSel.diff, maxDiff(mSel.map));
+  const world = WORLDS[mSel.map];
+  const worlds = complete ? WORLDS.map((w, i) =>
+    `<button class="big ${i === mSel.map ? "sel" : ""}" data-act="map" data-arg="${i}">
+      ${i + 1}. ${w.name}<br><small>${w.desc} · Unlocked: D${maxDiff(i)}</small></button>`
+  ).join("") : `<h3>World ${mSel.map + 1} of ${WORLDS.length} · ${world.name}</h3>
+    <p>${world.desc}</p>`;
   const d = mSel.diff;
   openMenu(`<h2>Campaign</h2>${worlds}
     <div class="diff"><button data-act="dminus" ${d <= 1 ? "disabled" : ""}>−</button>
       <b>Difficulty ${d}</b>
       <button data-act="dplus" ${d >= maxDiff(mSel.map) ? "disabled" : ""}>+</button></div>
-    <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${(1 + DIFF_HP * (d - 1)).toFixed(1)}<br>Win to unlock the next world and D${d + 1}</p>
+    <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${(1 + DIFF_HP * (d - 1)).toFixed(1)}<br>
+      ${complete ? `Win to unlock D${d + 1} for this world.` : "Defend Earth to unlock world selection."}</p>
     <button class="big" data-act="start" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Deploy</button>
     <button class="big" data-act="main">Back</button>`);
 }
@@ -3411,6 +3439,31 @@ function miniBoard(c, W, H, cols, rows) { // returns cell size + origin, draws t
 function miniPortal(c, b, x, y, t) { const cx = b.ox + (x + 0.5) * b.cs, cy = b.oy + (y + 0.5) * b.cs; const g = c.createRadialGradient(cx, cy, 0, cx, cy, b.cs * 0.5); g.addColorStop(0, "#e9d4ff"); g.addColorStop(0.5, "#9b5cff"); g.addColorStop(1, "rgba(155,92,255,0)"); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, b.cs * 0.5, 0, TAU2); c.fill(); c.strokeStyle = "#d0b0ff"; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, b.cs * 0.25, t * 3, t * 3 + 4); c.stroke(); }
 function miniBase(c, b, x, y, hit) { const cx = b.ox + (x + 0.5) * b.cs, cy = b.oy + (y + 0.5) * b.cs, s = b.cs; c.fillStyle = hit ? "#ffffff" : "#5dff9b"; c.beginPath(); c.moveTo(cx, cy - s * 0.34); c.lineTo(cx + s * 0.3, cy - s * 0.22); c.lineTo(cx + s * 0.26, cy + s * 0.1); c.quadraticCurveTo(cx + s * 0.14, cy + s * 0.3, cx, cy + s * 0.38); c.quadraticCurveTo(cx - s * 0.14, cy + s * 0.3, cx - s * 0.26, cy + s * 0.1); c.lineTo(cx - s * 0.3, cy - s * 0.22); c.closePath(); c.fill(); }
 function miniAlien(c, b, x, y, type, stage, t, face = 1) { c.save(); c.translate(b.ox + x * b.cs, b.oy + y * b.cs); c.scale(b.cs, b.cs); if (face < 0) c.scale(-1, 1); ALIENS.draw(c, type, stage, t, ENEMIES[type].size, b.cs, true); c.restore(); }
+
+function drawWavePortraits(c, wave, elapsed, width, top) {
+  const groups = waveGroups(wave), stage = stageOf(wave);
+  const panelWidth = Math.min(width, 360);
+  const left = (width - panelWidth) / 2;
+  const slot = panelWidth / groups.length;
+  const still = splashMotion?.matches;
+  c.save();
+  c.textAlign = "center";
+  groups.forEach(({ type, n }, i) => {
+    const def = ENEMIES[type], x = left + slot * (i + 0.5);
+    const entry = still ? 1 : Math.max(0, Math.min(1, (elapsed - i * 0.15) / 0.35));
+    const lift = (1 - entry) ** 2 * 10, radius = Math.min(30, slot * 0.29);
+    const portraitY = top + 36 + lift;
+    c.fillStyle = hexToRgba(def.color, 0.14);
+    c.beginPath(); c.arc(x, portraitY, radius, 0, Math.PI * 2); c.fill();
+    const board = { ox: x, oy: portraitY, cs: radius * 0.53 / def.size };
+    miniAlien(c, board, 0, 0, type, stage, still ? 0 : elapsed);
+    c.fillStyle = "#e6ecff"; c.font = "800 14px system-ui";
+    c.fillText(enemyName(type, wave), x, top + 87, slot - 6);
+    c.fillStyle = def.color; c.font = "700 12px system-ui";
+    c.fillText(`${n}× · ${num(hpOf(type, wave))} HP each`, x, top + 105, slot - 6);
+  });
+  c.restore();
+}
 function miniTower(c, b, x, y, type, level, st, evo = -1) { c.save(); c.translate(b.ox + x * b.cs, b.oy + y * b.cs); c.scale(b.cs, b.cs); TOWER_ART.draw(c, type, level, st, b.cs / 150, evo); c.restore(); }
 function miniBfs(cols, rows, blocked, exit) {
   const d = new Int32Array(cols * rows).fill(-1), q = [exit[1] * cols + exit[0]]; d[q[0]] = 0;
@@ -3565,12 +3618,21 @@ const TUTORIAL = [
     } },
   { kicker: "How to play · 6 of 6", title: "Waves and bosses",
     body: [`After deploying, review the Wave 1 preview and press <b>Start</b> for ${BUILD_TIME} seconds to build. The top bar shows the countdown and <b>Send Now</b>.`,
-      "From wave 2 on, alien groups arrive together. Start the next wave from the top bar or let auto-start launch it. You can change auto-start in the pause menu.",
+      "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
       `Each world’s boss appears on wave ${VICTORY_WAVE}. It spawns hatchlings as it takes damage, and they keep moving under a ${BROOD.shieldTime}-second shield.`],
     doneLabel: "Got it ▶",
     draw(c, t, W, H) {
+      const sceneTime = t % (WAVE_PREVIEW_DEMO_TIME + BROOD.shieldTime + 3);
+      if (sceneTime < WAVE_PREVIEW_DEMO_TIME) {
+        c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
+        const top = Math.max(60, H * 0.12);
+        c.fillStyle = "#78dcff"; c.textAlign = "center"; c.font = "800 15px system-ui";
+        c.fillText("Wave 2 preview", W / 2, top);
+        drawWavePortraits(c, 2, sceneTime, W, top + 14);
+        return;
+      }
       const b = miniBoard(c, W, H, 5, 6); miniPortal(c, b, 2, 0, t);
-      const stage = stageOf(VICTORY_WAVE), elapsed = t % (BROOD.shieldTime + 3);
+      const stage = stageOf(VICTORY_WAVE), elapsed = sceneTime - WAVE_PREVIEW_DEMO_TIME;
       const y = 1.2 + elapsed * 0.36;
       miniAlien(c, b, 2.5, y, "boss", stage, t);
       const age = elapsed - 1;
@@ -3636,7 +3698,7 @@ function autoFullscreen() { if (isTouch()) enterFullscreen(); } // phones/tablet
 
 const ACT = {
   main: () => mainMenu(),
-  newmenu: () => { mSel.map = Math.min(mSel.map, P.world || 0); mSel.diff = Math.min(mSel.diff, maxDiff(mSel.map)); newGameMenu(); },
+  newmenu: () => newGameMenu(),
   guide: back => guideMenu(back),
   waves: back => waveInfoMenu(back),
   pause: () => pauseMenu(),
@@ -3649,10 +3711,22 @@ const ACT = {
     }
     pauseMenu();
   },
-  map: a => { if (+a > (P.world || 0)) return; mSel.map = +a; mSel.diff = maxDiff(mSel.map); newGameMenu(); },
+  map: a => { if (!campaignComplete() || !WORLDS[+a]) return; mSel.map = +a; mSel.diff = maxDiff(mSel.map); newGameMenu(); },
   dminus: () => { mSel.diff = Math.max(1, mSel.diff - 1); newGameMenu(); },
   dplus: () => { mSel.diff = Math.min(maxDiff(mSel.map), mSel.diff + 1); newGameMenu(); },
-  start: () => { autoFullscreen(); lsDel(KEY_RUN); newGame(mSel.map, mSel.diff, true); playCine(briefingScene(mSel.map), () => closeMenu()); },
+  start: () => {
+    const map = campaignComplete() ? mSel.map : campaignWorld();
+    const diff = Math.min(mSel.diff, maxDiff(map));
+    autoFullscreen();
+    lsDel(KEY_RUN);
+    newGame(map, diff, true);
+    const briefing = briefingScene(map);
+    const scenes = map === 0 ? [...INTRO, ...briefing] : briefing;
+    playCine(scenes, () => {
+      if (map === 0) { P.seenIntro = true; saveProfile(); }
+      closeMenu();
+    });
+  },
   nextworld: () => {
     const n = Math.min(WORLDS.length - 1, S.map + 1);
     mSel.map = n; mSel.diff = Math.min(S.diff, maxDiff(n));
@@ -3682,6 +3756,7 @@ function frame(now) {
   tickCountdown(dt);
   if (S.selEnemy && ++enemyInfoTick % 8 === 0) refreshBar(); // live HP readout
   updateStartCard();
+  drawStartCardPortraits(now);
   updateSides();
   const overlay = $("overlay");
   if (overlay.style.display === "flex" && overlay.classList.contains("splash")) drawSplash($("splashCv"), now);
