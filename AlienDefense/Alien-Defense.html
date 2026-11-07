@@ -1002,7 +1002,9 @@ const HP_GROWTH = 1.16;          // enemy HP multiplier per wave
 const DIFF_HP = 0.2;             // +20% enemy HP per difficulty level above 1
 const diffStep = map => map === 3 ? 0.15 : DIFF_HP; // Earth steps up a little less, so its hardest setting stays winnable
 const DIFF1_HP = 0.92;           // Difficulty 1 is a touch gentler; bad layouts still lose
-const diffMul = (map, d) => d === 1 ? DIFF1_HP : 1 + diffStep(map) * (d - 1);
+// The second portal (Difficulty 2+) hits Jupiter's short zig-zags and Earth's hardest setting hardest, so they get some alien HP back.
+const PORTAL2_HP = (map, d) => map === 1 && d >= 2 ? 0.9 : map === 3 && d === 2 ? 0.85 : map === 3 && d >= 3 ? 0.95 : 1; // Earth D2 was 34%, now ~58% like the other worlds
+const diffMul = (map, d) => (d === 1 ? DIFF1_HP : 1 + diffStep(map) * (d - 1)) * PORTAL2_HP(map, d);
 const VICTORY_WAVE = 10;
 const BUILD_TIME = 15;           // seconds to build before wave 1
 // Boss brood: each time the boss drops below one of these HP fractions it spits out babies
@@ -1043,7 +1045,7 @@ const TOWERS = {
     name: "Cannon", levelNames: ["Trebuchet", "Howitzer", "Plasma Bombardier"], color: "#ffa45d", cost: 30, ground: true, air: false,
     best: "Ground groups", desc: "Big slow hits: heavy damage per blast, but it takes time to reload. Can't hit flyers.",
     levels: [
-      { dmg: 20, range: 3.0, reload: 2.0, splash: 0.9 },
+      { dmg: 15, range: 3.0, reload: 2.0, splash: 0.9 },
       { dmg: 32, range: 3.3, reload: 2.1, splash: 1.05, cost: 35 },
       { dmg: 70, range: 3.6, reload: 2.25, splash: 1.2, cost: 70 },
     ],
@@ -1376,10 +1378,16 @@ const inGrid = (x, y) => x >= 0 && y >= 0 && x < COLS && y < ROWS;
 const inBounds = e => e.x > 0 && e.y > 0 && e.x < COLS && e.y < ROWS;
 
 let ENTRY, EXIT, SPAWN, SDIR, ROCKS, SCENERY;
+let PORTALS = []; // every alien portal on the board: { entry, spawn, sdir }; PORTALS[0] is ENTRY/SPAWN/SDIR
+// Difficulty 2+ opens a second portal on the top row (column per layout, picked by the zig-zag check on the 14-row boards).
+const SECOND_PORTAL = [[0, 5, 4, 2, 6], [4, 5, 0, 4, 0], [5, 3, 4, 4, 5], [4, 4, 5, 6, 3]];
+const SECOND_PORTAL_DIFF = 2;
+const portalDir = (p, rows) => p.y === 0 ? [0, -1] : p.y === rows - 1 ? [0, 1] : p.x === 0 ? [-1, 0] : [1, 0];
+const isPortalCell = (x, y) => PORTALS.some(p => p.entry.x === x && p.entry.y === y);
 // Empty interior rows chosen by the Stage Designs zig-zag comparison.
 const CAMPAIGN_ROW_CUTS = [[1, 1, 12, 1, 1], [12, 12, 1, 1, 1], [1, 1, 1, 2, 1], [12, 2, 1, 12, 1]];
 
-function setMap(i, variant, rows) {
+function setMap(i, variant, rows, diff = 1) {
   let m = variantMap(i, variant);
   ROWS = rows;
   if (rows === BOARD_ROWS) {
@@ -1393,11 +1401,17 @@ function setMap(i, variant, rows) {
   }
   ENTRY = m.entry; EXIT = m.exit;
   SCENERY = m.scenery;
-  SDIR = ENTRY.y === 0 ? [0, -1] : ENTRY.y === ROWS - 1 ? [0, 1] : ENTRY.x === 0 ? [-1, 0] : [1, 0];
+  SDIR = portalDir(ENTRY, ROWS);
   SPAWN = { x: ENTRY.x + 0.5 + SDIR[0], y: ENTRY.y + 0.5 + SDIR[1] };
   ROCKS = new Uint8Array(COLS * ROWS);
   for (const [x, y] of m.rocks) ROCKS[idx(x, y)] = 1;
   for (const [x, y] of m.hazards || []) ROCKS[idx(x, y)] = 2; // radiation belts etc.
+  PORTALS = [{ entry: ENTRY, spawn: SPAWN, sdir: SDIR }];
+  const col2 = SECOND_PORTAL[i]?.[variant - firstCurrentVariant(i)];
+  if (diff >= SECOND_PORTAL_DIFF && col2 != null && !ROCKS[idx(col2, 0)] && !(EXIT.x === col2 && EXIT.y === 0) && col2 !== ENTRY.x) {
+    const entry = { x: col2, y: 0 }, sdir = portalDir(entry, ROWS);
+    PORTALS.push({ entry, sdir, spawn: { x: entry.x + 0.5 + sdir[0], y: entry.y + 0.5 + sdir[1] } });
+  }
   groundCache.key = "";
 }
 
@@ -1406,7 +1420,7 @@ const OORT_STARTING_SALVAGE = { "Ice Shelf": 8, "Comet Trail": 12 };
 
 let S; // game state
 function newGame(map, diff, started, variant = started ? firstCurrentVariant(map) + Math.floor(Math.random() * MAP_VARIANTS) : 0, rows = BOARD_ROWS) {
-  setMap(map, variant, rows);
+  setMap(map, variant, rows, diff);
   const layout = CAMPAIGN_LAYOUTS[map][variant - firstCurrentVariant(map)];
   const startingSalvage = map === 0 ? OORT_STARTING_SALVAGE[layout?.name] ?? 0 : 0;
   S = {
@@ -1418,7 +1432,7 @@ function newGame(map, diff, started, variant = started ? firstCurrentVariant(map
     grid: new Array(COLS * ROWS).fill(null),
     towers: [], enemies: [], shots: [], fx: [], spawnQ: [], pendingClear: [],
     dist: null, speed: 1, over: false, won: false, endless: false, endlessCleared: 0, menu: false,
-    buildType: null, selected: null, ghost: null, time: 0,
+    buildType: null, selected: null, ghost: null, time: 0, portalFlare: [],
   };
   S.dist = computeDist(-1);
   waveBarKey = "";
@@ -1449,7 +1463,7 @@ function computeDist(extraBlock) {
 
 function canPlace(type, x, y) {
   if (!inGrid(x, y)) return false;
-  if ((x === ENTRY.x && y === ENTRY.y) || (x === EXIT.x && y === EXIT.y)) return false;
+  if (isPortalCell(x, y) || (x === EXIT.x && y === EXIT.y)) return false;
   const i = idx(x, y);
   if (ROCKS[i] || S.grid[i]) return false;
   // Every piece, Mines included, must leave enemies another way through.
@@ -1459,7 +1473,7 @@ function canPlace(type, x, y) {
     if (inBounds(e) && Math.floor(e.x) === x && Math.floor(e.y) === y) return false;
   }
   const d = computeDist(i);
-  if (d[idx(ENTRY.x, ENTRY.y)] === -1) return false;
+  if (PORTALS.some(p => d[idx(p.entry.x, p.entry.y)] === -1)) return false; // every portal keeps a route
   for (const e of S.enemies) if (!e.flying && d[idx(e.tx, e.ty)] === -1) return false;
   return true;
 }
@@ -1538,7 +1552,7 @@ const OORT_WAVES = {
   1: { groups: [["normal", 15, 0.85]] },
   2: { groups: [["normal", 10, 0.85], ["fast", 5, 1.1]] },
   5: { hp: 1.25, groups: [["flying", 10, 0.65], ["swarm", 16, 0.35], ["fast", 3, 0.9]] },
-  6: { hp: 1.45, groups: [["tank", 5, 2.4], ["fast", 11, 0.68]] },
+  6: { hp: 1.45, groups: [["tank", 3, 2.4], ["fast", 11, 0.68]] },
   7: { hp: 1.30, groups: [["normal", 10, 0.65], ["flying", 10, 0.55], ["swarm", 16, 0.34], ["tank", 3, 2.8]] },
   8: { hp: 1.30, groups: [["tank", 2, 2.8], ["swarm", 26, 0.3], ["flying", 12, 0.6], ["fast", 8, 0.55]] },
   9: { hp: 1.30, groups: [["fast", 18, 0.36], ["flying", 13, 0.5], ["normal", 12, 0.5], ["swarm", 16, 0.32]] },
@@ -1579,14 +1593,15 @@ function clearBonus(w) {
   return 8 + 2 * (w + WORLDS[S.map].hpOffset) + openingGold;
 }
 const MID_CAMPAIGN_HP = [1, 1.15, 1.12, 1.12];
-const FINALE_HP = [0.95, 0.86, 0.83, 0.72];
+const FINALE_HP = [0.95, 0.86, 0.83, 0.66];
 function waveHpMul(n) {
   let pressure = 1;
   if (n === VICTORY_WAVE) pressure = FINALE_HP[S.map];
-  else if (S.map === 0) pressure = OORT_WAVES[n]?.hp ?? 1;
+  else if (S.map === 0) pressure = n === 6 && S.diff >= 3 ? 1.15 : OORT_WAVES[n]?.hp ?? 1; // Oort's tank wave was unwinnable on some layouts at Difficulty 3
   else if (S.map === 1 && n === 3) pressure = 1.15;
   else if (n >= 3 && n < VICTORY_WAVE) pressure = MID_CAMPAIGN_HP[S.map];
   if (S.map >= 2 && n >= 4 && n <= 8) pressure *= n >= 5 && S.map === 2 ? 1.19 : 1.08; // Mars waves 5–8 push back harder
+  if (S.map === 3 && n === 7) pressure *= 0.9; // Earth's wave 7 was a wall on the 14-row board
   return Math.pow(HP_GROWTH, n - 1 + WORLDS[S.map].hpOffset) * diffMul(S.map, S.diff) * pressure;
 }
 
@@ -1609,17 +1624,18 @@ function startNextWave() {
     const start = S.time + 0.5 + i * 1.65;
     for (let k = 0; k < group.n; k++) {
       const at = start + k * gap + Math.floor(k / packSize) * packBreak;
-      arrivals.push({ at, type: group.type, hpMul, wave: S.wave });
+      const portal = (i + Math.floor(k / packSize)) % PORTALS.length; // two portals: packs take turns
+      arrivals.push({ at, type: group.type, hpMul, wave: S.wave, portal });
     }
   });
   // Overlapping groups share the portal, so avoid simultaneous arrivals.
   arrivals.sort((a, b) => a.at - b.at);
-  let nextArrival = S.time, nextFlyer = S.time;
+  const nextArrival = PORTALS.map(() => S.time), nextFlyer = PORTALS.map(() => S.time);
   for (const spawn of arrivals) {
-    const flying = ENEMIES[spawn.type].flying;
-    spawn.at = Math.max(spawn.at, nextArrival, flying ? nextFlyer : S.time);
-    nextArrival = spawn.at + 0.24;
-    if (flying) nextFlyer = spawn.at + 1.05;
+    const flying = ENEMIES[spawn.type].flying, p = spawn.portal;
+    spawn.at = Math.max(spawn.at, nextArrival[p], flying ? nextFlyer[p] : S.time);
+    nextArrival[p] = spawn.at + 0.24;
+    if (flying) nextFlyer[p] = spawn.at + 1.05;
     S.spawnQ.push(spawn);
   }
   // Give shorter campaign waves a longer stream without adding a lull between groups.
@@ -1636,10 +1652,11 @@ function startNextWave() {
   updateHud();
 }
 
-function makeEnemy(type, wave, hpMul) {
+function makeEnemy(type, wave, hpMul, portal = 0) {
   const def = ENEMIES[type];
   const hp = Math.max(1, Math.round(def.hp * hpMul));
   const speed = S.map === 0 && wave === 1 && type === "normal" ? def.speed * 1.05 : def.speed;
+  const P0 = PORTALS[portal] || PORTALS[0], SPAWN = P0.spawn, ENTRY = P0.entry, SDIR = P0.sdir;
   return {
     type, def, hp, maxHp: hp, speed, flying: !!def.flying,
     x: SPAWN.x, y: SPAWN.y, tx: ENTRY.x, ty: ENTRY.y, slowT: 0, slowF: 1, wave,
@@ -1650,7 +1667,7 @@ function makeEnemy(type, wave, hpMul) {
 
 // Boss spits out babies as it loses HP
 const hasBroodShield = e => S.time < (e.shieldUntil ?? 0);
-const onSpawnTile = e => Math.floor(e.x) === ENTRY.x && Math.floor(e.y) === ENTRY.y;
+const onSpawnTile = e => isPortalCell(Math.floor(e.x), Math.floor(e.y));
 const broodCount = stage => stage === WORLDS[WORLDS.length - 1].stage ? BROOD.mothershipCount : BROOD.count;
 
 const tankSplits = wave => wave >= TANK_SPLIT.firstWave;
@@ -1691,9 +1708,9 @@ function bossBrood(boss) {
 }
 
 function spawnEnemy(s) {
-  const e = makeEnemy(s.type, s.wave, s.hpMul);
+  const e = makeEnemy(s.type, s.wave, s.hpMul, s.portal || 0);
   S.enemies.push(e);
-  S.portalFlareAt = S.time; // portal flares as it comes through
+  S.portalFlare[s.portal || 0] = S.time; // that portal flares as it comes through
   if (s.type === "boss") playSound("boss");
   updateWaveBar();
 }
@@ -1710,7 +1727,7 @@ function update(dt) {
   while (S.spawnQ.length && S.spawnQ[0].at <= S.time) {
     const spawn = S.spawnQ.shift();
     if (spawn.type === "tank" && S.enemies.some(e =>
-      e.type === "tank" && Math.hypot(e.x - SPAWN.x, e.y - SPAWN.y) < TANK_GAP)) {
+      e.type === "tank" && Math.hypot(e.x - PORTALS[spawn.portal || 0].spawn.x, e.y - PORTALS[spawn.portal || 0].spawn.y) < TANK_GAP)) {
       spawn.at = S.time + 0.15;
       delayedTanks.push(spawn);
     } else spawnEnemy(spawn);
@@ -1978,6 +1995,7 @@ function victory() {
   if (unlockedNow) P.unlocked[i] = S.diff + 1;
   if (hasNext) P.campaignCheckpoint = { map: i + 1, diff: S.diff };
   else delete P.campaignCheckpoint;
+  delete P.retries; // a fresh set of retries on the next world
   saveProfile();
   saveRun();
   const btns = [];
@@ -1998,15 +2016,41 @@ function victory() {
   if (!hasNext) playCine(ENDING, debrief); else debrief();
 }
 
+// Campaign worlds after the first: 3 retries, then the next defeat sends you back to replay the world before.
+const CAMPAIGN_RETRIES = 3;
+function campaignDefeat() {
+  if (S.endless || S.map === 0) return null;
+  const used = (P.retries?.map === S.map ? P.retries.used : -1) + 1; // the first defeat doesn't use a retry
+  if (used > CAMPAIGN_RETRIES) {
+    delete P.retries;
+    P.campaignCheckpoint = { map: S.map - 1, diff: S.diff };
+    saveProfile();
+    return { fellBack: true };
+  }
+  P.retries = { map: S.map, used };
+  saveProfile();
+  return { left: CAMPAIGN_RETRIES - used };
+}
+
 function gameOver() {
   S.over = true;
   playSound("defeat");
   lsDel(KEY_RUN);
+  const setback = campaignDefeat();
+  if (setback?.fellBack) {
+    openMenu(`<h2>Relay Lost</h2>
+    <p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>
+    <p><b>No retries left.</b> Fall back to ${WORLDS[S.map - 1].name} and clear it again to return here with ${CAMPAIGN_RETRIES} new retries.</p>
+    <button class="big" data-act="fallback">Fall back to ${WORLDS[S.map - 1].name} ▶</button>
+    <button class="big" data-act="main">Main menu</button>`);
+    return;
+  }
   openMenu(`<h2>Relay Lost</h2>
     ${S.endless
       ? `<p>${MAPS[S.map].name} · D${S.diff} · Defeated on Wave ${S.wave}<br>
         Endless cleared this run: ${S.endlessCleared || "—"} · Best: ${P.endlessBest[S.map]?.[S.diff] || "—"}</p>`
       : `<p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>`}
+    ${setback ? `<p>${setback.left ? `Retries left on this world: <b>${setback.left} of ${CAMPAIGN_RETRIES}</b>` : `<b>Last chance:</b> lose again and you fall back to ${WORLDS[S.map - 1].name}.`}</p>` : ""}
     <button class="big" data-act="retry">Try again</button>
     <button class="big" data-act="main">Main menu</button>`);
 }
@@ -2039,9 +2083,10 @@ function draw() {
   drawGround(); // world's ground, obstacles and hazards (cached)
 
   const mk = MARKERS.scheme();
-  ctx.fillStyle = MARKERS.hexA(mk.portal, 0.2); ctx.fillRect(ENTRY.x, ENTRY.y, 1, 1);
+  ctx.fillStyle = MARKERS.hexA(mk.portal, 0.2);
+  for (const p of PORTALS) ctx.fillRect(p.entry.x, p.entry.y, 1, 1);
   ctx.fillStyle = MARKERS.hexA(mk.base, 0.18); ctx.fillRect(EXIT.x, EXIT.y, 1, 1);
-  MARKERS.portal(ctx, ENTRY.x, ENTRY.y, S.time);
+  PORTALS.forEach((p, n) => MARKERS.portal(ctx, p.entry.x, p.entry.y, S.time, S.portalFlare[n]));
   drawBaseIcon();
 
   drawPath();
@@ -2426,8 +2471,8 @@ const MARKERS = (() => {
     hexA,
     // portal on the start square: a pulsing glow underneath and a slow spin so the start is easy to spot
     // portal on the start square: the world's three-quarter portal, flaring as each alien comes through
-    portal(c, x, y, t) {
-      const k = SCHEMES[marks().scheme], since = S.time - (S.portalFlareAt ?? -9), flare = since < 0.6 ? Math.sin(since / 0.6 * Math.PI) : 0;
+    portal(c, x, y, t, flareAt) {
+      const k = SCHEMES[marks().scheme], since = S.time - (flareAt ?? -9), flare = since < 0.6 ? Math.sin(since / 0.6 * Math.PI) : 0;
       const topRow = y === 0, sc = topRow ? 1.1 : MARKER_SCALE, lift = topRow ? 0.1 : 0; // keep tall portals inside the board on the top row
       c.save(); c.translate(x + 0.5, y + 0.74 + lift); c.scale(sc, sc); c.translate(-0.5, -0.74);
       PORTAL_Q.draw(c, Math.min(3, S.map), k, t, flare);
@@ -2585,14 +2630,17 @@ function drawRock(x, y) {
 
 // Dotted line = the exact route ground creatures walk (same rule as nextStep)
 function drawPath() {
-  let x = ENTRY.x, y = ENTRY.y, pdx = -SDIR[0], pdy = -SDIR[1], guard = 0;
-  if (S.dist[idx(x, y)] < 0) return;
   ctx.fillStyle = MARKERS.hexA(MARKERS.scheme().base, 0.35);
-  while (!(x === EXIT.x && y === EXIT.y) && guard++ < COLS * ROWS) {
-    ctx.beginPath(); ctx.arc(x + 0.5, y + 0.5, 0.07, 0, Math.PI * 2); ctx.fill();
-    const n = nextStep(x, y, pdx, pdy);
-    if (!n) break;
-    pdx = n[0] - x; pdy = n[1] - y; x = n[0]; y = n[1];
+  const dotted = new Set(); // two routes often merge: draw each dot once
+  for (const p of PORTALS) {
+    let x = p.entry.x, y = p.entry.y, pdx = -p.sdir[0], pdy = -p.sdir[1], guard = 0;
+    if (S.dist[idx(x, y)] < 0) continue;
+    while (!(x === EXIT.x && y === EXIT.y) && guard++ < COLS * ROWS) {
+      if (!dotted.has(idx(x, y))) { dotted.add(idx(x, y)); ctx.beginPath(); ctx.arc(x + 0.5, y + 0.5, 0.07, 0, Math.PI * 2); ctx.fill(); }
+      const n = nextStep(x, y, pdx, pdy);
+      if (!n) break;
+      pdx = n[0] - x; pdy = n[1] - y; x = n[0]; y = n[1];
+    }
   }
   drawFlightPath();
 }
@@ -2605,7 +2653,9 @@ function drawFlightPath() {
   ctx.save();
   ctx.strokeStyle = soon ? "rgba(122,184,255,0.6)" : "rgba(122,184,255,0.16)";
   ctx.lineWidth = soon ? 0.07 : 0.05; ctx.setLineDash([0.25, 0.2]); ctx.lineDashOffset = -S.time * 0.8;
-  ctx.beginPath(); ctx.moveTo(SPAWN.x, SPAWN.y); ctx.lineTo(EXIT.x + 0.5, EXIT.y + 0.5); ctx.stroke();
+  ctx.beginPath();
+  for (const p of PORTALS) { ctx.moveTo(p.spawn.x, p.spawn.y); ctx.lineTo(EXIT.x + 0.5, EXIT.y + 0.5); }
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -4677,8 +4727,8 @@ function newGameMenu() {
     <div class="diff"><button data-act="dminus" ${d <= 1 ? "disabled" : ""}>−</button>
       <b>Difficulty ${d}</b>
       <button data-act="dplus" ${d >= maxDiff(campaignMap) ? "disabled" : ""}>+</button></div>
-    <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${diffMul(campaignMap, d).toFixed(2).replace(/0$/, "")}<br>
-      Clear each world to advance to the next.</p>
+    <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${diffMul(campaignMap, d).toFixed(2).replace(/0$/, "")}${d >= SECOND_PORTAL_DIFF ? " · 2 portals" : ""}<br>
+      Clear each world to advance to the next.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} retries left before you fall back a world.` : ""}</p>
     <button class="big" data-act="start" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Deploy</button>
     <button class="big" data-act="main">Back</button>`);
 }
@@ -4948,8 +4998,14 @@ function miniBoard(c, W, H, cols, rows) { // returns cell size + origin, draws t
   c.stroke();
   return { cs, ox, oy };
 }
-function miniPortal(c, b, x, y, t) { const cx = b.ox + (x + 0.5) * b.cs, cy = b.oy + (y + 0.5) * b.cs; const g = c.createRadialGradient(cx, cy, 0, cx, cy, b.cs * 0.5); g.addColorStop(0, "#e9d4ff"); g.addColorStop(0.5, "#9b5cff"); g.addColorStop(1, "rgba(155,92,255,0)"); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, b.cs * 0.5, 0, TAU2); c.fill(); c.strokeStyle = "#d0b0ff"; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, b.cs * 0.25, t * 3, t * 3 + 4); c.stroke(); }
-function miniBase(c, b, x, y, hit) { const cx = b.ox + (x + 0.5) * b.cs, cy = b.oy + (y + 0.5) * b.cs, s = b.cs; c.fillStyle = hit ? "#ffffff" : "#5dff9b"; c.beginPath(); c.moveTo(cx, cy - s * 0.34); c.lineTo(cx + s * 0.3, cy - s * 0.22); c.lineTo(cx + s * 0.26, cy + s * 0.1); c.quadraticCurveTo(cx + s * 0.14, cy + s * 0.3, cx, cy + s * 0.38); c.quadraticCurveTo(cx - s * 0.14, cy + s * 0.3, cx - s * 0.26, cy + s * 0.1); c.lineTo(cx - s * 0.3, cy - s * 0.22); c.closePath(); c.fill(); }
+function miniPortal(c, b, x, y, t) { // the world's three-quarter portal, in its colours
+  const w = Math.min(3, (S && S.map) || 0), k = MARKERS.scheme();
+  c.save(); c.translate(b.ox + (x + 0.5) * b.cs, b.oy + (y + 0.74) * b.cs); c.scale(b.cs * 1.15, b.cs * 1.15); c.translate(-0.5, -0.74);
+  PORTAL_Q.draw(c, w, k, t, (t % 1.6) < 0.4 ? Math.sin((t % 1.6) / 0.4 * Math.PI) : 0); c.restore(); }
+function miniBase(c, b, x, y, hit) { // the world's relay station, flashing its shield when hit
+  const w = Math.min(3, (S && S.map) || 0), k = MARKERS.scheme();
+  c.save(); c.translate(b.ox + (x + 0.5) * b.cs, b.oy + (y + 0.76) * b.cs); c.scale(b.cs * 1.15, b.cs * 1.15); c.translate(-0.5, -0.76);
+  BASE_Q.draw(c, w, k.base, performance.now() / 1000, 1, hit ? 1 : 0); c.restore(); }
 function miniAlien(c, b, x, y, type, stage, t, face = 1) { c.save(); c.translate(b.ox + x * b.cs, b.oy + y * b.cs); c.scale(b.cs, b.cs); if (face < 0) c.scale(-1, 1); ALIENS.draw(c, type, stage, t, ENEMIES[type].size, b.cs, true); c.restore(); }
 
 function drawWavePortraits(c, wave, elapsed, width, top) {
@@ -5002,7 +5058,8 @@ function tapHint(c, x, y, k) {
 
 const TUTORIAL = [
   { kicker: "How to play · 1 of 6", title: "Protect your base",
-    body: ["Aliens come out of the purple portal and head for your base.", "Every one that gets through costs base health ♥. Lose it all and the grid falls."],
+    body: ["Aliens come out of a portal on the edge of the board. Each world has its own (an icy rift, a hive, a ring gate, a vortex), and it flares as each alien comes through.",
+      "They head for your relay station. Every one that gets through costs base health ♥, and the station cracks, smokes and then burns as it weakens. Lose it all and the relay falls."],
     draw(c, t, W, H) {
       const b = miniBoard(c, W, H, 5, 7); miniPortal(c, b, 2, 0, t);
       const p = (t * 0.35) % 1, y = 0.5 + p * 6;
@@ -5015,7 +5072,8 @@ const TUTORIAL = [
     } },
   { kicker: "How to play · 2 of 6", title: "Build a maze",
     body: ["Start with a Bolt covering the portal. Drag it onto the board, or select it and tap a cell twice.",
-      "Use People to extend the route. Leave gaps on opposite sides so the second wall sends aliens across the board under fire. Always leave a path to the base."],
+      "Use People to extend the route. Leave gaps on opposite sides so the second wall sends aliens across the board under fire. Always leave a path to the base.",
+      "Rocks, buildings, tree groves, ponds and energy belts block both walking and building. Open ground and Earth's mown parks are free to build on."],
     draw(c, t, W, H) {
       const cols = 7, rows = 9, b = miniBoard(c, W, H, cols, rows);
       // Anchor the walls to opposite edges so the route must cross the board between them.
@@ -5037,7 +5095,8 @@ const TUTORIAL = [
       c.fillText(`Path: ${path.length - 1} steps`, W / 2, b.oy + rows * b.cs + 20);
     } },
   { kicker: "How to play · 3 of 6", title: "Pick the right tower",
-    body: ["Compare tower stats as the preview cycles through upgrade levels.", "Each enemy card shows the best tower to use against it."],
+    body: ["Compare tower stats as the preview cycles through upgrade levels.", "Each enemy card shows the best tower to use against it.",
+      "<b style='color:#7ee8a0'>People</b> are cheap walls that fight a little. <b style='color:#4fd1ff'>Bolt</b> is the all-rounder. <b style='color:#9be7ff'>Frost</b> slows everything near its target. <b style='color:#ffa45d'>Cannon</b> blasts groups but can't hit flyers. <b style='color:#c78bff'>Arc</b> does double damage to flyers, which fly straight over your maze."],
     draw(c, t, W, H) {
       c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
       const types = Object.keys(TOWERS), cs = Math.min(W / (types.length * 1.24), H * 0.22), y0 = H * 0.12;
@@ -5136,8 +5195,11 @@ const TUTORIAL = [
   { kicker: "How to play · 6 of 6", title: "Waves and bosses",
     body: [`After deploying, review the Wave 1 preview and press <b>Start</b> for ${BUILD_TIME} seconds to build. The top bar shows the countdown and <b>Send Now</b>.`,
       "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
+      `Higher difficulties make every alien tougher. Difficulty 1 is a little gentler, so it's a good place to learn each world. From Difficulty ${SECOND_PORTAL_DIFF} on, a second portal opens on the top row and the aliens take turns using both. Your maze must leave a route from each portal.`,
+      `From world 2 on you get ${CAMPAIGN_RETRIES} retries per world. Lose after that and you fall back to replay the world before it.`,
       `The wave ${VICTORY_WAVE} boss releases swarm aliens and a Flyer at ${broodThresholds(BROOD)}. They’re shielded for ${BROOD.shieldTime}s. From wave ${TANK_SPLIT.firstWave} on, tanks release ${TANK_SPLIT.count} swarm aliens at ${broodThresholds(TANK_SPLIT)} and ${TANK_SPLIT.deathCount} more on defeat. They’re shielded for ${TANK_SPLIT.shieldTime}s.`],
     doneLabel: "Got it ▶",
+
     draw(c, t, W, H) {
       const b = miniBoard(c, W, H, 5, 6); miniPortal(c, b, 2, 0, t);
       const stage = stageOf(VICTORY_WAVE), elapsed = t % (BROOD.shieldTime + 3);
@@ -5385,6 +5447,7 @@ const ACT = {
   resume: () => closeMenu(),
   quit: () => { S.started = false; mainMenu(); }, // last autosave (start of this wave) is kept
   retry: () => { autoFullscreen(); newGame(S.map, S.diff, true); closeMenu(); },
+  fallback: () => showCampaignDeploy(S.map - 1, S.diff),
 };
 $("ovBox").addEventListener("click", ev => {
   const b = ev.target.closest("[data-act]");
