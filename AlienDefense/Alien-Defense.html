@@ -196,7 +196,6 @@
   #overlay.splash #splashCv { display: block; }
   #ovBox .splashLinks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
   #ovBox .splashLinks button { min-width: 0; font-size: 14px; }
-  #ovBox .splashLinks button:last-child { grid-column: 1 / -1; }
   @media (min-height: 620px) {
     #overlay.splash:not(.booting) #ovBox { margin-bottom: 10vh; }
   }
@@ -291,6 +290,7 @@
   <canvas id="splashCv" aria-hidden="true"></canvas>
   <div id="ovBox">
     <p id="bootStatus" role="status">Loading Alien Defense…</p>
+    <button id="bootSound">Sound: On</button>
     <button id="bootButton">Skip intro</button>
   </div>
 </div>
@@ -324,7 +324,7 @@ const COLS = 10, ROWS = 15;
 //  '.' open · '+' buildable scenery · '#' obstacle · '~' hazard · 'S' portal · 'E' base
 // ============================================================
 const WORLDS = [
-  { name: "The Oort Gate", where: "Oort Cloud · 50,000 AU from the Sun", theme: "ice", stage: 0, hpOffset: 0, startGold: 60, goldMul: 1.0,
+  { name: "The Oort Gate", where: "Oort Cloud · 50,000 AU from the Sun", theme: "ice", stage: 0, hpOffset: 0, startGold: 70, goldMul: 1.0,
     desc: "Ice asteroids and debris at the edge of the solar system.",
     story: ["The fleet enters the solar system through the Oort Cloud, a vast frozen shell of ice and rock.",
       "You're the first wall. Your defenses are salvaged from dead stations, cobbled together from debris. But the fleet is spread thin out here, and the cold is your ally.",
@@ -373,10 +373,12 @@ const MAPS = WORLDS.map(parseWorld);
 const MAP_VARIANTS = 5;
 const FIRST_LEGACY_CAMPAIGN_VARIANT = 6;
 const FIRST_CURRENT_VARIANT = 11; // Preserve layout IDs stored in existing saves.
-const FIRST_JUPITER_VARIANT = FIRST_CURRENT_VARIANT + MAP_VARIANTS;
-const firstCurrentVariant = world => WORLDS[world].theme === "jupiter" ? FIRST_JUPITER_VARIANT : FIRST_CURRENT_VARIANT;
+const FIRST_JUPITER_VARIANT = FIRST_CURRENT_VARIANT + 2 * MAP_VARIANTS;
+const firstPreviousVariant = world => WORLDS[world].theme === "jupiter" ? FIRST_JUPITER_VARIANT : FIRST_CURRENT_VARIANT;
+const firstCurrentVariant = world => firstPreviousVariant(world) + MAP_VARIANTS;
+const PREVIOUS_BASE_COLUMNS = [{ 0: 4 }, { 3: 0 }, { 4: 8 }, { 1: 5 }];
 
-// Jupiter saves from before the radiation belts were widened still use these maps.
+// Earlier Jupiter layouts, in saved variant order starting at FIRST_CURRENT_VARIANT.
 const PREVIOUS_JUPITER_LAYOUTS = [
   { name: "Outer Belt", s: 8, e: 5, rows: {
     3: "~~~~~~~~..", 5: "..#....#..", 7: "~~~~~~~~..", 9: "...#..+...",
@@ -397,6 +399,26 @@ const PREVIOUS_JUPITER_LAYOUTS = [
   { name: "Split Radiation", s: 7, e: 6, rows: {
     2: ".+........", 3: "~~~~~~~~..", 5: "...#...#..", 7: "~~~#~~~~..",
     9: "......##..", 11: "~~~~~~~~..", 13: ".......##.",
+  } },
+  { name: "Outer Belt", s: 8, e: 5, rows: {
+    3: "~~~~~~....", 5: "..#....#..", 7: "....~~~~~~",
+    11: "~~~~~~....", 13: "..##..+...",
+  } },
+  { name: "Crossing Lanes", s: 1, e: 2, rows: {
+    3: "....~~~~~~", 5: ".....+..#.", 7: "~~~~~.....",
+    11: "....~~~~~~", 13: "...#......",
+  } },
+  { name: "Storm Break", s: 9, e: 8, rows: {
+    3: "~~~~~.....", 5: ".+....#...", 7: "..~~~~~~..",
+    11: ".....~~~~~", 13: "..##..+...",
+  } },
+  { name: "Ring Outpost", s: 0, e: 0, rows: {
+    3: "...##.....", 5: "....~~~~~~", 7: ".+.....#..",
+    11: "~~~~~~....", 13: "......+...",
+  } },
+  { name: "Split Radiation", s: 7, e: 6, rows: {
+    3: "~~~....~~~", 5: "...#...#..", 7: ".....~~~~~",
+    11: "~~~~~.....", 13: ".+.....##.",
   } },
 ];
 
@@ -511,7 +533,7 @@ const LEGACY_CAMPAIGN_LAYOUTS = [
 // Each strip leaves at least one opening for the ground route.
 const CAMPAIGN_LAYOUTS = [
   [
-    { name: "Ice Shelf", s: 4, e: 4, rows: {
+    { name: "Ice Shelf", s: 4, e: 7, rows: {
       3: "##.....##.", 5: "....###...", 7: ".##....+..", 9: "......##..",
       11: "..###.....", 12: "........+.", 13: "......##..",
     } },
@@ -534,24 +556,24 @@ const CAMPAIGN_LAYOUTS = [
   ],
   [
     { name: "Outer Belt", s: 8, e: 5, rows: {
-      3: "~~~~~~....", 5: "..#....#..", 7: "....~~~~~~",
-      11: "~~~~~~....", 13: "..##..+...",
+      3: "~~~~......", 5: "..#....#..", 7: "......~~~~",
+      11: "~~~~......", 13: "..##..+...",
     } },
     { name: "Crossing Lanes", s: 1, e: 2, rows: {
-      3: "....~~~~~~", 5: ".....+..#.", 7: "~~~~~.....",
-      11: "....~~~~~~", 13: "...#......",
+      3: "......~~~~", 5: ".....+..#.", 7: ".~~~......",
+      11: "......~~~~", 13: "...#......",
     } },
     { name: "Storm Break", s: 9, e: 8, rows: {
-      3: "~~~~~.....", 5: ".+....#...", 7: "..~~~~~~..",
-      11: ".....~~~~~", 13: "..##..+...",
+      3: ".~~~......", 5: ".+....#...", 7: "...~~~~...",
+      11: "......~~~.", 13: "..##..+...",
     } },
-    { name: "Ring Outpost", s: 0, e: 0, rows: {
-      3: "...##.....", 5: "....~~~~~~", 7: ".+.....#..",
-      11: "~~~~~~....", 13: "......+...",
+    { name: "Ring Outpost", s: 0, e: 3, rows: {
+      3: "...##.....", 5: "......~~~~", 7: ".+.....#..",
+      11: "~~~~......", 13: "......+...",
     } },
     { name: "Split Radiation", s: 7, e: 6, rows: {
-      3: "~~~....~~~", 5: "...#...#..", 7: ".....~~~~~",
-      11: "~~~~~.....", 13: ".+.....##.",
+      3: "~~......~~", 5: "...#...#..", 7: "......~~~.",
+      11: ".~~~......", 13: ".+.....##.",
     } },
   ],
   [
@@ -571,7 +593,7 @@ const CAMPAIGN_LAYOUTS = [
       1: ".....+....", 3: "....###...", 5: "..###...+.", 7: "......###.",
       9: "+.......#.", 11: ".#####....", 13: ".....##...",
     } },
-    { name: "Canyon Steps", s: 1, e: 8, rows: {
+    { name: "Canyon Steps", s: 1, e: 7, rows: {
       2: "......##..", 4: ".......###", 6: "...####...", 8: "...#....+.",
       10: "###....#..", 12: "..##...##.",
     } },
@@ -581,7 +603,7 @@ const CAMPAIGN_LAYOUTS = [
       1: ".###...##.", 3: "....#####.", 5: "##..++++..", 6: "....++++..",
       7: ".....####.", 9: "###.......", 11: "...###.##.", 13: ".##.......",
     } },
-    { name: "Grand Avenue", s: 8, e: 5, rows: {
+    { name: "Grand Avenue", s: 8, e: 3, rows: {
       1: ".###..###.", 3: "..####....", 5: "+....##.##", 7: "....++....",
       9: "###....##.", 11: ".##..####.", 13: "......##..",
     } },
@@ -606,7 +628,11 @@ function variantMap(world, variant) {
     const current = firstCurrentVariant(world);
     let layout;
     if (variant >= current) layout = CAMPAIGN_LAYOUTS[world][variant - current];
-    else if (variant >= FIRST_CURRENT_VARIANT) layout = PREVIOUS_JUPITER_LAYOUTS[variant - FIRST_CURRENT_VARIANT];
+    else if (variant >= firstPreviousVariant(world)) {
+      const index = variant - firstPreviousVariant(world);
+      const previous = CAMPAIGN_LAYOUTS[world][index];
+      layout = { ...previous, e: PREVIOUS_BASE_COLUMNS[world][index] ?? previous.e };
+    } else if (variant >= FIRST_CURRENT_VARIANT) layout = PREVIOUS_JUPITER_LAYOUTS[variant - FIRST_CURRENT_VARIANT];
     else layout = LEGACY_CAMPAIGN_LAYOUTS[world][variant - FIRST_LEGACY_CAMPAIGN_VARIANT];
     const rows = Array(ROWS).fill(".".repeat(COLS));
     for (const [row, tiles] of Object.entries(layout.rows)) rows[row] = tiles;
@@ -788,13 +814,13 @@ function drawScenery(c, theme, x, y) {
 const START_GOLD = 60, START_LIVES = 20;
 const BASE_REFUND = 0.7;
 const HP_GROWTH = 1.16;          // enemy HP multiplier per wave
-const DIFF_HP = 0.3;             // +30% enemy HP per difficulty level above 1
+const DIFF_HP = 0.2;             // +20% enemy HP per difficulty level above 1
 const VICTORY_WAVE = 10;
-const WAVE_PREVIEW_DEMO_TIME = 2.4;
 const BUILD_TIME = 15;           // seconds to build before wave 1
 // Boss brood: each time the boss drops below one of these HP fractions it spits out babies
 // (Swarm units of the boss's stage: Goo, Skitters, Probes, Nanites)
-const BROOD = { at: [0.8, 0.6, 0.4, 0.2], count: 4, mothershipCount: 8, hpFrac: 0.6, shieldTime: 2 };
+const TANK_SPLIT = { firstWave: 6, midCount: 2, deathCount: 3, hpFrac: 0.5 };
+const BROOD = { at: [0.8, 0.6, 0.4, 0.2], count: 4, mothershipCount: 8, hpFrac: 0.6, flyerHpFrac: 0.25, shieldTime: 2 };
 
 const TOWERS = {
   people: {
@@ -802,8 +828,8 @@ const TOWERS = {
     best: "Maze support", desc: "Cheap blockers that extend the route. Start with Bolt for damage, then add People to shape the maze.",
     levels: [
       { dmg: 5, range: 2.0, reload: 0.714 },
-      { dmg: 12, range: 2.2, reload: 0.714, cost: 12 },
-      { dmg: 26, range: 2.4, reload: 0.75, cost: 28 },
+      { dmg: 10, range: 2.2, reload: 0.714, cost: 12 },
+      { dmg: 22, range: 2.4, reload: 0.75, cost: 28 },
     ],
   },
   bolt: {
@@ -907,7 +933,7 @@ function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-const defaultProfile = () => ({ unlocked: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false });
+const defaultProfile = () => ({ unlocked: {}, endlessBest: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false });
 let P = Object.assign(defaultProfile(), lsGet(KEY_PROFILE) || {});
 delete P.points; delete P.research; // left over from the removed Research Lab
 const AUTO_OPTIONS = [10, 15, 30, 0]; // seconds before the next wave starts by itself; 0 = off
@@ -954,7 +980,7 @@ let audio, audioGain, audioNoise;
 const lastSound = new Map();
 let lastCombatSound = -Infinity;
 
-function unlockAudio(resume = true) {
+function unlockAudio() {
   if (!P.sound) return;
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
@@ -965,8 +991,13 @@ function unlockAudio(resume = true) {
       audioGain.gain.value = 0.38;
       audioGain.connect(audio.destination);
     }
-    if (resume && audio.state !== "running") audio.resume().catch(() => {});
+    if (audio.state !== "running") audio.resume().catch(() => {});
   } catch { /* Sound is optional on browsers without a working audio device. */ }
+}
+
+function unlockAudioOnInteraction(event) {
+  // These buttons handle audio themselves so the same click cannot enable and mute it.
+  if (!event.target.closest?.("#bootSound, #menuSound")) unlockAudio();
 }
 
 function playSound(name, output = audioGain) {
@@ -1018,6 +1049,15 @@ function playNotes(notes, output, now) {
 
 function syncSound() {
   if (audioGain) audioGain.gain.setTargetAtTime(P.sound ? 0.38 : 0, audio.currentTime, 0.02);
+}
+
+const soundLabel = () => P.sound ? "Sound: On" : "Sound: Off";
+function toggleSound() {
+  P.sound = !P.sound;
+  saveProfile();
+  if (P.sound) unlockAudio();
+  syncSound();
+  if (P.sound) playSound("build");
 }
 
 // Rocket Hop, the soundtrack from loading screen option 9.
@@ -1109,7 +1149,7 @@ function saveRun() {
   if (!S.started || S.over) return;
   lsSet(KEY_RUN, {
     map: S.map, variant: S.variant, diff: S.diff, gold: S.gold, lives: S.lives, wave: S.wave, won: S.won,
-    endless: S.endless,
+    endless: S.endless, endlessCleared: S.endlessCleared,
     towers: S.towers.map(t => ({ type: t.type, x: t.x, y: t.y, level: t.level, spent: t.spent, fresh: t.fresh || 0 })),
   });
 }
@@ -1123,7 +1163,7 @@ function loadRun() {
   newGame(r.map, r.diff, false, variant); // avoid autosaving the empty board over the run
   S.countdown = S.countdownMax = r.wave === 0 ? BUILD_TIME : P.autoStart;
   Object.assign(S, { maxLives: Math.max(r.lives, S.maxLives), gold: r.gold, lives: r.lives, wave: r.wave,
-    won: r.won, endless: r.endless || r.wave > VICTORY_WAVE, started: true });
+    won: r.won, endless: r.endless || r.wave > VICTORY_WAVE, endlessCleared: r.endlessCleared ?? 0, started: true });
   for (const t of r.towers) {
     if (!TOWERS[t.type]) continue;
     const tw = { ...t, cd: 0, angle: -Math.PI / 2 };
@@ -1155,18 +1195,23 @@ function setMap(i, variant) {
   groundCache.key = "";
 }
 
+// Starting salvage for the two Oort layouts with the toughest openings.
+const OORT_STARTING_SALVAGE = { "Ice Shelf": 8, "Comet Trail": 12 };
+
 let S; // game state
 function newGame(map, diff, started, variant = started ? firstCurrentVariant(map) + Math.floor(Math.random() * MAP_VARIANTS) : 0) {
   setMap(map, variant);
+  const layout = CAMPAIGN_LAYOUTS[map][variant - firstCurrentVariant(map)];
+  const startingSalvage = map === 0 ? OORT_STARTING_SALVAGE[layout?.name] ?? 0 : 0;
   S = {
     map, variant, diff, started: !!started,
-    gold: WORLDS[map].startGold, lives: START_LIVES, wave: 0,
+    gold: WORLDS[map].startGold + startingSalvage, lives: START_LIVES, wave: 0,
     maxLives: START_LIVES, baseHit: 0, leaked: false,
     countdown: BUILD_TIME, countdownMax: BUILD_TIME, wasIdle: true,
     awaitingStart: true,
     grid: new Array(COLS * ROWS).fill(null),
     towers: [], enemies: [], shots: [], fx: [], spawnQ: [], pendingClear: [],
-    dist: null, speed: 1, over: false, won: false, endless: false, menu: false,
+    dist: null, speed: 1, over: false, won: false, endless: false, endlessCleared: 0, menu: false,
     buildType: null, selected: null, ghost: null, time: 0,
   };
   S.dist = computeDist(-1);
@@ -1277,10 +1322,10 @@ const OPENING_WAVES = [
 const CAMPAIGN_FINALE = [
   ["boss", 1, 1],
   ["tank", 2, 2.8],
-  ["normal", 14, 0.65],
-  ["flying", 10, 0.6],
-  ["swarm", 18, 0.34],
-  ["fast", 6, 0.55],
+  ["normal", 10, 0.72],
+  ["flying", 7, 0.75],
+  ["swarm", 12, 0.42],
+  ["fast", 6, 0.65],
 ];
 const OORT_WAVES = {
   1: { groups: [["normal", 15, 0.85]] },
@@ -1292,13 +1337,21 @@ const OORT_WAVES = {
   9: { hp: 1.30, groups: [["fast", 18, 0.36], ["flying", 13, 0.5], ["normal", 12, 0.5], ["swarm", 16, 0.32]] },
 };
 
+const LATER_WORLD_WAVE_SIX = [["tank", 3, 2.4], ["fast", 8, 0.55], ["flying", 4, 0.85]];
+const INNER_WORLD_WAVES = {
+  7: [["tank", 5, 2.2], ["swarm", 12, 0.36], ["flying", 4, 0.82]],
+  8: [["swarm", 20, 0.3], ["flying", 9, 0.7], ["fast", 4, 0.7]],
+  9: [["fast", 15, 0.48], ["flying", 10, 0.65], ["tank", 1, 2.8]],
+};
+
 // What wave n contains: [{type, n, gap}]
 function waveGroups(n) {
   const scale = 1 + Math.floor((n - 1) / 10) * 0.25;
   const oort = S.map === 0 ? OORT_WAVES[n] : undefined;
+  const worldLineup = S.map > 0 && n === 6 ? LATER_WORLD_WAVE_SIX : S.map >= 2 ? INNER_WORLD_WAVES[n] : undefined;
   const lineup = n === VICTORY_WAVE
     ? CAMPAIGN_FINALE
-    : oort?.groups ?? OPENING_WAVES[n - 1] ?? WAVE_CYCLE[(n - 1) % WAVE_CYCLE.length];
+    : oort?.groups ?? worldLineup ?? OPENING_WAVES[n - 1] ?? WAVE_CYCLE[(n - 1) % WAVE_CYCLE.length];
   return lineup.map(([type, count, gap]) => ({
     type,
     n: Math.round(count * scale) + (S.map === 1 && n >= 4 && n < VICTORY_WAVE && type === "flying" ? 3 : 0),
@@ -1314,10 +1367,15 @@ function clearBonus(w) {
   const openingGold = missingOpeningEnemies * killGold("normal");
   return 8 + 2 * (w + WORLDS[S.map].hpOffset) + openingGold;
 }
-const MID_CAMPAIGN_HP = [1, 1.3, 1.2, 1.12];
+const MID_CAMPAIGN_HP = [1, 1.15, 1.12, 1.12];
+const FINALE_HP = [0.95, 0.86, 0.83, 0.80];
 function waveHpMul(n) {
-  const pressure = S.map === 0 ? OORT_WAVES[n]?.hp ?? 1
-    : n >= 3 && n < VICTORY_WAVE ? MID_CAMPAIGN_HP[S.map] : 1;
+  let pressure = 1;
+  if (n === VICTORY_WAVE) pressure = FINALE_HP[S.map];
+  else if (S.map === 0) pressure = OORT_WAVES[n]?.hp ?? 1;
+  else if (S.map === 1 && n === 3) pressure = 1.15;
+  else if (n >= 3 && n < VICTORY_WAVE) pressure = MID_CAMPAIGN_HP[S.map];
+  if (S.map >= 2 && n >= 4 && n <= 8) pressure *= 1.08;
   return Math.pow(HP_GROWTH, n - 1 + WORLDS[S.map].hpOffset) * (1 + DIFF_HP * (S.diff - 1)) * pressure;
 }
 
@@ -1361,26 +1419,39 @@ function makeEnemy(type, wave, hpMul) {
 const hasBroodShield = e => S.time < (e.shieldUntil ?? 0);
 const broodCount = stage => stage === WORLDS[WORLDS.length - 1].stage ? BROOD.mothershipCount : BROOD.count;
 
+const tankSplits = wave => wave >= TANK_SPLIT.firstWave;
+const offspringHpFraction = (type, parent) => parent === "tank" ? TANK_SPLIT.hpFrac
+  : type === "flying" ? BROOD.flyerHpFrac : BROOD.hpFrac;
+const offspringReward = (type, parent) => parent === "tank" ? 0 : killGold(parent === "boss" ? "swarm" : type);
+
+function releaseOffspring(parent, count) {
+  for (let k = 0; k < count; k++) {
+    const type = parent.type === "boss" && k === count - 1 ? "flying" : "swarm";
+    const hpMul = waveHpMul(parent.wave) * offspringHpFraction(type, parent.type);
+    const baby = makeEnemy(type, parent.wave, hpMul);
+    baby.x = parent.x + (Math.random() - 0.5) * 0.5;
+    baby.y = parent.y + (Math.random() - 0.5) * 0.5;
+    baby.tx = parent.tx;
+    baby.ty = parent.ty;
+    baby.face = parent.face;
+    baby.baby = parent.type;
+    if (parent.type === "boss") baby.shieldUntil = S.time + BROOD.shieldTime;
+    S.enemies.push(baby);
+  }
+  S.waveSize = (S.waveSize || 0) + count;
+  playSound("brood");
+  for (let k = 0; k < 14; k++) {
+    const a = Math.random() * Math.PI * 2, v = 1.5 + Math.random() * 2.5;
+    S.fx.push({ kind: "spark", x: parent.x, y: parent.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5, max: 0.5, color: "#ff8bd0" });
+  }
+  floatText(parent.x, parent.y - 0.7, `+${count} offspring!`, "#ff8bd0", true);
+}
+
 function bossBrood(boss) {
-  const count = broodCount(boss.stage);
   boss.brood = boss.brood || 0;
   while (boss.brood < BROOD.at.length && boss.hp / boss.maxHp <= BROOD.at[boss.brood]) {
     boss.brood++;
-    playSound("brood");
-    const hpMul = waveHpMul(boss.wave) * BROOD.hpFrac;
-    for (let k = 0; k < count; k++) {
-      const b = makeEnemy("swarm", boss.wave, hpMul);
-      b.x = boss.x + (Math.random() - 0.5) * 0.5; b.y = boss.y + (Math.random() - 0.5) * 0.5;
-      b.tx = boss.tx; b.ty = boss.ty; b.face = boss.face; b.baby = true;
-      b.shieldUntil = S.time + BROOD.shieldTime;
-      S.enemies.push(b);
-    }
-    S.waveSize = (S.waveSize || 0) + count;
-    for (let k = 0; k < 14; k++) {
-      const a = Math.random() * Math.PI * 2, v = 1.5 + Math.random() * 2.5;
-      S.fx.push({ kind: "spark", x: boss.x, y: boss.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5, max: 0.5, color: "#ff8bd0" });
-    }
-    floatText(boss.x, boss.y - 0.7, `+${count} ${enemyName("swarm", boss.wave)}!`, "#ff8bd0", true);
+    releaseOffspring(boss, broodCount(boss.stage));
     if (!S.broodSeen) { S.broodSeen = true; toast(`${enemyName("boss", boss.wave)} is spitting out babies!`); }
   }
 }
@@ -1598,13 +1669,19 @@ function damage(e, amt) {
   if (hasBroodShield(e)) return;
   e.hp -= amt;
   if (e.type === "boss" && S.enemies.includes(e)) bossBrood(e);
+  const splits = e.type === "tank" && tankSplits(e.wave);
+  if (splits && !e.releasedMidBrood && e.hp <= e.maxHp / 2 && S.enemies.includes(e)) {
+    e.releasedMidBrood = true;
+    releaseOffspring(e, TANK_SPLIT.midCount);
+  }
   if (e.hp > 0) return;
   const i = S.enemies.indexOf(e);
   if (i < 0) return;
   S.enemies.splice(i, 1);
-  const g = killGold(e.type);
+  const g = offspringReward(e.type, e.baby);
   S.gold += g;
-  floatText(e.x, e.y - 0.2, `+${g}`, "#ffd25d");
+  if (g) floatText(e.x, e.y - 0.2, `+${g}`, "#ffd25d");
+  if (splits) releaseOffspring(e, TANK_SPLIT.deathCount);
   for (let k = 0; k < 8; k++) {
     const a = Math.random() * Math.PI * 2, v = 1 + Math.random() * 2;
     S.fx.push({ kind: "spark", x: e.x, y: e.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.4, max: 0.4, color: e.def.color });
@@ -1639,11 +1716,20 @@ function checkWaveClear() {
     if (alive.has(w)) return true;
     const bonus = clearBonus(w);
     S.gold += bonus;
+    if (S.endless && w > VICTORY_WAVE) recordEndlessClear(w);
     toast(`Wave ${w} cleared  +${bonus}◆`);
     return false;
   });
   if (S.wave >= VICTORY_WAVE && !S.won && !S.pendingClear.length) victory();
   updateHud();
+}
+
+function recordEndlessClear(wave) {
+  S.endlessCleared = Math.max(S.endlessCleared, wave);
+  const records = P.endlessBest[S.map] ??= {};
+  if (wave <= (records[S.diff] ?? 0)) return;
+  records[S.diff] = wave;
+  saveProfile();
 }
 
 function victory() {
@@ -1677,7 +1763,10 @@ function gameOver() {
   playSound("defeat");
   lsDel(KEY_RUN);
   openMenu(`<h2>Relay Lost</h2>
-    <p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>
+    ${S.endless
+      ? `<p>${MAPS[S.map].name} · D${S.diff} · Defeated on Wave ${S.wave}<br>
+        Endless cleared this run: ${S.endlessCleared || "—"} · Best: ${P.endlessBest[S.map]?.[S.diff] || "—"}</p>`
+      : `<p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>`}
     <button class="big" data-act="retry">Try again</button>
     <button class="big" data-act="main">Main menu</button>`);
 }
@@ -2244,23 +2333,49 @@ const ALIENS = (() => {
           poly(c, [[0, 0], [sd * s * 0.12, s * 0.05], [sd * s * 0.05, s * 0.45], [-sd * s * 0.05, s * 0.15]]); c.fill(); c.restore(); }
       } },
     { role: "Runner", name: "Ripper", desc: "Sprinting raptor-thing with a snapping, toothed jaw.",
-      draw(c, t, s) {
-        c.strokeStyle = shade(Y, -0.38); c.lineCap = "round"; c.lineWidth = s * 0.22;
-        c.beginPath(); c.moveTo(-s * 0.4, -s * 0.1); c.quadraticCurveTo(-s * 0.9, -s * 0.2 + Math.sin(t * 10) * s * 0.15, -s * 1.45, -s * 0.35 + Math.sin(t * 10 + 1) * s * 0.2); c.stroke();
-        c.strokeStyle = shade(Y, -0.58); c.lineWidth = s * 0.12;
-        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.45, fy = s * 0.95 - Math.max(0, Math.cos(a)) * s * 0.25;
-          c.beginPath(); c.moveTo(0, s * 0.2); c.lineTo(fx * 0.3 - s * 0.15, s * 0.6); c.lineTo(fx, fy); c.lineTo(fx + s * 0.18, fy); c.stroke(); }
-        c.fillStyle = shade(Y, -0.18); oval(c, 0, 0, s * 0.6, s * 0.36, -0.15); c.fill();
-        c.fillStyle = shade(Y, -0.62);
-        for (let k = 0; k < 4; k++) { const x = -s * 0.45 + k * s * 0.28; poly(c, [[x - s * 0.08, -s * 0.28 + k * s * 0.02], [x - s * 0.02, -s * 0.62], [x + s * 0.1, -s * 0.3]]); c.fill(); }
-        c.save(); c.translate(s * 0.5, -s * 0.25);
-        const jaw = 0.12 + 0.3 * Math.max(0, Math.sin(t * 5));
-        c.save(); c.rotate(jaw); c.fillStyle = shade(Y, -0.4); poly(c, [[0, s * 0.03], [s * 0.62, s * 0.06], [s * 0.05, s * 0.2]]); c.fill();
-        c.fillStyle = "#ffffff"; for (let k = 0; k < 4; k++) { const x = s * 0.15 + k * s * 0.12; poly(c, [[x, s * 0.05], [x + s * 0.04, -s * 0.03], [x + s * 0.08, s * 0.05]]); c.fill(); }
+      draw(c, t, s) { // side view, running right
+        shadow(c, s, 0.98, 0.95);
+        const run = t * 15, bob = Math.abs(Math.sin(run)) * s * 0.06;
+        c.translate(0, -bob); c.lineJoin = "round"; c.lineCap = "round";
+        const ink = shade(Y, -0.78);
+        const leg = (ph, far) => { // thigh, shin and a 3-claw foot
+          const a = Math.sin(run + ph), lift = Math.max(0, Math.cos(run + ph));
+          const hx = -s * 0.05, hy = s * 0.18, kx = hx + s * (0.22 + a * 0.18), ky = s * 0.5 - lift * s * 0.12, fx = hx + a * s * 0.42, fy = s * 0.9 - lift * s * 0.22;
+          c.fillStyle = shade(Y, far ? -0.55 : -0.3); oval(c, hx + s * 0.06, hy + s * 0.08, s * 0.2, s * 0.26, -0.5 + a * 0.4); c.fill();
+          c.strokeStyle = shade(Y, far ? -0.62 : -0.45); c.lineWidth = s * 0.11; c.beginPath(); c.moveTo(hx + s * 0.08, hy + s * 0.2); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+          c.strokeStyle = "#f3ead2"; c.lineWidth = s * 0.05; for (const d of [-0.12, 0.05, 0.2]) { c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + s * (0.12 + d * 0.3), fy + s * (0.03 + Math.abs(d) * 0.2)); c.stroke(); } };
+        leg(Math.PI, true);
+        // tail: thick at the hip, whipping to a point
+        const tw = Math.sin(t * 9) * s * 0.14;
+        c.fillStyle = shade(Y, -0.32); c.beginPath(); c.moveTo(-s * 0.35, -s * 0.22);
+        c.quadraticCurveTo(-s * 0.95, -s * 0.32 + tw * 0.5, -s * 1.38, -s * 0.48 + tw); c.quadraticCurveTo(-s * 0.95, -s * 0.12 + tw * 0.5, -s * 0.38, s * 0.12); c.closePath(); c.fill();
+        // back spikes
+        c.fillStyle = shade(Y, -0.6);
+        for (let k = 0; k < 5; k++) { const x = -s * 0.62 + k * s * 0.24, y = -s * 0.3 - Math.sin(k / 4 * Math.PI) * s * 0.1; poly(c, [[x - s * 0.09, y + s * 0.06], [x - s * 0.02, y - s * (0.32 - Math.abs(k - 2) * 0.05)], [x + s * 0.09, y + s * 0.04]]); c.fill(); }
+        // body
+        const g = c.createRadialGradient(-s * 0.1, -s * 0.28, s * 0.05, 0, 0, s * 0.7); g.addColorStop(0, shade(Y, 0.2)); g.addColorStop(0.6, shade(Y, -0.15)); g.addColorStop(1, shade(Y, -0.45));
+        c.fillStyle = g; oval(c, -s * 0.05, -s * 0.02, s * 0.58, s * 0.36, -0.18); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, s * 0.02, s * 0.16, s * 0.38, s * 0.12, -0.15); c.fill(); // pale belly
+        c.strokeStyle = shade(Y, -0.62); c.lineWidth = s * 0.07; for (const x of [-0.38, -0.16, 0.06]) { c.beginPath(); c.moveTo(s * x, -s * 0.33); c.quadraticCurveTo(s * (x + 0.08), -s * 0.15, s * (x + 0.02), -s * 0.02); c.stroke(); } // stripes
+        c.strokeStyle = ink; c.lineWidth = s * 0.035; oval(c, -s * 0.05, -s * 0.02, s * 0.58, s * 0.36, -0.18); c.stroke();
+        // tiny clawed arm
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(s * 0.35, s * 0.02); c.lineTo(s * 0.5, s * 0.16 + Math.sin(run) * s * 0.04); c.lineTo(s * 0.6, s * 0.12); c.stroke();
+        leg(0, false);
+        // head with a snapping jaw
+        c.save(); c.translate(s * 0.48, -s * 0.36); c.rotate(-0.12 + Math.sin(run) * 0.04);
+        const jaw = 0.1 + 0.42 * Math.max(0, Math.sin(t * 6));
+        c.save(); c.rotate(jaw); // lower jaw
+        c.fillStyle = shade(Y, -0.35); poly(c, [[-s * 0.02, s * 0.04], [s * 0.6, s * 0.1], [s * 0.52, s * 0.2], [s * 0.02, s * 0.22]]); c.fill();
+        c.fillStyle = "#fff8ea"; for (let k = 0; k < 5; k++) { const x = s * 0.12 + k * s * 0.1; poly(c, [[x, s * 0.08], [x + s * 0.035, -s * 0.03], [x + s * 0.07, s * 0.09]]); c.fill(); }
         c.restore();
-        c.fillStyle = shade(Y, -0.18); poly(c, [[0, -s * 0.16], [s * 0.68, -s * 0.06], [s * 0.7, s * 0.03], [0, s * 0.1]]); c.fill();
-        c.fillStyle = "#ffffff"; for (let k = 0; k < 4; k++) { const x = s * 0.15 + k * s * 0.13; poly(c, [[x, s * 0.02], [x + s * 0.04, s * 0.11], [x + s * 0.08, s * 0.02]]); c.fill(); }
-        redEye(c, s * 0.25, -s * 0.05, s * 0.06);
+        c.fillStyle = "#5a0c18"; poly(c, [[s * 0.05, s * 0.03], [s * 0.55, s * 0.06], [s * 0.05, s * 0.12 + jaw * s * 0.25]]); c.fill(); // mouth
+        const hg = c.createLinearGradient(0, -s * 0.24, 0, s * 0.08); hg.addColorStop(0, shade(Y, 0.15)); hg.addColorStop(1, shade(Y, -0.3));
+        c.fillStyle = hg; c.beginPath(); c.moveTo(-s * 0.12, s * 0.06); c.quadraticCurveTo(-s * 0.1, -s * 0.24, s * 0.22, -s * 0.22); c.lineTo(s * 0.7, -s * 0.04); c.lineTo(s * 0.68, s * 0.05); c.lineTo(-s * 0.02, s * 0.08); c.closePath(); c.fill();
+        c.strokeStyle = ink; c.lineWidth = s * 0.03; c.stroke();
+        c.fillStyle = "#fff8ea"; for (let k = 0; k < 5; k++) { const x = s * 0.14 + k * s * 0.1; poly(c, [[x, s * 0.04], [x + s * 0.035, s * 0.14], [x + s * 0.07, s * 0.04]]); c.fill(); }
+        c.fillStyle = ink; poly(c, [[s * 0.05, -s * 0.2], [s * 0.34, -s * 0.15], [s * 0.1, -s * 0.12]]); c.fill(); // brow ridge
+        redEye(c, s * 0.2, -s * 0.09, s * 0.065);
+        c.fillStyle = ink; circle(c, s * 0.62, -s * 0.03, s * 0.02); c.fill(); // nostril
         c.restore();
       } },
     { role: "Swarm", name: "Skitter", desc: "Spider-like larva with fangs. Comes in a tide.",
@@ -2288,18 +2403,42 @@ const ALIENS = (() => {
         c.fillStyle = "#ffffff"; poly(c, [[-s * 0.1, s * 0.1], [-s * 0.06, s * 0.25], [-s * 0.03, s * 0.1]]); c.fill(); poly(c, [[s * 0.03, s * 0.1], [s * 0.06, s * 0.25], [s * 0.1, s * 0.1]]); c.fill();
       } },
     { role: "Tank", name: "Brute", desc: "Armour-plated hulk with tusks and huge clawed arms.",
-      draw(c, t, s) {
-        const st = Math.sin(t * 3); c.translate(0, -Math.abs(st) * s * 0.05);
-        c.fillStyle = shade(O, -0.58); rr(c, -s * 0.55, s * 0.45, s * 0.35, s * (0.5 + st * 0.05), s * 0.1); c.fill(); rr(c, s * 0.2, s * 0.45, s * 0.35, s * (0.5 - st * 0.05), s * 0.1); c.fill();
-        for (const sd of [-1, 1]) {
-          c.fillStyle = shade(O, -0.42); oval(c, sd * s * 0.85, s * 0.15 + sd * st * s * 0.06, s * 0.25, s * 0.45, sd * 0.2); c.fill();
-          c.fillStyle = "#e8d8c8"; for (let k = -1; k <= 1; k++) { const x = sd * s * 0.85 + k * s * 0.1; poly(c, [[x - s * 0.04, s * 0.55], [x, s * 0.76], [x + s * 0.04, s * 0.55]]); c.fill(); }
-        }
-        c.fillStyle = shade(O, -0.3); rr(c, -s * 0.7, -s * 0.55, s * 1.4, s * 1.1, s * 0.35); c.fill();
-        c.fillStyle = shade(O, -0.58); for (let k = 0; k < 3; k++) { rr(c, -s * 0.5 + k * s * 0.35, -s * 0.66, s * 0.28, s * 0.25, s * 0.06); c.fill(); }
-        c.fillStyle = shade(O, -0.52); rr(c, -s * 0.35, -s * 0.35, s * 0.7, s * 0.55, s * 0.15); c.fill();
-        redEye(c, -s * 0.15, -s * 0.15, s * 0.08); redEye(c, s * 0.15, -s * 0.15, s * 0.08);
-        c.fillStyle = "#f2e6d0"; poly(c, [[-s * 0.22, s * 0.05], [-s * 0.38, -s * 0.25], [-s * 0.12, s * 0.05]]); c.fill(); poly(c, [[s * 0.22, s * 0.05], [s * 0.38, -s * 0.25], [s * 0.12, s * 0.05]]); c.fill();
+      draw(c, t, s) { // front view: hunched armoured hulk
+        shadow(c, s, 0.98, 1.0);
+        const br = Math.sin(t * 2.6), st = Math.sin(t * 3); c.translate(0, -Math.abs(st) * s * 0.04);
+        c.lineJoin = "round"; const ink = shade(O, -0.8);
+        // stubby legs
+        for (const sd of [-1, 1]) { c.fillStyle = shade(O, -0.55); rr(c, sd * s * 0.32 - s * 0.16, s * 0.42, s * 0.32, s * (0.48 + sd * st * 0.04), s * 0.12); c.fill();
+          c.fillStyle = "#e9dcc4"; for (const d of [-0.09, 0.0, 0.09]) { poly(c, [[sd * s * 0.32 + s * d - s * 0.035, s * 0.88], [sd * s * 0.32 + s * d, s * 0.98], [sd * s * 0.32 + s * d + s * 0.035, s * 0.88]]); c.fill(); } }
+        // huge knuckle-dragging arms behind the body
+        for (const sd of [-1, 1]) { const sw = br * 0.06 * sd;
+          c.save(); c.translate(sd * s * 0.72, -s * 0.28); c.rotate(sd * 0.15 + sw);
+          const ag = c.createLinearGradient(-s * 0.2, 0, s * 0.2, 0); ag.addColorStop(0, shade(O, -0.2)); ag.addColorStop(1, shade(O, -0.55));
+          c.fillStyle = ag; c.beginPath(); c.moveTo(-s * 0.18, 0); c.quadraticCurveTo(-s * 0.32, s * 0.55, -s * 0.24, s * 0.95); c.lineTo(s * 0.26, s * 0.95); c.quadraticCurveTo(s * 0.32, s * 0.5, s * 0.18, 0); c.closePath(); c.fill();
+          c.strokeStyle = ink; c.lineWidth = s * 0.035; c.stroke();
+          c.fillStyle = shade(O, -0.35); oval(c, 0, s * 1.0, s * 0.3, s * 0.18); c.fill(); c.stroke(); // fist
+          c.fillStyle = "#efe2c8"; for (let k = -1; k <= 1; k++) { poly(c, [[k * s * 0.12 - s * 0.045, s * 1.1], [k * s * 0.13, s * 1.27], [k * s * 0.12 + s * 0.045, s * 1.1]]); c.fill(); }
+          c.restore(); }
+        // torso: wide at the shoulders, armour plates across the chest
+        c.save(); c.scale(1 + br * 0.015, 1 - br * 0.015);
+        const g = c.createRadialGradient(-s * 0.25, -s * 0.45, s * 0.1, 0, -s * 0.05, s * 0.95); g.addColorStop(0, shade(O, 0.25)); g.addColorStop(0.55, shade(O, -0.15)); g.addColorStop(1, shade(O, -0.5));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 0.82, -s * 0.38); c.quadraticCurveTo(-s * 0.7, -s * 0.78, 0, -s * 0.74); c.quadraticCurveTo(s * 0.7, -s * 0.78, s * 0.82, -s * 0.38);
+        c.quadraticCurveTo(s * 0.7, s * 0.35, s * 0.4, s * 0.5); c.lineTo(-s * 0.4, s * 0.5); c.quadraticCurveTo(-s * 0.7, s * 0.35, -s * 0.82, -s * 0.38); c.closePath(); c.fill();
+        c.strokeStyle = ink; c.lineWidth = s * 0.04; c.stroke();
+        c.fillStyle = shade(O, -0.45); for (const [y, w] of [[0.02, 0.5], [0.2, 0.42], [0.36, 0.32]]) { rr(c, -s * w, s * y, s * w * 2, s * 0.13, s * 0.05); c.fill(); c.strokeStyle = shade(O, -0.7); c.lineWidth = s * 0.02; c.stroke(); }
+        // spiked shoulder plates
+        for (const sd of [-1, 1]) { c.fillStyle = "#6a7088"; oval(c, sd * s * 0.62, -s * 0.5, s * 0.3, s * 0.2, sd * 0.35); c.fill(); c.strokeStyle = "#262a3a"; c.lineWidth = s * 0.03; c.stroke();
+          c.fillStyle = "#c9cfdd"; for (let k = 0; k < 3; k++) { const x = sd * s * (0.45 + k * 0.14); poly(c, [[x - s * 0.05, -s * 0.6], [x + sd * s * 0.03, -s * (0.85 - k * 0.04)], [x + s * 0.05, -s * 0.6]]); c.fill(); } }
+        c.restore();
+        // small head hunched between the shoulders, heavy brow, tusks
+        c.save(); c.translate(0, -s * 0.14); c.scale(1.2, 1.2); c.translate(0, s * 0.08);
+        c.fillStyle = shade(O, -0.38); oval(c, 0, -s * 0.48, s * 0.3, s * 0.24); c.fill(); c.strokeStyle = ink; c.lineWidth = s * 0.03; c.stroke();
+        c.fillStyle = shade(O, -0.68); poly(c, [[-s * 0.3, -s * 0.6], [0, -s * 0.5], [s * 0.3, -s * 0.6], [s * 0.26, -s * 0.5], [0, -s * 0.42], [-s * 0.26, -s * 0.5]]); c.fill();
+        redEye(c, -s * 0.12, -s * 0.47, s * 0.065); redEye(c, s * 0.12, -s * 0.47, s * 0.065);
+        c.fillStyle = "#2a0c06"; oval(c, 0, -s * 0.33, s * 0.13, s * (0.04 + 0.025 * Math.max(0, br))); c.fill();
+        c.fillStyle = "#f4ead6"; c.strokeStyle = ink; c.lineWidth = s * 0.02;
+        for (const sd of [-1, 1]) { c.beginPath(); c.moveTo(sd * s * 0.1, -s * 0.31); c.quadraticCurveTo(sd * s * 0.28, -s * 0.34, sd * s * 0.26, -s * 0.58); c.quadraticCurveTo(sd * s * 0.2, -s * 0.38, sd * s * 0.04, -s * 0.3); c.closePath(); c.fill(); c.stroke(); }
+        c.restore();
       } },
     { role: "Boss", name: "Hive Queen", desc: "Giant eye over a fanged maw, ringed by writhing tentacles.",
       draw(c, t, s) {
@@ -2333,26 +2472,65 @@ const ALIENS = (() => {
         saucer(c, t, s * 0.95, s * 0.85, G, { pilot: true, lights: 5, dome: 0.48 });
       } },
     { role: "Runner", name: "Speeder", desc: "Capsule racer with a roaring thruster.",
-      draw(c, t, s) {
-        shadow(c, s, 0.6, 0.85); c.translate(0, Math.sin(t * 9) * s * 0.03);
-        const f = 0.7 + 0.3 * Math.sin(t * 30);
-        glow(c, Y, 0.3); c.fillStyle = Y; poly(c, [[-s * 0.85, -s * 0.15], [-s * (0.85 + 0.6 * f), 0], [-s * 0.85, s * 0.15]]); c.fill(); noGlow(c);
-        c.fillStyle = METAL[2]; poly(c, [[-s * 0.4, -s * 0.2], [-s * 0.75, -s * 0.55], [-s * 0.55, -s * 0.18]]); c.fill();
-        c.fillStyle = metalGrad(c, -s * 0.32, s * 0.32); rr(c, -s * 0.9, -s * 0.3, s * 1.75, s * 0.6, s * 0.3); c.fill();
-        c.fillStyle = Y; rr(c, -s * 0.6, s * 0.02, s * 1.0, s * 0.08, s * 0.04); c.fill();
-        c.fillStyle = "rgba(160,230,255,0.9)"; oval(c, s * 0.35, -s * 0.12, s * 0.32, s * 0.15); c.fill();
-        c.fillStyle = "#6fe39a"; circle(c, s * 0.3, -s * 0.13, s * 0.08); c.fill();
-        c.fillStyle = "rgba(255,255,255,0.6)"; oval(c, s * 0.42, -s * 0.18, s * 0.1, s * 0.04); c.fill();
+      draw(c, t, s) { // side view racer, nose to the right
+        shadow(c, s, 0.62, 0.95); c.translate(0, Math.sin(t * 9) * s * 0.035 - s * 0.05);
+        c.lineJoin = "round";
+        // speed streaks
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.04; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const o = ((t * 3 + k * 0.33) % 1); c.globalAlpha = 1 - o; c.beginPath(); c.moveTo(-s * (1.1 + o * 0.6), -s * 0.25 + k * s * 0.22); c.lineTo(-s * (1.5 + o * 0.6), -s * 0.25 + k * s * 0.22); c.stroke(); }
+        c.globalAlpha = 1;
+        // hover glow underneath
+        glow(c, Y, 0.3); c.globalAlpha = 0.5; c.fillStyle = Y; oval(c, 0, s * 0.3, s * 0.65, s * 0.08); c.fill(); c.globalAlpha = 1; noGlow(c);
+        // twin exhaust flames
+        const f = 0.75 + 0.25 * Math.sin(t * 34);
+        for (const y of [-s * 0.1, s * 0.1]) { glow(c, Y, 0.25); c.fillStyle = Y; poly(c, [[-s * 0.82, y - s * 0.08], [-s * (0.86 + 0.55 * f), y], [-s * 0.82, y + s * 0.08]]); c.fill(); noGlow(c);
+          c.fillStyle = "#fffbe0"; poly(c, [[-s * 0.82, y - s * 0.04], [-s * (0.84 + 0.28 * f), y], [-s * 0.82, y + s * 0.04]]); c.fill(); }
+        // tail fin
+        c.fillStyle = METAL[2]; poly(c, [[-s * 0.45, -s * 0.18], [-s * 0.82, -s * 0.62], [-s * 0.62, -s * 0.62], [-s * 0.22, -s * 0.2]]); c.fill();
+        c.fillStyle = Y; poly(c, [[-s * 0.7, -s * 0.55], [-s * 0.62, -s * 0.62], [-s * 0.5, -s * 0.47], [-s * 0.58, -s * 0.42]]); c.fill();
+        // wedge hull
+        const hull = () => { c.beginPath(); c.moveTo(s * 1.0, s * 0.06); c.quadraticCurveTo(s * 0.55, -s * 0.12, s * 0.2, -s * 0.24); c.lineTo(-s * 0.55, -s * 0.24); c.lineTo(-s * 0.85, -s * 0.16);
+          c.lineTo(-s * 0.85, s * 0.18); c.lineTo(-s * 0.5, s * 0.26); c.lineTo(s * 0.6, s * 0.2); c.closePath(); };
+        hull(); c.fillStyle = metalGrad(c, -s * 0.26, s * 0.26); c.fill(); c.strokeStyle = "#272c40"; c.lineWidth = s * 0.035; c.stroke();
+        // racing stripe, intake, nozzles
+        c.fillStyle = Y; poly(c, [[s * 0.85, s * 0.06], [-s * 0.6, s * 0.04], [-s * 0.6, s * 0.11], [s * 0.6, s * 0.13]]); c.fill();
+        c.fillStyle = "#272c40"; rr(c, -s * 0.35, s * 0.15, s * 0.3, s * 0.06, s * 0.03); c.fill();
+        c.fillStyle = "#1a1e2c"; for (const y of [-s * 0.1, s * 0.1]) { rr(c, -s * 0.92, y - s * 0.07, s * 0.12, s * 0.14, s * 0.03); c.fill(); }
+        glow(c, Y, 0.15); c.fillStyle = "#fff4b0"; circle(c, s * 0.94, s * 0.06, s * 0.04); c.fill(); noGlow(c); // nose light
+        // canopy with a Blip pilot
+        c.save(); c.beginPath(); c.moveTo(s * 0.55, -s * 0.12); c.quadraticCurveTo(s * 0.2, -s * 0.5, -s * 0.2, -s * 0.24); c.closePath(); c.clip();
+        const cg = c.createLinearGradient(0, -s * 0.45, 0, -s * 0.15); cg.addColorStop(0, "rgba(200,245,255,0.95)"); cg.addColorStop(1, "rgba(70,140,200,0.9)"); c.fillStyle = cg; c.fillRect(-s * 0.3, -s * 0.6, s, s * 0.5);
+        c.fillStyle = "#6fe39a"; oval(c, s * 0.12, -s * 0.27, s * 0.12, s * 0.11); c.fill(); eye(c, s * 0.16, -s * 0.29, s * 0.055);
+        c.fillStyle = "rgba(255,255,255,0.6)"; oval(c, s * 0.25, -s * 0.36, s * 0.1, s * 0.03, -0.3); c.fill();
+        c.restore();
+        c.strokeStyle = "#272c40"; c.lineWidth = s * 0.03; c.beginPath(); c.moveTo(s * 0.55, -s * 0.12); c.quadraticCurveTo(s * 0.2, -s * 0.5, -s * 0.2, -s * 0.24); c.stroke();
       } },
     { role: "Swarm", name: "Probe", desc: "Tiny scanner orb with a blinking antenna.",
-      draw(c, t, s) {
-        shadow(c, s, 1.0, 0.6); c.translate(0, Math.sin(t * 6) * s * 0.1 - s * 0.1);
-        c.strokeStyle = METAL[1]; c.lineWidth = s * 0.1; c.beginPath(); c.moveTo(0, -s * 0.6); c.lineTo(s * 0.2, -s * 1.0); c.stroke();
-        c.fillStyle = Math.sin(t * 8) > 0 ? "#ffffff" : P; glow(c, P, 0.15); circle(c, s * 0.2, -s * 1.0, s * 0.13); c.fill(); noGlow(c);
-        const g = c.createRadialGradient(-s * 0.2, -s * 0.25, s * 0.05, 0, 0, s * 0.7); g.addColorStop(0, METAL[0]); g.addColorStop(1, METAL[2]);
-        c.fillStyle = g; circle(c, 0, 0, s * 0.62); c.fill();
-        c.fillStyle = P; rr(c, -s * 0.62, -s * 0.08, s * 1.24, s * 0.16, s * 0.06); c.fill();
-        c.fillStyle = "#1a0d18"; circle(c, s * 0.18, -s * 0.22, s * 0.14); c.fill(); c.fillStyle = P; circle(c, s * 0.2, -s * 0.22, s * 0.07); c.fill();
+      draw(c, t, s) { // hovering scanner drone with one big lens
+        shadow(c, s, 1.05, 0.55); const by = Math.sin(t * 6) * s * 0.1 - s * 0.12; c.translate(0, by);
+        // scanning beam sweeping below
+        const sw = Math.sin(t * 2.2) * 0.45;
+        c.save(); c.rotate(sw); const bg = c.createLinearGradient(0, s * 0.4, 0, s * 1.3); bg.addColorStop(0, "rgba(255,139,208,0.45)"); bg.addColorStop(1, "rgba(255,139,208,0)");
+        c.fillStyle = bg; poly(c, [[-s * 0.1, s * 0.45], [s * 0.1, s * 0.45], [s * 0.45, s * 1.3], [-s * 0.45, s * 1.3]]); c.fill(); c.restore();
+        // side fins
+        c.fillStyle = METAL[2]; for (const sd of [-1, 1]) { poly(c, [[sd * s * 0.5, -s * 0.12], [sd * s * 0.95, -s * 0.32 + Math.sin(t * 12) * s * 0.03], [sd * s * 0.88, -s * 0.08], [sd * s * 0.5, s * 0.12]]); c.fill(); }
+        c.fillStyle = P; for (const sd of [-1, 1]) { circle(c, sd * s * 0.86, -s * 0.2, s * 0.06); c.fill(); }
+        // antenna with a blinking tip
+        c.strokeStyle = METAL[1]; c.lineWidth = s * 0.08; c.lineCap = "round"; c.beginPath(); c.moveTo(0, -s * 0.55); c.lineTo(-s * 0.12, -s * 0.95); c.stroke();
+        const on = Math.sin(t * 8) > 0; if (on) glow(c, P, 0.18); c.fillStyle = on ? "#ffffff" : P; circle(c, -s * 0.12, -s * 0.98, s * 0.11); c.fill(); noGlow(c);
+        // body sphere
+        const g = c.createRadialGradient(-s * 0.22, -s * 0.28, s * 0.05, 0, 0, s * 0.68); g.addColorStop(0, "#f4f7ff"); g.addColorStop(0.55, METAL[1]); g.addColorStop(1, METAL[2]);
+        c.fillStyle = g; circle(c, 0, 0, s * 0.6); c.fill(); c.strokeStyle = "#2a2f44"; c.lineWidth = s * 0.05; c.stroke();
+        // glowing equator band
+        glow(c, P, 0.2); c.strokeStyle = P; c.lineWidth = s * 0.1; c.beginPath(); c.ellipse(0, s * 0.2, s * 0.56, s * 0.16, 0, 0.15, Math.PI - 0.15); c.stroke(); noGlow(c);
+        // big camera lens that looks around
+        const lx = Math.sin(t * 1.7) * s * 0.1, ly = -s * 0.06;
+        c.fillStyle = "#1a0d18"; circle(c, lx, ly, s * 0.3); c.fill(); c.strokeStyle = "#5a5f78"; c.lineWidth = s * 0.05; c.stroke();
+        const ir = s * (0.17 + 0.03 * Math.sin(t * 3));
+        glow(c, P, 0.15); const lg = c.createRadialGradient(lx, ly, 0, lx, ly, ir); lg.addColorStop(0, "#ffd6ef"); lg.addColorStop(0.5, P); lg.addColorStop(1, shade(P, -0.5));
+        c.fillStyle = lg; circle(c, lx, ly, ir); c.fill(); noGlow(c);
+        c.fillStyle = "#1a0d18"; circle(c, lx, ly, ir * 0.42); c.fill();
+        c.fillStyle = "rgba(255,255,255,0.85)"; circle(c, lx - s * 0.1, ly - s * 0.1, s * 0.06); c.fill();
       } },
     { role: "Flyer", name: "Saucer", desc: "The classic flying saucer, rim lights chasing around it.",
       draw(c, t, s) {
@@ -3103,10 +3281,10 @@ for (const [key, def] of Object.entries(TOWERS)) {
 
 function enemyInfo(e) {
   const d = e.def, best = TOWERS[d.counter];
-  return `<img src="${enemyIcon(e.type, e.wave)}" alt="" style="width:18px;height:18px;vertical-align:middle"> <b>${enemyName(e.type, e.wave)}${e.baby ? " baby" : ""}</b> <span style="color:var(--muted)">(${e.baby ? "from the boss" : d.name})</span> · ` +
+  return `<img src="${enemyIcon(e.type, e.wave)}" alt="" style="width:18px;height:18px;vertical-align:middle"> <b>${enemyName(e.type, e.wave)}${e.baby ? " baby" : ""}</b> <span style="color:var(--muted)">(${e.baby ? offspringSource(e.baby) : d.name})</span> · ` +
     `<span style="color:#ff9d6b;font-weight:700">${num(Math.max(0, e.hp))}/${num(e.maxHp)} HP</span> · ` +
     `<b style="color:var(--bad)">−${d.leak || 1}♥ to your base if it gets through</b><br>` +
-    `Speed ${d.speed}${e.slowT > 0 ? " (slowed)" : ""} · ${d.flying ? "Flies over the maze · " : ""}${killGold(e.type)}◆ when destroyed · ` +
+    `Speed ${d.speed}${e.slowT > 0 ? " (slowed)" : ""} · ${d.flying ? "Flies over the maze · " : ""}${offspringReward(e.type, e.baby)}◆ when destroyed · ` +
     `Best: <img src="${ICONS[d.counter]}" alt="" style="width:14px;height:14px;vertical-align:middle"> ${best.name}`;
 }
 
@@ -3193,6 +3371,8 @@ function updateWaveBar() {
   $("scChips").innerHTML = waveChips(nw, true);
   $("scHint").textContent = S.wave === 0
     ? `Press Start, then you have ${BUILD_TIME} seconds to build.`
+    : waveGroups(nw).some(g => g.type === "boss") ? "Boss bursts include a Flyer."
+    : tankSplits(nw) && waveGroups(nw).some(g => g.type === "tank") ? tankSplitText(nw) + "."
     : "Need more defense? Tap a tower below to build." + (P.autoStart ? "" : " Auto-start is off (Pause menu).");
   const nb = $("nextBtn");
   nb.hidden = preview;
@@ -3249,16 +3429,24 @@ function drawStartCardPortraits(now) {
 // ---- Current wave details ----
 
 // Enemies of the wave(s) in progress, grouped by wave + type: on the field, still to spawn, HP left
-// "Spits out 4× Goo (13 HP) at 80/60/40/20% HP"
-const babyHp = wave => Math.max(1, Math.round(ENEMIES.swarm.hp * waveHpMul(wave) * BROOD.hpFrac));
-const broodRow = wave => `<div class="erow" style="color:#ff8bd0;font-weight:700">Spits out ${broodCount(stageOf(wave))}× ${enemyName("swarm", wave)} ` +
-  `(${num(babyHp(wave))} HP) at ${BROOD.at.map(f => f * 100).join("/")}% HP · shielded for ${BROOD.shieldTime}s</div>`;
+const offspringSource = parent => parent === "tank" ? "from a tank" : "from the boss";
+const babyHp = (type, wave, parent) => Math.max(1, Math.round(ENEMIES[type].hp * waveHpMul(wave) * offspringHpFraction(type, parent)));
+const tankSplitText = wave => `Releases ${TANK_SPLIT.midCount}× ${enemyName("swarm", wave)} at half health and ${TANK_SPLIT.deathCount} more on defeat`;
+function broodRow(type, wave) {
+  const style = 'class="erow" style="color:#ff8bd0;font-weight:700"';
+  if (type === "tank" && tankSplits(wave)) {
+    return `<div ${style}>${tankSplitText(wave)} (${num(babyHp("swarm", wave, "tank"))} HP each)</div>`;
+  }
+  if (type !== "boss") return "";
+  return `<div ${style}>Spawns ${broodCount(stageOf(wave)) - 1}× ${enemyName("swarm", wave)} (${num(babyHp("swarm", wave, "boss"))} HP) + ` +
+    `1× ${enemyName("flying", wave)} (${num(babyHp("flying", wave, "boss"))} HP) at ${BROOD.at.map(f => f * 100).join("/")}% HP · shielded for ${BROOD.shieldTime}s</div>`;
+}
 
 // Steps the closest matching enemy still has to go before it reaches your base
 function closestSteps(type, wave, baby) {
   let best = null;
   for (const e of S.enemies) {
-    if (e.type !== type || e.wave !== wave || !!e.baby !== !!baby || !inBounds(e)) continue;
+    if (e.type !== type || e.wave !== wave || e.baby !== baby || !inBounds(e)) continue;
     const d = e.flying ? Math.ceil(Math.hypot(EXIT.x + 0.5 - e.x, EXIT.y + 0.5 - e.y))
                        : Math.max(0, S.dist[idx(e.tx, e.ty)]) + 1;
     if (best === null || d < best) best = d;
@@ -3269,7 +3457,7 @@ function closestSteps(type, wave, baby) {
 // Enemy details for the current wave. live = { alive, queued, hpLeft }.
 function enemyCard(type, wave, n, baby, live) {
   const d = ENEMIES[type], tw = TOWERS[d.counter];
-  const full = baby ? babyHp(wave) : hpOf(type, wave);
+  const full = baby ? babyHp(type, wave, baby) : hpOf(type, wave);
   const hits = Math.max(1, Math.ceil(full / (power(d.counter, 0) * (d.flying && tw.airMul ? tw.airMul : 1))));
   const unit = tw.walkable ? "blast" : "hit", spd = d.speed < 1.1 ? "slow" : d.speed < 2 ? "normal" : "fast";
   let liveHtml = "";
@@ -3282,19 +3470,19 @@ function enemyCard(type, wave, n, baby, live) {
   }
   return `<div class="ecard"><img class="ei" src="${enemyIcon(type, wave)}" alt="">
     <div class="ebody"><b>${n}× ${enemyName(type, wave)}${baby ? " babies" : ""}</b>
-      <span class="role">${baby ? "from the boss" : d.name}${live && wave !== S.wave ? ` · wave ${wave}` : ""}</span>
+      <span class="role">${baby ? offspringSource(baby) : d.name}${live && wave !== S.wave ? ` · wave ${wave}` : ""}</span>
       ${liveHtml}
       <div class="erow"><span class="hp">${num(full)} HP</span> each · <span class="lk">−${d.leak || 1}♥</span> if one escapes</div>
-      <div class="erow">Speed ${d.speed} (${spd}) · <span class="gd">+${killGold(type)}◆</span> each</div>
+      <div class="erow">Speed ${d.speed} (${spd}) · <span class="gd">+${offspringReward(type, baby)}◆</span> each</div>
       <div class="erow">Best: <img src="${ICONS[d.counter] || ""}" alt=""> ${tw.name} · ${hits} ${unit}${hits === 1 ? "" : "s"} each</div>
-      ${d.flying ? `<div class="erow air">Flies over your maze</div>` : ""}${type === "boss" ? broodRow(wave) : ""}</div></div>`;
+      ${d.flying ? `<div class="erow air">Flies over your maze</div>` : ""}${broodRow(type, wave)}</div></div>`;
 }
 
 function currentGroups() {
   const m = new Map();
   const get = (type, wave, baby) => {
-    const k = wave + "|" + type + (baby ? "|baby" : "");
-    if (!m.has(k)) m.set(k, { type, wave, baby: !!baby, alive: 0, queued: 0, hp: 0 });
+    const k = wave + "|" + type + (baby ? "|" + baby : "");
+    if (!m.has(k)) m.set(k, { type, wave, baby, alive: 0, queued: 0, hp: 0 });
     return m.get(k);
   };
   for (const e of S.enemies) { const g = get(e.type, e.wave, e.baby); g.alive++; g.hp += Math.max(0, e.hp); }
@@ -3347,7 +3535,7 @@ function waveTable(n, title) {
     if (d.flying) airHp += hp * g.n; else groundHp += hp * g.n;
     return `<tr><td><img src="${enemyIcon(g.type, n)}" alt="" style="width:20px;height:20px;vertical-align:middle"> ${enemyName(g.type, n)} <span style="color:var(--muted);font-size:11px">${d.name}</span></td>
       <td>${g.n}</td><td class="v">${num(hp)}</td><td>${d.speed}</td><td>${killGold(g.type)}◆</td><td style="color:var(--bad)">−${d.leak || 1}♥</td></tr>
-      <tr><td colspan="6" class="note">${d.note}${d.flying ? " · ignores your maze" : ""} · Best: <img src="${ICONS[d.counter]}" alt="" style="width:13px;height:13px;vertical-align:middle"> ${TOWERS[d.counter].name} (${hitsLabel(g.type, n)} each)${g.type === "boss" ? broodRow(n) : ""}</td></tr>`;
+      <tr><td colspan="6" class="note">${d.note}${d.flying ? " · ignores your maze" : ""} · Best: <img src="${ICONS[d.counter]}" alt="" style="width:13px;height:13px;vertical-align:middle"> ${TOWERS[d.counter].name} (${hitsLabel(g.type, n)} each)${broodRow(g.type, n)}</td></tr>`;
   }).join("");
   const dps = yourDps();
   const secs = (hp, d) => d > 0 ? `≈${num(hp / d)}s of fire` : `<span style="color:var(--bad)">no towers can hit these!</span>`;
@@ -3479,9 +3667,22 @@ function mainMenu() {
       <button data-act="howto">How to play</button>
       <button data-act="story">Story</button>
       <button data-act="guide" data-arg="main">Tower Guide</button>
-      <button data-act="sound" data-arg="main">Sound: ${P.sound ? "On" : "Off"}</button>
+      <button id="menuSound" data-act="sound" data-arg="main">${soundLabel()}</button>
+      <button data-act="records">Endless Records</button>
       <button data-act="resetPrompt">Reset Progress</button>
     </div>`, true);
+}
+
+function endlessRecordsMenu() {
+  const rows = WORLDS.map(({ name }, map) => {
+    const records = Object.entries(P.endlessBest[map] ?? {});
+    const scores = records.map(([diff, wave]) => `D${diff} · Wave ${wave}`).join(" · ");
+    return `<p><strong>${name}</strong><br>${scores || "No endless waves cleared yet."}</p>`;
+  }).join("");
+  openMenu(`<h2>Endless Records</h2>
+    <p>Highest endless wave cleared on each world and difficulty.</p>
+    ${rows}
+    <button class="big" data-act="main">Back</button>`);
 }
 
 function resetProgressMenu() {
@@ -3960,20 +4161,11 @@ const TUTORIAL = [
   { kicker: "How to play · 6 of 6", title: "Waves and bosses",
     body: [`After deploying, review the Wave 1 preview and press <b>Start</b> for ${BUILD_TIME} seconds to build. The top bar shows the countdown and <b>Send Now</b>.`,
       "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
-      `Each world’s boss appears on wave ${VICTORY_WAVE}. It spawns hatchlings as it takes damage, and they keep moving under a ${BROOD.shieldTime}-second shield.`],
+      `Each world’s boss appears on wave ${VICTORY_WAVE}. It releases swarm aliens and a Flyer as it takes damage. Both keep moving under a ${BROOD.shieldTime}-second shield. From wave ${TANK_SPLIT.firstWave} on, tanks release ${TANK_SPLIT.midCount} unshielded swarm aliens at half health and ${TANK_SPLIT.deathCount} more when destroyed.`],
     doneLabel: "Got it ▶",
     draw(c, t, W, H) {
-      const sceneTime = t % (WAVE_PREVIEW_DEMO_TIME + BROOD.shieldTime + 3);
-      if (sceneTime < WAVE_PREVIEW_DEMO_TIME) {
-        c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
-        const top = Math.max(60, H * 0.12);
-        c.fillStyle = "#78dcff"; c.textAlign = "center"; c.font = "800 15px system-ui";
-        c.fillText("Wave 2 preview", W / 2, top);
-        drawWavePortraits(c, 2, sceneTime, W, top + 14);
-        return;
-      }
       const b = miniBoard(c, W, H, 5, 6); miniPortal(c, b, 2, 0, t);
-      const stage = stageOf(VICTORY_WAVE), elapsed = sceneTime - WAVE_PREVIEW_DEMO_TIME;
+      const stage = stageOf(VICTORY_WAVE), elapsed = t % (BROOD.shieldTime + 3);
       const y = 1.2 + elapsed * 0.36;
       miniAlien(c, b, 2.5, y, "boss", stage, t);
       const age = elapsed - 1;
@@ -3982,9 +4174,10 @@ const TUTORIAL = [
         const a = k / count * TAU2 + 0.5;
         const x = 2.5 + Math.cos(a) * (0.55 + age * 0.14);
         const hatchY = y + Math.sin(a) * (0.45 + age * 0.12);
-        miniAlien(c, b, x, hatchY, "swarm", stage, t + k);
+        const type = k === count - 1 ? "flying" : "swarm";
+        miniAlien(c, b, x, hatchY, type, stage, t + k);
         if (age < BROOD.shieldTime) {
-          drawBroodShield(c, b.ox + x * b.cs, b.oy + hatchY * b.cs, ENEMIES.swarm.size * b.cs);
+          drawBroodShield(c, b.ox + x * b.cs, b.oy + hatchY * b.cs, ENEMIES[type].size * b.cs);
         }
       }
       miniBase(c, b, 2, 5, false);
@@ -4057,11 +4250,7 @@ const ACT = {
   waves: back => waveInfoMenu(back),
   pause: () => pauseMenu(),
   sound: back => {
-    P.sound = !P.sound;
-    saveProfile();
-    if (P.sound) unlockAudio();
-    syncSound();
-    if (P.sound) playSound("build");
+    toggleSound();
     if (back === "pause") pauseMenu(); else mainMenu();
   },
   auto: () => {
@@ -4094,6 +4283,7 @@ const ACT = {
   howto: () => playTutorial(() => mainMenu()),
   howtoPause: () => playTutorial(() => pauseMenu()),
   story: () => playIntro(() => mainMenu()),
+  records: endlessRecordsMenu,
   cont: () => {
     const run = lsGet(KEY_RUN), next = nextSavedWorld(run);
     if (next !== null) { showCampaignDeploy(next, run.diff); return; }
@@ -4353,6 +4543,12 @@ function initializeGame() {
   buildIcons();
   resize();
   S.menu = true;
+  const bootSound = $("bootSound");
+  bootSound.textContent = soundLabel();
+  bootSound.addEventListener("click", () => {
+    toggleSound();
+    bootSound.textContent = soundLabel();
+  });
   $("bootButton").addEventListener("click", mainMenu);
 
   window.addEventListener("resize", resize);
@@ -4365,10 +4561,10 @@ function initializeGame() {
 }
 
 // Load without waiting for audio. If autoplay is blocked, the first interaction unlocks it.
-document.addEventListener("pointerup", unlockAudio, true);
-document.addEventListener("keydown", unlockAudio, true);
-document.addEventListener("click", unlockAudio, true);
-unlockAudio(false);
+document.addEventListener("pointerup", unlockAudioOnInteraction, true);
+document.addEventListener("keydown", unlockAudioOnInteraction, true);
+document.addEventListener("click", unlockAudioOnInteraction, true);
+unlockAudio();
 requestAnimationFrame(() => requestAnimationFrame(initializeGame));
 </script>
 </body>
