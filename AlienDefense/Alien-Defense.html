@@ -69,11 +69,12 @@
   #nextBtn { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   #hud .hudStatus { display: grid; justify-items: start; gap: 2px; min-width: 0; }
   #hud .hudStatus .hudGroup { flex-wrap: wrap; gap: 3px; }
-  #hud .hudStatus .pill { font-size: 14px; padding: 3px 5px; }
+  #hud .hudStatus .pill { font-size: 16px; padding: 3px 5px; }
   #hud .hudStatus .pill small { display: block; margin-bottom: 1px; font-size: 10px; }
   #hud #waveBar { max-width: 100%; padding: 2px 5px; text-align: left; font-size: 10px; line-height: 1.2; white-space: normal; }
   #waveWorld { display: block; color: var(--accent); }
-  #waveNow { color: var(--text); }
+  #waveNow { color: var(--text); font-size: 12px; }
+  #waveLeft { color: var(--gold); font-size: 13px; font-weight: 800; white-space: nowrap; }
   #scChips { cursor: pointer; }
   .chips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
   .chip { display: inline-flex; align-items: center; gap: 2px; background: #1a2140; border: 1px solid var(--line);
@@ -122,11 +123,17 @@
   }
   #stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
   canvas { display: block; touch-action: none; border-radius: 6px; }
-  #cv { width: 100%; border-radius: 0; }
+  #cv { flex: none; border-radius: 0; }
+  #hud, #bar { align-self: center; width: 100%; max-width: 100%; }
   #bar { flex: none; background: var(--panel); padding: 6px 8px; min-height: 76px; }
   #build { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
   .tbtn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; touch-action: none; }
   .tbtn .ic { width: 30px; height: 30px; }
+  .tower-art { display: inline-flex; align-items: center; gap: 3px; }
+  .target-icons { display: inline-flex; align-items: center; gap: 2px; vertical-align: middle; }
+  .target-icons svg { width: 12px; height: 12px; display: block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .target-icons .ground { color: var(--good); }
+  .target-icons .air { color: var(--accent); }
   .tbtn .nm { font-size: 13px; }
   .tbtn .cs { font-size: 12px; color: var(--gold); }
   .tbtn .dp { font-size: 12px; font-weight: 800; color: #ff9d6b; line-height: 1.1; white-space: nowrap; }
@@ -172,6 +179,19 @@
   .guide th:first-child, .guide td:first-child { text-align: left; }
   .guide td.v { color: var(--gold); font-weight: 700; }
   .guide td.up { color: var(--good); }
+  .guide-page { flex: 1; min-height: 0; overflow: auto; container-type: size; }
+  .guide-page .guide { margin-block: clamp(8px, 2cqh, 24px); }
+  .guide-page table { font-size: 15px; font-size: clamp(15px, 5cqmin, 28px); }
+  .guide-page td, .guide-page th { padding-block: clamp(6px, 2cqh, 20px); }
+  .guide-page .sub, .guide-page td.note, #ovBox .guide-page > p { font-size: clamp(15px, 4.3cqmin, 24px); }
+  .guide-page .level-name { color: var(--muted); font-size: 0.9em; }
+  .guide-page .hd .t { font-size: clamp(22px, 7cqmin, 40px); }
+  .guide-page img, .guide-page .hd img { width: clamp(24px, 9cqmin, 56px); height: auto; vertical-align: middle; }
+  .guide-page .alienCard { text-align: left; font-size: clamp(15px, 4cqmin, 22px); }
+  .guide-page .alienCard img { width: clamp(42px, 14cqmin, 80px); height: auto; }
+  #ovBox .guide-page .alienCard p { font-size: inherit; margin: 6px 0; }
+  .guide-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .guide-nav button { min-height: 44px; padding-inline: 4px; }
 
   #overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
     background: rgba(5, 8, 15, 0.85); z-index: 10; padding: 16px; }
@@ -183,6 +203,12 @@
   #ovBox .big { display: block; width: 100%; margin: 8px 0; padding: 12px; font-size: 17px; }
   #ovBox .big small { font-weight: 500; color: var(--muted); font-size: 12px; }
   #ovBox .sel { outline: 2px solid var(--accent); background: #243058; }
+  #overlay.tower-guide { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  #overlay.tower-guide #ovBox { display: flex; flex-direction: column; height: 100%; max-width: 960px;
+    padding: clamp(10px, 3vw, 24px); overflow: hidden; }
+  #overlay.tower-guide #ovBox h2 { font-size: clamp(22px, 6vw, 32px); margin-bottom: 4px; }
+  #overlay.tower-guide #ovBox > p { font-size: 15px; margin-bottom: 8px; }
   #overlay.splash {
     background:
       radial-gradient(circle at 16% 24%, #c9dcff 0 1px, transparent 2px) 0 0 / 139px 151px,
@@ -201,6 +227,16 @@
   #overlay.splash #gameVersion { display: block; }
   #ovBox .splashLinks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px; }
   #ovBox .splashLinks button { min-width: 0; font-size: 14px; }
+  #ovBox .splashLinks .new-player-help {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(79,209,255,0.28);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #ovBox .splashLinks .new-player-help { animation: help-pulse 1.5s ease-in-out 3; }
+  }
+  @keyframes help-pulse {
+    50% { box-shadow: 0 0 0 5px rgba(79,209,255,0.35); }
+  }
   @media (min-height: 620px) {
     #overlay.splash:not(.booting) #ovBox { margin-bottom: 10vh; }
   }
@@ -216,9 +252,15 @@
   #cine .cineText { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 20px calc(16px + env(safe-area-inset-bottom));
     background: linear-gradient(rgba(4,6,12,0), rgba(4,6,12,0.94) 28%); text-align: center; }
   #cine.fieldGuide #cineCv { display: none; }
-  #cine.fieldGuide .cineText { inset: 0; display: flex; flex-direction: column; padding: 48px 12px calc(12px + env(safe-area-inset-bottom)); background: var(--bg); }
-  #cine.fieldGuide #cineBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  #cine.fieldGuide .cineText { inset: 0; display: flex; flex-direction: column; padding-top: 48px; background: var(--bg); }
+  #cine.fieldGuide #cineBody { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   #cine.fieldGuide #cineBody p { opacity: 1; animation: none; }
+  .retry-guide { display: grid; gap: 8px; max-width: 480px; margin: 0 auto; }
+  .retry-guide section { padding: 9px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .retry-guide h3 { margin: 0 0 4px; color: var(--accent); font-size: 16px; }
+  #cineBody .retry-guide p { margin: 0; line-height: 1.35; }
+  .retry-guide kbd { display: inline-block; padding: 2px 7px; border-radius: 4px; background: var(--panel-2); font: inherit; font-weight: 800; }
+  .retry-guide svg { display: block; width: 76px; height: 38px; margin: 0 auto 4px; }
   .alienGuide { max-width: 840px; margin: auto; padding: 8px; text-align: left; }
   .alienGuide h3 { margin: 16px 0 8px; }
   .alienGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px; }
@@ -236,6 +278,9 @@
   @keyframes cineIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .cineBtns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
   .cineBtns button { font-size: 16px; padding: 11px 18px; }
+  #cine.tutorial .cineBtns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 300px); margin-inline: auto; }
+  #cine.tutorial .cineBtns button { padding-inline: 5px; }
+  #cine.tutorial .cineBtns button.main { grid-column: 2; }
   .cineBtns button.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   #cineSkip { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 12px; z-index: 2; background: rgba(28,36,64,0.85); }
   #cineDots { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
@@ -265,7 +310,7 @@
         <span class="stat lives pill" id="lives" title="Base health: you lose when it hits 0">♥ 20</span>
         <span class="stat gold pill" id="gold">◆ 60</span>
       </div>
-      <button id="waveBar" title="Open Wave Info"><span id="waveWorld"></span><span id="waveNow"></span> ›</button>
+      <button id="waveBar" title="Open Wave Info"><span id="waveWorld"></span><span id="waveNow"></span><span id="waveLeft"></span> ›</button>
     </div>
     <div class="hudLaunch">
       <button id="nextBtn">Start ▶</button>
@@ -306,7 +351,7 @@
 </div>
 <div id="overlay" class="splash booting">
   <canvas id="splashCv" aria-hidden="true"></canvas>
-  <span id="gameVersion">v1.0.4</span>
+  <span id="gameVersion">v1.0.42</span>
   <div id="ovBox">
     <p id="bootStatus" role="status">Loading Alien Defense…</p>
     <button id="bootSound">Enable sound</button>
@@ -346,38 +391,26 @@ let ROWS = BOARD_ROWS;
 const WORLDS = [
   { name: "The Oort Gate", where: "Oort Cloud · 50,000 AU from the Sun", theme: "ice", stage: 0, hpOffset: 0, startGold: 70, goldMul: 1.0,
     desc: "Ice asteroids and debris at the edge of the solar system.",
-    story: ["The fleet enters the solar system through the Oort Cloud, a vast frozen shell of ice and rock.",
-      "You're the first wall. Your defenses are salvaged from dead stations, cobbled together from debris. But the fleet is spread thin out here, and the cold is your ally.",
-      "Buy time. Learn. Survive."],
-    obstacles: "Ice asteroids and debris you can build around", enemy: "Their scouts: soft, strange creatures bred for the cold",
-    win: "The first attack shatters on the ice. But the fleet is already moving inward, toward the gas giants.",
+    story: ["<b>Slow the scouts.</b> Build around the ice."],
+    win: "<b>Oort held.</b> The fleet is heading for Jupiter.",
     rows: ["....S.....", "..........", ".##.......", ".##...##..", "......##..", "..........", "...##.....", "...##.....",
            ".......##.", ".......##.", ".##.......", ".##..##...", ".....##...", "..........", "....E....."] },
   { name: "Jupiter Storm", where: "Jupiter's orbit · 5.2 AU from the Sun", theme: "jupiter", stage: 1, hpOffset: 3, startGold: 108, goldMul: 1.2,
     desc: "Radiation belts and an asteroid ring.",
-    story: ["The fleet pushes past the outer worlds. Jupiter looms behind you.",
-      "You can't build in the radiation belts. Ground troops have to use the gaps, but flyers cross straight over them.",
-      "The hunters are tougher than the Oort scouts. Cover the gaps with ground defenses and keep something that can hit flyers."],
-    obstacles: "Radiation belts funnel ground troops · ring asteroids block building", enemy: "Their hunters: fanged, armored and many-eyed",
-    win: "Jupiter's storms swallow what's left of the attack. The survivors take to their ships and burn for Mars.",
+    story: ["<b>Cover the gaps.</b> Flyers cross the belts."],
+    win: "<b>Jupiter held.</b> The survivors are headed for Mars.",
     rows: ["....S.....", "..........", "..........", "~~~~~~..~~", "..........", "..#....#..", "..........", "~~..~~~~~~",
            "..........", "..#....#..", "..........", "~~~~~~..~~", "..........", "..........", "....E....."] },
   { name: "Mars, the Red Wall", where: "Mars · 1.5 AU from the Sun", theme: "mars", stage: 2, hpOffset: 6, startGold: 190, goldMul: 1.35,
     desc: "Canyon walls and red desert.",
-    story: ["The inner solar system. Mars is the last natural barrier before Earth.",
-      "The canyons are your kill zones: make them walk the long way through the crevices while your towers fire from above.",
-      "The aliens have taken to their ships. Hover pods follow the canyons, while saucers fly straight for the relay. Every ship that gets through is a threat to Earth."],
-    obstacles: "Canyon walls that bend their path", enemy: "Their ships: hover pods, speeders, saucers and hover tanks",
-    win: "The Red Wall holds. But not every ship was stopped. The Armada is heading for Earth.",
+    story: ["<b>Use the canyons.</b> Make them take the long way."],
+    win: "<b>The Red Wall held.</b> Earth is next.",
     rows: [".........S", "..........", "..#.......", "..#..###..", "..#.......", "..#.......", "..#####...", "..........",
            "..........", "....#####.", ".......#..", ".......#..", "..###..#..", "..........", "E........."] },
   { name: "Earth, Final Stand", where: "Earth · 1 AU from the Sun", theme: "earth", stage: 3, hpOffset: 9, startGold: 330, goldMul: 1.6,
     desc: "City blocks and narrow streets.",
-    story: ["You're home. The fleet is here. Cities burn and the sky is full of their ships.",
-      "Your towers are the future you're fighting for: energy weapons, plasma, quantum targeting. Build in the streets between the buildings.",
-      "If you hold Earth, the fleet breaks. If you fall, everything ends."],
-    obstacles: "City blocks with narrow streets", enemy: "The Armada: their best machines, and the Mothership",
-    win: "Earth's relay is still transmitting. The Armada's main assault is over, though scattered ships are still coming through.",
+    story: ["<b>Stop the Mothership.</b> Defend the streets."],
+    win: "<b>Earth held.</b> The main assault is over.",
     rows: ["S.........", "..........", ".##.##.##.", ".##.##.##.", "..........", "..##.##.##", "..##.##.##", "..........",
            ".##.##.##.", ".##.##.##.", "..........", "..##..##..", "..##..##..", "..........", "....E....."] },
 ];
@@ -1135,8 +1168,8 @@ function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-const defaultProfile = () => ({ unlocked: {}, endlessBest: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false });
-let P = Object.assign(defaultProfile(), lsGet(KEY_PROFILE) || {});
+const defaultProfile = () => ({ unlocked: {}, endlessBest: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false, seenDeploymentHint: false });
+let P = Object.assign(defaultProfile(), lsGet(KEY_PROFILE) || {}, { sound: true });
 delete P.points; delete P.research; // left over from the removed Research Lab
 const AUTO_OPTIONS = [10, 15, 30, 0]; // seconds before the next wave starts by itself; 0 = off
 const saveProfile = () => lsSet(KEY_PROFILE, P);
@@ -1626,7 +1659,7 @@ function waveHpMul(n) {
 function startNextWave() {
   if (S.over || S.menu || (S.wave === 0 && S.awaitingStart) || (!S.won && S.wave >= VICTORY_WAVE)) return;
   if (S.enemies.length || S.spawnQ.length) S.gold += 5 + S.wave; // early-call bonus
-  else if (S.map === 0 && !S.won && !S.endless) {
+  else if (!S.won && !S.endless) {
     S.waveCheckpoints[S.wave] = runSnapshot();
     saveRun();
   }
@@ -2075,7 +2108,7 @@ function gameOver() {
   const setback = campaignDefeat();
   // Snapshots represent the board before the next wave starts.
   const checkpoints = S.waveCheckpoints.slice(0, Math.max(1, S.wave - 1));
-  const rewind = S.map === 0 && !S.won && !S.endless ? checkpoints.filter(Boolean).at(-1) : null;
+  const rewind = !setback?.fellBack && !S.won && !S.endless ? checkpoints.filter(Boolean).at(-1) : null;
   if (rewind) {
     lsSet(KEY_RUN, { ...rewind, waveCheckpoints: checkpoints });
   }
@@ -2108,11 +2141,11 @@ let CELL = 30, DPR = 1;
 
 function resize() {
   const stage = $("stage");
-  const fillPortrait = window.matchMedia("(orientation: portrait)").matches;
   CELL = Math.max(1, Math.min(stage.clientWidth / COLS, stage.clientHeight / ROWS));
   DPR = window.devicePixelRatio || 1;
   const width = COLS * CELL, height = ROWS * CELL;
-  cv.style.height = fillPortrait ? "100%" : height + "px";
+  cv.style.width = $("hud").style.width = $("bar").style.width = width + "px";
+  cv.style.height = height + "px";
   const pixelWidth = Math.round(width * DPR), pixelHeight = Math.round(height * DPR);
   if (cv.width !== pixelWidth || cv.height !== pixelHeight) {
     cv.width = pixelWidth;
@@ -4255,75 +4288,67 @@ function hitsLabel(enemyType, n) {
   const h = hitsToKill(enemyType, n), blast = TOWERS[ENEMIES[enemyType].counter].walkable;
   return `${h} ${blast ? "blast" : "hit"}${h === 1 ? "" : "s"}`;
 }
-// Value score: damage per second per 100 gold invested (mines: as if triggered every rearm)
-function value(type, level) {
-  const st = stats({ type, level });
-  const dps = st.dmg / st.reload;
-  return dps / totalCost(type, level) * 100;
-}
-// Value in the tower's best situation
-function roleValue(type, level) {
-  const v = value(type, level);
-  return type === "cannon" ? v * 3 : type === "arc" ? v * 2 : v;
-}
-function valueText(type, level) {
-  const v = value(type, level);
-  switch (type) {
-    case "cannon": return `${fmt(v)} (~${fmt(v * 3)} vs groups)`;
-    case "arc": return `${fmt(v)} (${fmt(v * 2)} vs flyers)`;
-    case "frost": return `${fmt(v)} + slows`;
-    case "mine": return `${fmt(v)} if triggered often`;
-    default: return fmt(v);
-  }
-}
 function targetsText(def) { return def.air && def.ground ? "Ground + Air" : def.air ? "Air only" : "Ground only"; }
-function specialText(type, level) {
-  const st = stats({ type, level });
-  switch (type) {
-    case "frost": return `Slows everything within ${st.splash} cells to ${Math.round(st.slow * 100)}% speed for ${st.slowT}s`;
-    case "cannon": return `Hits every ground enemy within ${st.splash} cell${st.splash === 1 ? "" : "s"}`;
-    case "arc": return "Double damage vs air";
-    case "mine": return `Blast ${st.splash} cell${st.splash === 1 ? "" : "s"}, rearms in ${st.rearm}s`;
-    default: return "Single target";
-  }
+function targetIcons(def) {
+  const ground = '<svg class="ground" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12m-5-5 5 5 5-5"/></svg>';
+  const air = '<svg class="air" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14V2M3 7l5-5 5 5"/></svg>';
+  const label = targetsText(def);
+  return `<span class="target-icons" role="img" aria-label="${label}" title="${label}">${def.air ? air : ""}${def.ground ? ground : ""}</span>`;
 }
 
-function guideMenu(back) {
+function alienCards(stage) {
+  const cards = Object.entries(ENEMIES).map(([type, def]) => {
+    const tower = TOWERS[def.counter];
+    return `<article class="alienCard">
+      <header><img src="${ENEMY_ICONS[stage]?.[type] || ""}" alt="">
+        <div><strong>${ALIENS.name(type, stage)}</strong> ${targetIcons({ air: def.flying, ground: !def.flying })}<small>${def.name}</small></div></header>
+      <div><b>${num(def.hp)} HP</b> · ${def.speed} cells/s</div>
+      <div>${def.leak || 1} base damage · ${def.gold}◆ reward</div>
+      <div style="color:${tower.color}">Best: ${tower.name}</div>
+    </article>`;
+  }).join("");
+  return `<div class="alienGrid">${cards}</div>`;
+}
+
+function guideMenu(back = "main", page = 0) {
   const blocks = Object.entries(TOWERS).map(([type, def]) => {
     const rows = def.levels.map((L, lv) => {
       const st = stats({ type, level: lv });
-      const pw = power(type, lv), gain = lv ? pw - power(type, lv - 1) : 0;
-      return `<tr><td><img src="${(LEVEL_ICONS[type] || [])[lv] || ""}" alt="" style="width:26px;height:26px;vertical-align:middle"> L${lv + 1}<br><span style="font-size:10px;color:var(--muted)">${def.levelNames[lv]}</span></td>
+      return `<tr><td><img src="${(LEVEL_ICONS[type] || [])[lv] || ""}" alt=""> L${lv + 1}<br><span class="level-name">${def.levelNames[lv]}</span></td>
         <td>${lv ? "+" + L.cost : def.cost}◆</td>
-        <td>${fmt(pw)}${lv ? ` <span class="up">+${fmt(gain)}</span>` : ""}</td>
-        <td>${Number(st.reload.toFixed(2))}s</td>
-        <td class="v">${fmt(value(type, lv))}</td></tr>`;
+        <td>${fmt(power(type, lv))}</td>
+        <td>${Number(st.reload.toFixed(2))}s</td></tr>`;
     }).join("");
-    const airNote = def.airMul ? ` · vs flyers: ${fmt(power(type, 0) * def.airMul)}–${fmt(power(type, 2) * def.airMul)} HP per hit` : "";
     return `<div class="guide">
-      <div class="hd"><img src="${ICONS[type]}" alt=""><span class="t">${def.name}</span></div>
-      <div class="sub"><b style="color:var(--text)">Best for: ${def.best}</b> · ${targetsText(def)}<br>${specialText(type, 0)}${airNote}</div>
-      <table><tr><th>Lvl</th><th>Cost</th><th>${def.walkable ? "HP/blast" : "HP/hit"}</th><th>${def.walkable ? "Rearm" : "Reload"}</th><th>Value</th></tr>${rows}</table>
+      <div class="hd"><img src="${ICONS[type]}" alt=""><span class="t">${def.name}</span>${targetIcons(def)}</div>
+      <div class="sub">${def.best}${def.airMul ? ` · ×${def.airMul} damage to flyers` : ""}</div>
+      <table><tr><th>Lvl</th><th>Cost</th><th>Damage</th><th>${def.walkable ? "Rearm" : "Reload"}</th></tr>${rows}</table>
     </div>`;
-  }).join("");
+  });
   const summary = Object.entries(TOWERS).map(([type, def]) => `<tr>
-      <td><img src="${ICONS[type]}" alt="" style="width:20px;height:20px;vertical-align:middle"> ${def.name}</td>
-      <td>${def.cost}◆</td><td style="text-align:left">${def.best}</td>
-      <td class="v">${type === "frost" ? "slows" : fmt(roleValue(type, 0))}</td></tr>`).join("");
-  const nw = S.wave + 1, hpMul = waveHpMul(nw);
-  const enemies = Object.entries(ENEMIES).map(([type, d]) => `<tr>
-      <td><img src="${enemyIcon(type, nw)}" alt="" style="width:20px;height:20px;vertical-align:middle"> ${enemyName(type, nw)} <span style="color:var(--muted);font-size:11px">${d.name}</span></td>
-      <td>${Math.round(d.hp * hpMul)}</td><td style="color:var(--bad)">−${d.leak || 1}♥</td><td>${d.speed}</td><td>${killGold(type)}◆</td>
-      <td style="text-align:left;white-space:normal">${d.note}</td></tr>`).join("");
+      <td><img src="${ICONS[type]}" alt=""> ${def.name} ${targetIcons(def)}</td>
+      <td>${def.cost}◆</td>
+      <td>${def.levels.map((_, level) => fmt(power(type, level))).join(" → ")}</td></tr>`).join("");
+  const enemies = WORLDS.map(({ name, stage }) => `<section class="guide">
+    <div class="hd"><h3 class="t">${name} aliens</h3></div>
+    <div class="sub">Base stats</div>
+    ${alienCards(stage)}
+  </section>`);
+  const pages = [
+    `<div class="guide"><table><tr><th>Tower</th><th>Cost</th><th>Damage by level</th></tr>${summary}</table></div>`,
+    ...blocks,
+    ...enemies,
+  ];
+  const index = Math.max(0, Math.min(pages.length - 1, page));
   openMenu(`<h2>Tower Guide</h2>
-    <p><b>HP/hit</b> = how much enemy HP one hit removes. <b>Hits</b> = hits per second.
-    <b style="color:var(--gold)">Value</b> = how much damage you get for your gold (higher is better), in the job each tower is best at.
-</p>
-    <div class="guide"><table><tr><th>Tower</th><th>Cost</th><th style="text-align:left">Best for</th><th>Value</th></tr>${summary}</table></div>
-    ${blocks}
-    <div class="guide"><div class="hd"><span class="t">Enemies at wave ${nw}</span></div>
-      <table><tr><th>Enemy</th><th>HP</th><th>Base</th><th>Speed</th><th>Gold</th><th style="text-align:left">Notes</th></tr>${enemies}</table></div>
-    <button class="big" data-act="${back || "main"}">Back</button>`);
+    <p>Page ${index + 1} of ${pages.length} · ${targetIcons({ air: true })} Air · ${targetIcons({ ground: true })} Ground</p>
+    <div class="guide-page">${pages[index]}</div>
+    <div class="guide-nav">
+      <button data-act="guidePage" data-arg="${back}:${index - 1}" ${index === 0 ? "disabled" : ""}>Previous</button>
+      <button data-act="guidePage" data-arg="${back}:${index + 1}" ${index === pages.length - 1 ? "disabled" : ""}>Next</button>
+      <button data-act="${back}">Exit</button>
+    </div>`);
+  $("overlay").classList.add("tower-guide");
 }
 
 // ============================================================
@@ -4331,12 +4356,12 @@ function guideMenu(back) {
 // ============================================================
 const buildEl = $("build"), infoEl = $("info"), hintEl = $("hint");
 
-function boardPoint(clientX, clientY, lift = 0) {
+function boardPoint(clientX, clientY) {
   const r = cv.getBoundingClientRect();
-  return { x: (clientX - r.left) * COLS / r.width, y: (clientY - r.top) * ROWS / r.height - lift };
+  return { x: (clientX - r.left) * COLS / r.width, y: (clientY - r.top) * ROWS / r.height };
 }
-function cellFromPoint(clientX, clientY, lift) {
-  const { x, y } = boardPoint(clientX, clientY, lift);
+function cellFromPoint(clientX, clientY) {
+  const { x, y } = boardPoint(clientX, clientY);
   return { x: Math.floor(x), y: Math.floor(y) };
 }
 
@@ -4345,11 +4370,11 @@ let drag = null;
 for (const [key, def] of Object.entries(TOWERS)) {
   const b = document.createElement("button");
   b.className = "tbtn"; b.dataset.type = key;
-  b.innerHTML = `<img class="ic" alt=""><span class="nm">${def.name}</span><span class="dp"></span><span class="cs">◆${def.cost}</span>`;
+  b.innerHTML = `<span class="tower-art"><img class="ic" alt="">${targetIcons(def)}</span><span class="nm">${def.name}</span><span class="dp"></span><span class="cs">◆${def.cost}</span>`;
   b.addEventListener("pointerdown", ev => {
     if (S.over || S.menu || drag || ev.button !== 0) return;
     drag = { pointerId: ev.pointerId, x: ev.clientX, y: ev.clientY, moved: false,
-      wasSel: S.buildType === key, lift: ev.pointerType === "mouse" ? 0 : 1.2 };
+      wasSel: S.buildType === key };
     b.setPointerCapture(ev.pointerId);
     selectBuild(key);
   });
@@ -4357,17 +4382,15 @@ for (const [key, def] of Object.entries(TOWERS)) {
     if (drag?.pointerId !== ev.pointerId) return;
     if (!drag.moved && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 8) return;
     drag.moved = true;
-    // on touch, lift the ghost above the finger so you can see it
-    const c = cellFromPoint(ev.clientX, ev.clientY, drag.lift);
+    const c = cellFromPoint(ev.clientX, ev.clientY);
     S.ghost = inGrid(c.x, c.y) ? c : null;
   });
   b.addEventListener("pointerup", ev => {
     if (drag?.pointerId !== ev.pointerId) return;
     const d = drag; drag = null;
     if (d.moved) {
-      const finger = cellFromPoint(ev.clientX, ev.clientY);
-      const target = cellFromPoint(ev.clientX, ev.clientY, d.lift);
-      if (inGrid(finger.x, finger.y) && inGrid(target.x, target.y)) tryPlace(target);
+      const target = cellFromPoint(ev.clientX, ev.clientY);
+      if (inGrid(target.x, target.y)) tryPlace(target);
       S.ghost = null;
     }
     else if (d.wasSel) selectBuild(null);
@@ -4404,7 +4427,7 @@ function refreshBar() {
     const t = S.selected, def = TOWERS[t.type], st = stats(t), next = def.levels[t.level + 1];
     const unit = powerUnit(t.type), pw = power(t.type, t.level);
     buildEl.style.display = "none"; infoEl.style.display = "flex";
-    $("infoText").innerHTML = `<b>${def.name} L${t.level + 1}</b> · ${def.levelNames[t.level]}<br>${fmt(pw)} ${unit}`;
+    $("infoText").innerHTML = `<b>${def.name} L${t.level + 1}</b> ${targetIcons(def)} · ${def.levelNames[t.level]}<br>${fmt(pw)} ${unit}`;
     const canUp = !!next && S.gold >= next.cost;
     $("upBtn").innerHTML = !next ? "Max<br>level" : canUp ? `Upgrade<br>−${next.cost}◆` : `Upgrade<br><span class="short">−${next.cost}◆</span>`;
     $("upBtn").disabled = !canUp;
@@ -4419,15 +4442,10 @@ function refreshBar() {
       `${def.walkable ? "" : ` · range ${fmt(st.range)}`}<br>${up}`;
   } else {
     buildEl.style.display = "grid"; infoEl.style.display = "none";
-    if (S.buildType) {
-      const type = S.buildType, def = TOWERS[type], st = stats({ type, level: 0 });
-      hintEl.innerHTML = `<b>${def.name}</b> ◆${def.cost} · <b>${fmt(power(type, 0))} ${powerUnit(type)}</b>${def.airMul ? ` (${fmt(power(type, 0) * def.airMul)} vs flyers)` : ""} · ${speedText(type, 0)}` +
-        `${def.walkable ? "" : ` · range ${fmt(st.range)}`} · ${targetsText(def)}<br>` +
-        `<b>Best for: ${def.best}</b> · ${specialText(type, 0)} · <span class="val">Value ${valueText(type, 0)}</span> · <span class="link" data-guide="1">Compare all</span>`;
-    }
-    else if (S.wave === 0) hintEl.innerHTML = `Drag a tower onto the field, then press Start ▶<br><span class="link" data-guide="1">Tower Guide: cost vs damage</span>`;
-    else if (S.selEnemy) hintEl.innerHTML = enemyInfo(S.selEnemy);
-    else hintEl.innerHTML = `Tap a tower to upgrade or sell it, or an enemy to see its stats.<br><span class="link" data-guide="1">Tower Guide</span>`;
+    if (firstDeploymentHint() && !S.towers.length) {
+      hintEl.innerHTML = "<b>Drag a tower onto the board.</b>";
+    } else if (S.selEnemy) hintEl.innerHTML = enemyInfo(S.selEnemy);
+    else hintEl.innerHTML = 'Targets · <span class="target-icons"><b class="air">↑</b></span> Air · <span class="target-icons"><b class="ground">↓</b></span> Ground · <span class="link" data-guide="1">Tower Guide</span>';
   }
   const bh = $("bar").offsetHeight; // bar height can change; keep the board fitted
   if (bh !== lastBarH) { lastBarH = bh; resize(); }
@@ -4461,7 +4479,8 @@ function updateWaveBar() {
   const of = n => S.won ? `${n}` : `${n}/${VICTORY_WAVE}`;
   const nw = S.wave + 1;
   $("waveWorld").textContent = `${S.map + 1} · ${WORLDS[S.map].name}`;
-  $("waveNow").textContent = `Wave ${of(idle ? nw : S.wave)}${idle ? "" : ` · ${left} left`}`;
+  $("waveNow").textContent = `Wave ${of(idle ? nw : S.wave)}`;
+  $("waveLeft").textContent = idle ? "" : ` · ${left} left`;
   const previewKey = [S.map, S.diff, nw, Object.keys(ENEMY_ICONS).length].join("|");
   if (previewKey !== wavePreviewKey) {
     wavePreviewKey = previewKey;
@@ -4469,7 +4488,7 @@ function updateWaveBar() {
     $("scChips").innerHTML = waveChips(nw, true);
   }
   $("scHint").textContent = S.wave === 0
-    ? `Press Start, then you have ${BUILD_TIME} seconds to build.`
+    ? firstDeploymentHint() ? "Start when you’re ready." : `Press Start, then you have ${BUILD_TIME} seconds to build.`
     : waveGroups(nw).some(g => g.type === "boss") ? `Boss bursts: ${broodSchedule()}. Each includes a Flyer.`
     : tankSplits(nw) && waveGroups(nw).some(g => g.type === "tank") ? tankSplitText(nw) + "."
     : "Need more defense? Tap a tower below to build." + (P.autoStart ? "" : " Auto-start is off (Pause menu).");
@@ -4486,19 +4505,26 @@ function updateWaveBar() {
 // Show the wave preview between waves and clear the board while the player builds.
 let startCardState = "";
 let portraitStart;
+function firstDeploymentHint() {
+  return S.started && S.map === 0 && S.wave === 0 && S.awaitingStart && !P.seenDeploymentHint;
+}
 function updateStartCard() {
   const idle = !S.enemies.length && !S.spawnQ.length;
   const preview = S.wave === 0 && S.awaitingStart;
   const building = S.wave === 0 || S.buildType || S.selected || drag;
-  const show = S.started && idle && !S.over && !S.menu && (preview || !building);
+  const guided = firstDeploymentHint();
+  const show = S.started && idle && !S.over && !S.menu &&
+    (preview ? !guided || S.towers.length > 0 : !building);
   const secs = Math.ceil(S.countdown);
-  const state = [show, secs, P.autoStart, S.wave, preview].join("|");
+  const state = [show, secs, P.autoStart, S.wave, preview, guided].join("|");
   if (state !== startCardState) {
     startCardState = state;
     const card = $("startCard");
     card.classList.toggle("show", show);
     if (!show) portraitStart = undefined;
-    $("startPreview").hidden = !preview;
+    const start = $("startPreview");
+    start.hidden = !preview;
+    start.textContent = guided ? "Start Wave ▶" : "Start ▶";
     const nw = S.wave + 1;
     if (nw > 1 && stageOf(nw) !== stageOf(nw - 1)) $("scTitle").textContent = `⚠ Wave ${nw}: ${ALIENS.stages[stageOf(nw)].title}`;
     else $("scTitle").textContent = S.wave === 0 ? "Wave 1 preview" : `Wave ${S.wave} cleared! Wave ${nw} next`;
@@ -4609,7 +4635,14 @@ function tickCountdown(realDt) {
 $("scChips").onclick = ev => { ev.stopPropagation(); if (!S.menu && !S.over) waveInfoMenu("resume"); };
 $("startPreview").onclick = () => {
   if (!S.started || S.menu || S.over || !S.awaitingStart || S.wave !== 0) return;
+  const guided = firstDeploymentHint();
+  if (guided && !S.towers.length) return;
   S.awaitingStart = false;
+  if (guided) {
+    P.seenDeploymentHint = true;
+    saveProfile();
+    startNextWave();
+  }
   updateStartCard();
 };
 
@@ -4742,6 +4775,7 @@ function openMenu(html, splash = false) {
   if (S) { S.menu = true; S.ghost = null; drag = null; }
   $("ovBox").innerHTML = html;
   const overlay = $("overlay");
+  overlay.classList.remove("tower-guide");
   overlay.classList.toggle("splash", splash);
   overlay.style.display = "flex";
 }
@@ -4762,7 +4796,7 @@ function mainMenu() {
     ${continueLabel ? `<button class="big" data-act="cont">Continue<br><small>${continueLabel}</small></button>` : ""}
     <button class="big campaignBtn" data-act="newmenu">Campaign</button>
     <div class="splashLinks">
-      <button data-act="howto">How to play</button>
+      <button data-act="howto"${!P.seenTutorial && !P.seenDeploymentHint && !continueLabel ? ' class="new-player-help"' : ""}>How to play</button>
       <button data-act="story">Story</button>
       <button data-act="guide" data-arg="main">Tower Guide</button>
       <button id="menuSound" data-act="sound" data-arg="main">${soundLabel()}</button>
@@ -4807,7 +4841,7 @@ function newGameMenu() {
       <b>Difficulty ${d}</b>
       <button data-act="dplus" ${d >= maxDiff(campaignMap) ? "disabled" : ""}>+</button></div>
     <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${diffMul(campaignMap, d).toFixed(2).replace(/0$/, "")}${d >= SECOND_PORTAL_DIFF ? " · 2 portals" : ""}<br>
-      Clear each world to advance to the next.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} defeats remaining before you fall back a world.` : ""}</p>
+      Lose a wave and replay the previous one.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} defeats remaining before you fall back a world.` : ""}</p>
     <button class="big" data-act="start" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Deploy</button>
     <button class="big" data-act="main">Back</button>`);
 }
@@ -4851,6 +4885,7 @@ function showScene() {
   $("cineTitle").textContent = sc.title || "";
   $("cineTitle").className = sc.bigTitle ? "big" : "";
   $("cine").classList.toggle("fieldGuide", !!sc.content);
+  $("cine").classList.toggle("tutorial", CINE.scenes === TUTORIAL);
   const body = $("cineBody");
   if (sc.content) body.tabIndex = 0;
   else body.removeAttribute("tabindex");
@@ -5013,7 +5048,7 @@ function boom(c, x, y, k, t) { // looping explosion
 // ---------- INTRO ----------
 const INTRO = [
   { kicker: "2147 · The edge of the Oort Cloud", title: "A signal from the dark", cue: "signalScan",
-    body: ["Deep-space arrays catch a signal at the very edge of the solar system.", "Not a message. A fleet."],
+    body: ["<b>An alien fleet has entered the solar system.</b>"],
     draw(c, t, W, H) {
       starfield(c, t, W, H, 3); nebula(c, W * 0.75, H * 0.3, Math.min(W, H) * 0.45, "rgba(80,50,160,0.25)");
       const bx = W * 0.82, by = H * 0.3;
@@ -5025,11 +5060,11 @@ const INTRO = [
     } },
   { kicker: "Inbound", title: "They don't stop",
     timedCues: [0.1, 1.45, 2.8, 4.15, 5.5].map(at => [at, "fleetApproach"]),
-    body: ["Thousands of warships, silent and relentless, burning toward the inner solar system.", "No one knows who built them. No one knows why. They don't negotiate."],
+    body: ["<b>Thousands of warships. One target: Earth.</b>"],
     draw(c, t, W, H) { starfield(c, t, W, H, 30); nebula(c, W * 0.3, H * 0.4, Math.min(W, H) * 0.5, "rgba(120,40,60,0.2)"); fleetVaried(c, t, W, H, 48, 70, H * 0.3, H * 0.5); } },
   { kicker: "The outer worlds", title: "It wasn't enough",
     timedCues: [1, 2, 3, 4].map(cycle => [(cycle - hash2(0, 41)) / 0.8, "relayAttack"]),
-    body: ["The United Earth Coalition scrambled every weapon it had.", "The fleet tore through the outer listening posts. At the Oort Gate, the next relay picked up their approach."],
+    body: ["<b>The outer stations fell.</b> Oort Gate is next."],
     draw(c, t, W, H) {
       starfield(c, t, W, H, 4);
       const r = Math.min(W, H) * 0.24, x = W * 0.5, y = H * 0.36;
@@ -5041,9 +5076,7 @@ const INTRO = [
     } },
   { kicker: "The last plan", title: "Hold the line", cue: "defensePlan",
     timedCues: [0.5, 1.5, 2.5, 3.5].map(at => [at, "planetPass"]),
-    body: ["The fleet opens breach portals ahead of its ships. Guard each relay so it can warn the next world.",
-      "<b>The Oort Gate · Jupiter Storm · Mars, the Red Wall · Earth</b>",
-      "You command the last defensive grid."], doneLabel: "Begin ▶",
+    body: ["<b>Four campaign stages.</b> Oort Gate → Jupiter → Mars → Earth."], doneLabel: "Begin ▶",
     draw(c, t, W, H) {
       starfield(c, t, W, H, 2);
       const cy = H * 0.36, sunX = W * 0.06;
@@ -5059,7 +5092,7 @@ const INTRO = [
         const lit = prog >= (k + 0.5) / 4;
         planet(c, s.th, s.x * W, cy, s.r * (Math.min(W, H) / 400), t);
         c.fillStyle = lit ? "#ffd25d" : "#8a94b8"; c.font = "700 13px system-ui, sans-serif"; c.textAlign = "center";
-        c.fillText(`${4 - k}. ${s.n}`, s.x * W, cy + s.r * (Math.min(W, H) / 400) + 22);
+        c.fillText(`${k + 1}. ${s.n}`, s.x * W, cy + s.r * (Math.min(W, H) / 400) + 22);
         if (lit) { c.strokeStyle = "rgba(255,210,93,0.8)"; c.lineWidth = 2; c.beginPath(); c.arc(s.x * W, cy, s.r * (Math.min(W, H) / 400) + 7 + 2 * Math.sin(t * 4), 0, TAU2); c.stroke(); }
       });
       enemyShip(c, W * 0.98 - (W * 0.98 - W * 0.22) * prog, cy, 7, t, 1);
@@ -5067,8 +5100,8 @@ const INTRO = [
 ];
 
 // ---------- HOW TO PLAY (mini demos use the real game art) ----------
-function miniBoard(c, W, H, cols, rows) { // returns cell size + origin, draws the board
-  const cs = Math.min(W * 0.8 / cols, H * 0.5 / rows), ox = (W - cols * cs) / 2, oy = H * 0.05;
+function miniBoard(c, W, H, cols, rows, maxHeight = H * 0.5, maxWidth = W * 0.8) {
+  const cs = Math.min(maxWidth / cols, maxHeight / rows), ox = (W - cols * cs) / 2, oy = H * 0.05;
   c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
   c.fillStyle = "#0f1424"; c.fillRect(ox, oy, cols * cs, rows * cs);
   c.strokeStyle = "rgba(120,140,200,0.12)"; c.lineWidth = 1; c.beginPath();
@@ -5136,180 +5169,225 @@ function tapHint(c, x, y, k) {
 }
 
 const TUTORIAL = [
-  { kicker: "How to play · 1 of 7", title: "Protect your base",
-    body: ["Aliens come out of a portal on the edge of the board. Each world has its own (an icy rift, a hive, a ring gate, a vortex), and it flares as each alien comes through.",
-      "They head for your relay station. Every one that gets through costs base health ♥, and the station cracks, smokes and then burns as it weakens. Lose it all and the relay falls."],
+  { kicker: "How to play · 1 of 5", title: "Build a maze. Protect your base.",
+    body: ["<b>Drag a tower onto the board.</b>", "<b>Ground aliens follow the dotted path.</b> Make it longer so your towers have more time to fire."],
     draw(c, t, W, H) {
-      const b = miniBoard(c, W, H, 5, 7); miniPortal(c, b, 2, 0, t);
-      const p = (t * 0.35) % 1, y = 0.5 + p * 6;
-      miniBase(c, b, 2, 6, p > 0.93);
-      miniAlien(c, b, 2.5, y, "normal", 0, t);
-      c.fillStyle = "#ff5d7a"; c.font = "800 16px system-ui"; c.textAlign = "center";
-      const lives = 20 - Math.floor(t * 0.35);
-      c.fillText(`BASE ♥ ${Math.max(1, lives)}/20`, b.ox + 2.5 * b.cs, b.oy + 7 * b.cs + 20);
-      if (p > 0.93) c.fillText("−1♥", b.ox + 3.6 * b.cs, b.oy + 6 * b.cs);
-    } },
-  { kicker: "How to play · 2 of 7", title: "Build a maze",
-    body: ["Start with a Bolt covering the portal. Drag it onto the board, or select it and tap a cell twice.",
-      "Use People to extend the route. Leave gaps on opposite sides so the second wall sends aliens across the board under fire. Always leave a path to the base.",
-      "Rocks, buildings, tree groves, ponds and energy belts block both walking and building. Open ground and Earth's mown parks are free to build on."],
-    draw(c, t, W, H) {
-      const cols = 7, rows = 9, b = miniBoard(c, W, H, cols, rows);
+      const cols = 7, rows = 9;
+      const available = H - $("cineKicker").parentElement.offsetHeight;
+      const b = miniBoard(c, W, H, cols, rows, Math.max(1, available - H * 0.05 - 32), W * 0.94);
       // Anchor the walls to opposite edges so the route must cross the board between them.
-      const plan = [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3],
-                    [6, 6], [5, 6], [4, 6], [3, 6], [2, 6]];
-      const n = Math.min(plan.length, Math.floor(t / 0.7) % (plan.length + 6));
+      const plan = [[2, 1, "bolt"],
+                    [0, 3, "people"], [1, 3, "people"], [2, 3, "frost"], [3, 3, "people"], [4, 3, "cannon"],
+                    [6, 6, "people"], [5, 6, "people"], [4, 6, "arc"], [3, 6, "people"], [2, 6, "people"]];
+      const elapsed = Math.min(t, 11);
+      const defense = elapsed - 3;
+      const buildTime = 4;
+      const n = Math.max(0, Math.min(plan.length, Math.floor(defense / (buildTime / plan.length))));
       const blocked = new Set(plan.slice(0, n).map(([x, y]) => y * cols + x));
-      blocked.add(cols + 2);
       const path = miniPath(cols, rows, blocked, [3, 0], [3, 8]);
       c.fillStyle = "rgba(93,255,155,0.6)";
       for (const [x, y] of path) { c.beginPath(); c.arc(b.ox + (x + 0.5) * b.cs, b.oy + (y + 0.5) * b.cs, b.cs * 0.08, 0, TAU2); c.fill(); }
-      miniPortal(c, b, 3, 0, t); miniBase(c, b, 3, 8, false);
-      miniTower(c, b, 2, 1, "bolt", 0, idleAnim(t));
-      plan.slice(0, n).forEach(([x, y], k) => {
+      const leaked = elapsed >= 2 && defense < 0;
+      miniPortal(c, b, 3, 0, t); miniBase(c, b, 3, 8, leaked);
+      if (elapsed < 2) miniAlien(c, b, 3.5, 0.5 + elapsed * 4, "normal", 0, t);
+      if (leaked) {
+        c.fillStyle = "#ff5d7a"; c.font = "800 16px system-ui"; c.textAlign = "center";
+        c.fillText("−1 ♥", b.ox + 3.5 * b.cs, b.oy + 7.8 * b.cs);
+      }
+      plan.slice(0, n).forEach(([x, y, type], k) => {
         c.fillStyle = "rgba(20,26,43,0.85)"; c.fillRect(b.ox + x * b.cs + 2, b.oy + y * b.cs + 2, b.cs - 4, b.cs - 4);
-        miniTower(c, b, x, y, "people", 0, idleAnim(t + k));
+        miniTower(c, b, x, y, type, 0, idleAnim(t + k));
       });
-      c.fillStyle = "#5dff9b"; c.font = "700 14px system-ui"; c.textAlign = "center";
-      c.fillText(`Path: ${path.length - 1} steps`, W / 2, b.oy + rows * b.cs + 20);
-    } },
-  { kicker: "How to play · 3 of 7", title: "Pick the right tower",
-    body: ["Compare tower stats as the preview cycles through upgrade levels.", "Each enemy card shows the best tower to use against it.",
-      "<b style='color:#7ee8a0'>People</b> are cheap walls that attack ground aliens. <b style='color:#4fd1ff'>Bolt</b> is the all-rounder. <b style='color:#9be7ff'>Frost</b> slows everything near its target. <b style='color:#ffa45d'>Cannon</b> blasts groups but can't hit flyers. <b style='color:#c78bff'>Arc</b> does double damage to flyers, which fly straight over your maze."],
-    draw(c, t, W, H) {
-      c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
-      const types = Object.keys(TOWERS), cs = Math.min(W / (types.length * 1.24), H * 0.22), y0 = H * 0.12;
-      const level = Math.floor(t / 2.5) % Math.max(...types.map(type => TOWERS[type].levels.length));
-      c.fillStyle = "#e6ecff"; c.font = "700 14px system-ui"; c.textAlign = "center";
-      c.fillText(`Upgrade level ${level + 1}`, W / 2, y0 - 10);
-      types.forEach((k, i) => {
-        const def = TOWERS[k], towerLevel = Math.min(level, def.levels.length - 1);
-        const st = stats({ type: k, level: towerLevel });
-        const hp = st.maxHp ?? st.hp;
-        const { reload } = st;
-        const elapsed = (t + i * 0.3) % reload;
-        const b = { cs, ox: (W - (1 + (types.length - 1) * 1.15) * cs) / 2 + i * cs * 1.15, oy: y0 };
-        const x = b.ox + cs / 2, y = b.oy + cs;
-        c.fillStyle = "#141a2b"; c.fillRect(b.ox, b.oy, cs, cs);
-        miniTower(c, b, 0, 0, k, towerLevel, { t: t + i, fire: Math.max(0, 1 - elapsed / 0.25), arm: 0, charge: elapsed / reload, aim: null });
-        c.fillStyle = def.color; c.font = "800 13px system-ui";
-        c.fillText(def.name, x, y + 16, cs);
-        c.fillStyle = "#aebbe0"; c.font = "600 11px system-ui";
-        c.fillText(def.best.split(":")[0], x, y + 31, cs);
-        c.fillText(speedText(k, towerLevel), x, y + 46, cs);
-        if (hp != null) c.fillText(`${hp} HP`, x, y + 61, cs);
-      });
-    } },
-  { kicker: "How to play · 4 of 7", title: "Upgrade and sell towers",
-    body: ["Tap a tower to open its panel, then tap <b style='color:#5dff9b'>Upgrade</b> (it glows green when you can afford it). Each upgrade evolves the tower: salvaged scrap, then military hardware, then quantum tech.",
-      `<b style='color:#ffd25d'>Sell</b> refunds <b>${Math.round(BASE_REFUND * 100)}%</b> of what you paid for the tower and its upgrades, rounded down to whole gold.`],
-    draw(c, t, W, H) {
-      c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
-      const cs = Math.min(W * 0.22, H * 0.13), b = { cs, ox: W / 2 - cs * 1.5, oy: H * 0.06 };
-      c.fillStyle = "#0f1424"; c.fillRect(b.ox, b.oy, cs * 3, cs * 3);
-      // 13.5s loop: upgrade L1→L2, upgrade L2→L3, then sell
-      const cyc = t % 13.5, step = cyc < 4.5 ? 0 : cyc < 9 ? 1 : 2, lt = cyc - step * 4.5;
-      const spentAt = TOWERS.bolt.levels.map((_, level) => totalCost("bolt", level));
-      const sellAt = spentAt.map(spent => refund({ spent }));
-      const selling = step === 2, sold = selling && lt >= 2.0;
-      const from = selling ? 2 : step, to = selling ? 2 : step + 1, upgraded = !selling && lt >= 3.0;
-      const lv = upgraded ? to : from, evo = !selling && lt >= 3.0 && lt < 3.9 ? (lt - 3.0) / 0.9 : -1;
-      const tx = b.ox + cs * 1.5, ty = b.oy + cs * 1.5, open = lt >= 1.4 && !sold;
-      if (open) { c.fillStyle = "rgba(79,209,255,0.10)"; c.strokeStyle = "rgba(200,220,255,0.3)"; c.beginPath(); c.arc(tx, ty, cs * 1.4, 0, TAU2); c.fill(); c.stroke(); }
-      if (!sold) {
-        c.fillStyle = "rgba(20,26,43,0.85)"; c.fillRect(b.ox + cs + 3, b.oy + cs + 3, cs - 6, cs - 6);
-        c.strokeStyle = open ? "#ffffff" : "#4fd1ff"; c.lineWidth = open ? 3 : 2; c.strokeRect(b.ox + cs + 3, b.oy + cs + 3, cs - 6, cs - 6);
-        miniTower(c, b, 1, 1, "bolt", evo >= 0 && evo < 0.33 ? from : lv, idleAnim(t), evo);
-      } else { // sold: a puff of smoke and the gold coming back
-        const k = Math.min(1, (lt - 2.0) / 0.8);
-        if (k < 1) { c.fillStyle = `rgba(170,178,195,${0.5 * (1 - k)})`; for (let q = 0; q < 6; q++) { const a = q / 6 * TAU2; c.beginPath(); c.arc(tx + Math.cos(a) * cs * 0.5 * k, ty + Math.sin(a) * cs * 0.5 * k, cs * 0.25 * (1 - k * 0.5), 0, TAU2); c.fill(); } }
-        c.globalAlpha = Math.max(0, 1 - (lt - 2.0) / 2.2); c.fillStyle = "#ffd25d"; c.font = "800 22px system-ui"; c.textAlign = "center";
-        c.fillText(`+${sellAt[2]}◆`, tx, ty - k * 30); c.globalAlpha = 1;
-        c.fillStyle = "#e6ecff"; c.font = "700 14px system-ui";
-        c.fillText(`Spent ${spentAt[2]}◆  →  got back ${sellAt[2]}◆`, W / 2, b.oy + cs * 3 + 36);
-      }
-      // the tower panel, like the one at the bottom of the game screen
-      const py = b.oy + cs * 3 + 14, pw = Math.min(W - 24, 340), px = (W - pw) / 2;
-      if (open) {
-        c.fillStyle = "#141a2b"; c.strokeStyle = "#2c3760"; c.lineWidth = 1; c.fillRect(px, py, pw, 66); c.strokeRect(px, py, pw, 66);
-        c.textAlign = "left"; c.fillStyle = "#e6ecff"; c.font = "800 14px system-ui"; c.fillText(`Bolt L${lv + 1}`, px + 10, py + 20);
-        c.fillStyle = "#c9d2ee"; c.font = "700 11px system-ui"; c.fillText(TOWERS.bolt.levelNames[lv], px + 10, py + 37);
-        c.fillStyle = "#8a94b8"; c.font = "600 11px system-ui"; c.fillText(`${TOWERS.bolt.levels[lv].dmg} HP per hit · spent ${spentAt[lv]}◆`, px + 10, py + 54);
-        const ub = { x: px + pw - 150, y: py + 12, w: 82, h: 42 };
-        const can = lv < 2, pulse = 0.5 + 0.5 * Math.sin(t * 7), sellGlow = selling ? pulse : 0;
-        c.fillStyle = can ? "#1d4a3a" : "#1c2440"; c.fillRect(ub.x, ub.y, ub.w, ub.h);
-        c.strokeStyle = can && !selling ? `rgba(93,255,155,${0.6 + 0.4 * pulse})` : "#2c3760"; c.lineWidth = can && !selling ? 2 + pulse * 2 : 1; c.strokeRect(ub.x, ub.y, ub.w, ub.h);
-        c.textAlign = "center"; c.fillStyle = can ? "#5dff9b" : "#8a94b8"; c.font = "800 13px system-ui";
-        c.fillText(can ? "Upgrade" : "Max", ub.x + ub.w / 2, ub.y + 18); c.fillText(can ? `−${TOWERS.bolt.levels[lv + 1].cost}◆` : "level", ub.x + ub.w / 2, ub.y + 34);
-        c.fillStyle = "#3a3415"; c.fillRect(ub.x + ub.w + 6, ub.y, 56, ub.h);
-        c.strokeStyle = `rgba(255,210,93,${0.4 + 0.6 * sellGlow})`; c.lineWidth = 1 + 3 * sellGlow; c.strokeRect(ub.x + ub.w + 6, ub.y, 56, ub.h);
-        c.fillStyle = "#ffd25d"; c.fillText("Sell", ub.x + ub.w + 34, ub.y + 18); c.fillText(`+${sellAt[lv]}◆`, ub.x + ub.w + 34, ub.y + 34);
-        if (!selling && lt >= 2.3 && lt < 3.1) tapHint(c, ub.x + ub.w / 2, ub.y + ub.h / 2, (lt - 2.3) / 0.8);
-        if (selling && lt >= 1.6 && lt < 2.0) tapHint(c, ub.x + ub.w + 34, ub.y + ub.h / 2, (lt - 1.6) / 0.4);
-      }
-      if (lt >= 0.6 && lt < 1.5 && !sold) tapHint(c, tx, ty, (lt - 0.6) / 0.9);
-    } },
-  { kicker: "How to play · 5 of 7", title: "Meet the Aliens",
-    body: ["Scroll to meet the aliens from all four worlds. Cards show baseline stats.",
-      "Tap <b>Next ›</b> in the top bar for the upcoming wave’s full breakdown. The wave preview’s enemy chips also open Wave Info."],
-    content() {
-      const worlds = WORLDS.map(({ name, stage }) => {
-        const cards = Object.entries(ENEMIES).map(([type, def]) => {
-          const tower = TOWERS[def.counter];
-          return `<article class="alienCard">
-            <header><img src="${ENEMY_ICONS[stage][type]}" alt="">
-              <div><strong>${ALIENS.name(type, stage)}</strong><small>${def.name}</small></div></header>
-            <p>${ALIENS.description(type, stage)}</p>
-            <div><b>${num(def.hp)} HP</b> · ${def.speed} cells/s</div>
-            <div>${def.leak || 1} base damage · ${def.gold}◆ reward</div>
-            <div style="color:${tower.color}">Best: ${tower.name}</div>
-          </article>`;
-        }).join("");
-        return `<section><h3>${name}</h3><div class="alienGrid">${cards}</div></section>`;
-      }).join("");
-      return `<div class="alienGuide">${worlds}
-        <details><summary>Wave Info example</summary>${waveTable(8, "Wave 8")}</details>
-      </div>`;
-    } },
-  { kicker: "How to play · 6 of 7", title: "Waves and bosses",
-    body: [`After deploying, review the Wave 1 preview and press <b>Start</b> for ${BUILD_TIME} seconds to build. The top bar shows the countdown and <b>Send Now</b>.`,
-      "The wave preview shows animated portraits of the upcoming aliens. From wave 2 on, different groups arrive together. Change auto-start in the pause menu.",
-      `The wave ${VICTORY_WAVE} boss releases swarm aliens and a Flyer in each burst: ${broodSchedule()}. They’re shielded for ${BROOD.shieldTime}s. From wave ${TANK_SPLIT.firstWave} on, tanks release swarm aliens in bursts: ${broodSchedule()} and ${TANK_SPLIT.deathCount} more on defeat. They’re shielded for ${TANK_SPLIT.shieldTime}s.`],
-
-    draw(c, t, W, H) {
-      const b = miniBoard(c, W, H, 5, 6); miniPortal(c, b, 2, 0, t);
-      const stage = stageOf(VICTORY_WAVE), elapsed = t % (BROOD.shieldTime + 3);
-      const y = 1.2 + elapsed * 0.36;
-      miniAlien(c, b, 2.5, y, "boss", stage, t);
-      const age = elapsed - 1;
-      const count = BROOD_BURSTS[0].count;
-      for (let k = 0; age >= 0 && k < count; k++) {
-        const a = k / count * TAU2 + 0.5;
-        const x = 2.5 + Math.cos(a) * (0.55 + age * 0.14);
-        const hatchY = y + Math.sin(a) * (0.45 + age * 0.12);
-        const type = k === count - 1 ? "flying" : "swarm";
-        miniAlien(c, b, x, hatchY, type, stage, t + k);
-        if (age < BROOD.shieldTime) {
-          drawBroodShield(c, b.ox + x * b.cs, b.oy + hatchY * b.cs, ENEMIES[type].size * b.cs);
+      const combat = defense - buildTime;
+      if (combat >= 0 && path.length > 1) {
+        const progress = Math.min(path.length - 2, combat * 2.8);
+        const step = Math.floor(progress), mix = progress - step;
+        const [ax, ay] = path[step], [bx, by] = path[step + 1];
+        const x = ax + 0.5 + (bx - ax) * mix, y = ay + 0.5 + (by - ay) * mix;
+        const px = b.ox + x * b.cs, py = b.oy + y * b.cs;
+        const shots = Math.min(4, Math.floor(combat / 0.9));
+        if (shots < 4) {
+          miniAlien(c, b, x, y, "normal", 0, t, bx < ax ? -1 : 1);
+          c.fillStyle = "#451b34";
+          c.fillRect(px - b.cs * 0.4, py - b.cs * 0.55, b.cs * 0.8, 4);
+          c.fillStyle = "#5dff9b";
+          c.fillRect(px - b.cs * 0.4, py - b.cs * 0.55, b.cs * 0.8 * (1 - shots / 4), 4);
+        }
+        const hitAge = combat - shots * 0.9;
+        if (shots > 0 && hitAge < 0.23) {
+          const [sx, sy] = plan.reduce((best, cell) =>
+            Math.hypot(cell[0] + 0.5 - x, cell[1] + 0.5 - y) <
+            Math.hypot(best[0] + 0.5 - x, best[1] + 0.5 - y) ? cell : best);
+          c.strokeStyle = "#ffd25d"; c.lineWidth = 2;
+          c.beginPath(); c.moveTo(b.ox + (sx + 0.5) * b.cs, b.oy + (sy + 0.5) * b.cs);
+          c.lineTo(px, py); c.stroke();
         }
       }
-      miniBase(c, b, 2, 5, false);
-      c.fillStyle = "#e6ecff"; c.font = "800 14px system-ui"; c.textAlign = "center";
-      c.fillText(`Wave ${VICTORY_WAVE} · ${ALIENS.name("boss", stage)}`, W / 2, b.oy + 6 * b.cs + 20);
+      c.fillStyle = "#5dff9b"; c.font = "700 14px system-ui"; c.textAlign = "center";
+      const hearts = elapsed < 2 ? START_LIVES : START_LIVES - 1;
+      const status = defense < 0 ? `Base ♥ ${hearts}/${START_LIVES}`
+        : combat >= 3.6 ? `Alien stopped · Base ♥ ${hearts}/${START_LIVES}` : `Dotted path · ${path.length - 1} steps`;
+      if (leaked) c.fillStyle = "#ff5d7a";
+      c.fillText(status, W / 2, b.oy + rows * b.cs + 20);
     } },
-  { kicker: "How to play · 7 of 7", title: "Difficulty and retries",
-    body: [
-      "Choose difficulty on the <b>Campaign</b> screen before deploying. Clear a world to unlock its next difficulty.",
-      `Higher difficulties make aliens tougher. From <b>Difficulty ${SECOND_PORTAL_DIFF}</b> on, two portals alternate arrivals. Leave a route to the base from both.`,
-      "<b>World 1:</b> A defeat sends you back one wave and restores your saved towers, gold, and base health.",
-      `<b>Worlds 2–${WORLDS.length}:</b> The first two defeats restart the world. Your third defeat sends you back to the previous world.`,
-    ],
-    doneLabel: "Got it ▶",
+  { kicker: "How to play · 2 of 5", title: "Meet the Aliens",
+    body: ["<b>Walkers follow the maze. Flyers go over it.</b> Bosses release shielded babies."],
     draw(c, t, W, H) {
-      const b = miniBoard(c, W, H, 5, 5);
-      miniPortal(c, b, 1, 0, t);
-      miniPortal(c, b, 3, 0, t + 1);
-      miniBase(c, b, 2, 4, false);
+      const elapsed = t % 12;
+      const stage = WORLDS[Math.floor(t / 12) % WORLDS.length].stage;
+      const type = elapsed < 3 ? "normal" : elapsed < 6 ? "flying" : "boss";
+      const age = elapsed - (type === "boss" ? 6 : type === "flying" ? 3 : 0);
+      const available = Math.max(1, H - $("cineKicker").parentElement.offsetHeight);
+      const size = Math.min(W * 0.46, available * 0.43);
+      const b = { cs: size, ox: W / 2, oy: available * 0.49 };
+      const x = type === "boss" ? 0 : (age / 3 - 0.5) * 1.35;
+      const y = type === "flying" ? -0.14 + Math.sin(age * 5) * 0.09 : Math.sin(age * 9) * 0.035;
+      c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
+      miniAlien(c, b, x, y, type, stage, t);
+      if (type === "boss") {
+        BROOD_BURSTS.forEach(({ count }, burst) => {
+          const hatchAge = age - 0.9 - burst * 1.35;
+          if (hatchAge < 0 || hatchAge > BROOD.shieldTime + 0.45) return;
+          for (let k = 0; k < count; k++) {
+            const angle = k / count * TAU2 + burst * 0.8;
+            const radius = 0.4 + hatchAge * 0.22;
+            const bx = Math.cos(angle) * radius, by = y + Math.sin(angle) * radius * 0.7;
+            const baby = k === count - 1 ? "flying" : "swarm";
+            miniAlien(c, b, bx, by, baby, stage, t + k);
+            if (hatchAge < BROOD.shieldTime) {
+              drawBroodShield(c, b.ox + bx * size, b.oy + by * size, ENEMIES[baby].size * size);
+            }
+          }
+        });
+      }
+      const label = type === "normal" ? "Walker" : type === "flying" ? "Flyer" : "Boss";
+      c.textAlign = "center"; c.fillStyle = "#e6ecff"; c.font = "800 24px system-ui";
+      c.fillText(label, W / 2, Math.max(28, available * 0.16));
+      c.font = "700 16px system-ui"; c.fillStyle = "#aebbe0";
+      c.fillText(ALIENS.name(type, stage), W / 2, available * 0.86);
+    } },
+  { kicker: "How to play · 3 of 5", title: "Pick the right tower",
+    body: ["<b>Match towers to the alien.</b> " + targetIcons({ air: true }) + " Air · " + targetIcons({ ground: true }) + " Ground"],
+    draw(c, t, W, H) {
+      const examples = [
+        ["people", "normal", "Build walls"],
+        ["bolt", "normal", "Steady shots"],
+        ["frost", "fast", "Slow nearby aliens"],
+        ["cannon", "swarm", "Splash damage"],
+        ["cannon", "flying", "Ground only"],
+        ["arc", "flying", "Double damage to flyers"],
+      ];
+      const duration = 4;
+      const footerHeight = $("cineKicker").parentElement.offsetHeight;
+      const available = Math.max(1, H - footerHeight - 36);
+      const rows = available >= 300 ? 2 : 1;
+      const groups = Math.ceil(examples.length / rows);
+      const first = (Math.floor(t / duration) % groups) * rows;
+      const visible = examples.slice(first, first + rows);
+      const rowHeight = available / visible.length;
+      c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
+      visible.forEach(([type, enemy, role], row) => {
+        const age = t % duration;
+        const def = TOWERS[type], alien = ENEMIES[enemy];
+        const damage = power(type, 0) * (alien.flying ? def.airMul ?? 1 : 1);
+        const hp = alien.hp, remaining = Math.max(0, hp - damage);
+        const cs = Math.max(1, Math.min(W / 3.4, rowHeight - 72));
+        const top = 36 + row * rowHeight + Math.max(0, (rowHeight - cs - 72) / 2);
+        const b = { cs, ox: (W - cs * 3) / 2, oy: top + 46 };
+        const canHit = alien.flying ? def.air : def.ground;
+        const shot = canHit ? age - 1.15 : -1;
+        const travel = Math.max(0, Math.min(1, shot / 0.3));
+        const hit = shot >= 0.3;
+        const x = 2.65 - Math.min(age, 1.45) * 0.18 - (hit ? Math.min(1, shot - 0.3) * (type === "frost" ? 0.06 : 0.18) : 0);
+        const y = 0.5;
+        c.fillStyle = "#141a2b"; c.fillRect(b.ox, b.oy, cs * 3, cs);
+        miniTower(c, b, 0, 0, type, 0, { ...idleAnim(t), fire: Math.max(0, 1 - Math.abs(shot) / 0.3), aim: Math.PI / 2 });
+        if (!hit || remaining > 0 || shot < 0.48) miniAlien(c, b, x, y, enemy, 0, t, -1);
+        const px = b.ox + x * cs, py = b.oy + y * cs;
+        if (shot >= 0 && shot < 0.3) {
+          c.strokeStyle = def.color; c.lineWidth = 3;
+          c.beginPath(); c.moveTo(b.ox + cs * 0.65, py); c.lineTo(b.ox + cs * (0.65 + (x - 0.65) * travel), py); c.stroke();
+        }
+        if (hit && shot < 0.65) {
+          c.strokeStyle = def.color; c.lineWidth = 3;
+          c.beginPath(); c.arc(px, py, cs * (0.2 + shot - 0.3), 0, TAU2); c.stroke();
+        }
+        const bar = cs * 0.8;
+        c.fillStyle = "#451b34"; c.fillRect(px - bar / 2, b.oy, bar, 6);
+        c.fillStyle = "#5dff9b"; c.fillRect(px - bar / 2, b.oy, bar * (hit ? remaining / hp : 1), 6);
+        c.textAlign = "center"; c.font = "800 24px system-ui"; c.fillStyle = def.color;
+        c.fillText(def.name, W / 2, top + 16);
+        c.font = "700 16px system-ui"; c.fillStyle = "#d5dcf2";
+        const arrows = (def.air ? "↑" : "") + (def.ground ? "↓" : "");
+        c.fillText(`${arrows} · ${role}`, W / 2, top + 37, W - 16);
+        c.fillStyle = hit ? "#ff9d6b" : "#d5dcf2";
+        const result = !canHit && age >= 1.15 ? "No damage" : hit ? `−${fmt(damage)} HP` : ALIENS.name(enemy, 0);
+        c.fillText(result, px, b.oy + cs + 23);
+      });
+    } },
+  { kicker: "How to play · 4 of 5", title: "Upgrade or sell a tower",
+    body: ["<b>Tap a tower, then tap Upgrade.</b> More damage per hit. <b>Sell</b> to get gold back."],
+    draw(c, t, W, H) {
+      c.fillStyle = "#04060c"; c.fillRect(0, 0, W, H);
+      const age = t % 8;
+      const upgraded = age >= 2.8;
+      const selling = age >= 4.7, sold = age >= 5.8;
+      const available = Math.max(1, H - $("cineKicker").parentElement.offsetHeight - 36);
+      const size = Math.max(1, Math.min(W * 0.62, available * 0.62, available - 64));
+      const panelWidth = Math.min(W - 24, 560);
+      const x = (W - panelWidth) / 2, y = 36 + size + 10;
+      const panelHeight = Math.max(54, Math.min(78, available - size - 10));
+      const b = { cs: size, ox: (W - size) / 2, oy: 36 };
+      const level = Number(upgraded);
+      const damage = power("bolt", level);
+      const previous = power("bolt", 0);
+      const upgradeCost = TOWERS.bolt.levels[1].cost;
+
+      c.fillStyle = "#141a2b"; c.fillRect(b.ox, b.oy, size, size);
+      c.strokeStyle = age >= 1 ? "#4fd1ff" : "#2c3760";
+      c.lineWidth = 2; c.strokeRect(b.ox, b.oy, size, size);
+      if (!sold) miniTower(c, b, 0, 0, "bolt", level, idleAnim(t));
+      const back = refund({ spent: TOWERS.bolt.cost + upgradeCost });
+
+      if (age >= 1) {
+        c.fillStyle = "#141a2b"; c.fillRect(x, y, panelWidth, panelHeight);
+        c.textAlign = "left"; c.font = "800 17px system-ui"; c.fillStyle = "#e6ecff";
+        c.fillText(sold ? "Tower sold" : `Bolt · Level ${level + 1}`, x + 10, y + 22);
+        c.font = "800 16px system-ui"; c.fillStyle = upgraded ? "#5dff9b" : "#d5dcf2";
+        c.fillText(sold ? `+${back}◆ returned` : upgraded ? `Damage ${previous} → ${damage}` : `Damage ${damage}`, x + 10, y + 44);
+        const bx = x + panelWidth - 106, by = y + (panelHeight - 44) / 2;
+        c.fillStyle = selling ? "#3a3415" : "#1d4a3a"; c.fillRect(bx, by, 96, 44);
+        c.textAlign = "center"; c.fillStyle = "#5dff9b"; c.font = "800 14px system-ui";
+        c.fillText(sold ? "Sold ✓" : selling ? "Sell" : upgraded ? "Upgraded ✓" : "Upgrade", bx + 48, by + (sold || upgraded && !selling ? 27 : 18));
+        if (!upgraded || selling && !sold) c.fillText(selling ? `+${back}◆` : `−${upgradeCost}◆`, bx + 48, by + 35);
+        if (selling && age < 6) tapHint(c, bx + 48, by + 22, (age - 4.7) / 1.3);
+        if (age >= 2.2 && age < 3) tapHint(c, bx + 48, by + 22, (age - 2.2) / 0.8);
+      }
+      if (age >= 0.45 && age < 1.25) tapHint(c, W / 2, b.oy + size / 2, (age - 0.45) / 0.8);
+    } },
+  { kicker: "How to play · 5 of 5", title: "Difficulty and retries",
+    doneLabel: "Got it ▶",
+    content() {
+      return `<div class="retry-guide">
+        <section><h3>Before you deploy</h3>
+          <svg viewBox="0 0 76 38" aria-hidden="true"><rect x="4" y="4" width="68" height="30" rx="6" fill="#243058"/>
+            <path d="M14 19h10m28 0h10m-5-5v10" stroke="#4fd1ff" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="38" cy="19" r="5" fill="#5dff9b"/></svg>
+          <p><b>Campaign</b> → <kbd>−</kbd> Difficulty <kbd>+</kbd> → <kbd>Deploy</kbd></p>
+          <p>Clear a world to unlock its next difficulty.</p>
+        </section>
+        <section><h3>If you lose</h3>
+          <svg viewBox="0 0 76 38" aria-hidden="true"><path d="M22 15h30a9 9 0 0 1 0 18h-9M30 6l-9 9 9 9" fill="none" stroke="#ffd25d" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <p><b>All worlds</b> · Lose Wave 4 → Replay Wave 3</p>
+          <p><b>Worlds 2–4</b> · Third defeat → Back one world</p>
+        </section>
+        <section><h3>Difficulty ${SECOND_PORTAL_DIFF} and up</h3>
+          <svg viewBox="0 0 76 38" role="img" aria-label="Two portals with dotted routes to one base"><rect x="4" y="1" width="68" height="36" rx="4" fill="#0f1424" stroke="#2c3760"/><path d="M19 9v10l19 12L57 19V9" fill="none" stroke="#5dff9b" stroke-width="2" stroke-dasharray="3 3"/>
+            <circle cx="19" cy="8" r="6" fill="#4fd1ff"/><circle cx="57" cy="8" r="6" fill="#4fd1ff"/>
+            <rect x="31" y="26" width="14" height="10" rx="2" fill="#ffd25d"/></svg>
+          <p><b>Tougher aliens. Two portals.</b> Keep both paths open.</p>
+        </section>
+      </div>`;
     } },
 ];
 
@@ -5326,7 +5404,7 @@ function briefingScene(i) {
   const cues = ["oortBriefing", "jupiterBriefing", "marsBriefing", "earthBriefing"];
   return [{ kicker: `World ${i + 1} of ${WORLDS.length} · ${w.where}`, title: w.name,
     cue: cues[i],
-    body: [...w.story, `<span class="tag">Obstacles</span> ${w.obstacles}<br><span class="tag">Enemy</span> ${w.enemy}`],
+    body: w.story,
     doneLabel: "Deploy ▶", skipLabel: "Skip ▸▸",
     draw(c, t, W, H) { worldScene(w, t, c, W, H, true); } }];
 }
@@ -5451,13 +5529,13 @@ function endingArt(c, t, W, H, beat) {
 
 const ENDING = [
   { kicker: "Finale · 1 of 3", title: "The last breach",
-    body: ["The Mothership breaks apart over Earth. Its breach snaps shut, cutting the invasion fleet off from its reinforcements."],
+    body: ["<b>The Mothership falls.</b> The breach closes. The fleet is cut off."],
     noSkip: true, timedCues: [[BREAKUP_TIME, "relayAttack"]], draw(c, t, W, H) { endingArt(c, t, W, H, 0); } },
   { kicker: "Finale · 2 of 3", title: "Is anyone out there?",
-    body: ["Earth turns its relay toward the stations that warned it. “Mars, Jupiter, Oort Gate. This is Earth. We held. Can you hear us?”"],
+    body: ["“Mars, Jupiter, Oort Gate. <b>This is Earth. We held.</b> Can you hear us?”"],
     noSkip: true, cue: "earthReply", draw(c, t, W, H) { endingArt(c, t, W, H, 1); } },
   { kicker: "Finale · 3 of 3", title: "We hear you",
-    body: ["Mars answers first. Jupiter comes through in a burst of static. Then a voice from the Oort Gate: “Keep the channel open. The rescue ships are on their way.”"],
+    body: ["Mars and Jupiter answer. Then Oort comes through. <b>“Keep the channel open. Rescue ships are on their way.”</b>"],
     noSkip: true, cue: "victory", doneLabel: "View victory report ▶",
     draw(c, t, W, H) { endingArt(c, t, W, H, 2); } },
 ];
@@ -5488,6 +5566,10 @@ const ACT = {
     mainMenu();
   },
   guide: back => guideMenu(back),
+  guidePage: arg => {
+    const [back, page] = arg.split(":");
+    guideMenu(back, Number(page));
+  },
   waves: back => waveInfoMenu(back),
   pause: () => pauseMenu(),
   sound: back => {
@@ -5514,8 +5596,9 @@ const ACT = {
     saveProfile();
     newGame(map, diff, true);
     const briefing = briefingScene(map);
-    playCine(map === 0 ? [...INTRO, ...briefing] : briefing, () => {
-      if (map === 0) { P.seenIntro = true; saveProfile(); }
+    const showIntro = map === 0 && !P.seenIntro;
+    playCine(showIntro ? [...INTRO, ...briefing] : briefing, () => {
+      if (showIntro) { P.seenIntro = true; saveProfile(); }
       closeMenu();
     });
   },
@@ -5539,7 +5622,7 @@ const ACT = {
   quit: () => { S.started = false; mainMenu(); }, // last autosave (start of this wave) is kept
   retry: () => {
     autoFullscreen();
-    if (S.map !== 0 || S.endless || !loadRun()) newGame(S.map, S.diff, true);
+    if (S.endless || !loadRun()) newGame(S.map, S.diff, true);
     closeMenu();
   },
   fallback: () => showCampaignDeploy(S.map - 1, S.diff),
@@ -5777,9 +5860,11 @@ function frame(now) {
   updateStartCard();
   drawStartCardPortraits(now);
   const overlay = $("overlay");
-  const splashVisible = overlay.style.display === "flex" && overlay.classList.contains("splash");
+  const menuVisible = overlay.style.display === "flex";
+  const splashVisible = menuVisible && overlay.classList.contains("splash");
   const storyVisible = $("cine").style.display === "block" && CINE.scenes !== TUTORIAL;
-  syncSceneAudio(document.hidden ? null : splashVisible ? "menu" : storyVisible ? "story" : null);
+  const menuMusic = splashVisible || (menuVisible && !S.started);
+  syncSceneAudio(document.hidden ? null : storyVisible ? "story" : menuMusic ? "menu" : null);
   if (splashVisible) drawLoadingScene(now, true);
   else draw();
   requestAnimationFrame(frame);
@@ -5808,7 +5893,11 @@ function initializeGame() {
 }
 
 // Load without waiting for audio. If autoplay is blocked, the first interaction unlocks it.
+document.addEventListener("pointerdown", event => {
+  if (event.pointerType === "mouse") unlockAudioOnInteraction(event);
+}, true);
 document.addEventListener("pointerup", unlockAudioOnInteraction, true);
+document.addEventListener("touchend", unlockAudioOnInteraction, true);
 document.addEventListener("keydown", unlockAudioOnInteraction, true);
 document.addEventListener("click", unlockAudioOnInteraction, true);
 unlockAudio();
