@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attacker Designs</title>
+<style>
+  :root { --bg: #0b0f1a; --panel: #141a2b; --line: #2c3760; --text: #e6ecff; --muted: #8a94b8; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 4px 0 6px; }
+  .lead { color: var(--muted); font-size: 14px; line-height: 1.45; margin: 0 0 8px; }
+  .path { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; font-size: 13px; font-weight: 700; }
+  .path span.st { padding: 4px 10px; border-radius: 999px; background: #243058; }
+  .path span.ar { color: var(--muted); }
+  .roles { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--muted); }
+  .roles i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  section { margin: 28px 0; }
+  section h2 { font-size: 20px; margin: 0 0 2px; }
+  section h2 small { font-size: 13px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; text-align: center; }
+  .card canvas.big { width: 100%; max-width: 170px; aspect-ratio: 1; display: block; margin: 0 auto;
+    background: radial-gradient(circle, #1a2340, #0f1424 70%); border-radius: 10px; }
+  .card canvas.lane { width: 100%; height: 44px; display: block; margin-top: 8px; border-radius: 6px; }
+  .card .lbl { display: block; margin-top: 8px; font-size: 14px; font-weight: 800; }
+  .card .lbl i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+  .card .lbl span { color: var(--muted); font-weight: 700; }
+  .card p { margin: 4px 0 0; font-size: 12px; color: var(--muted); line-height: 1.35; }
+  @media (max-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 6px; } .card { padding: 6px; } .card p { font-size: 11px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Grid Siege: alien invasion attackers</h1>
+  <p class="lead">The invasion escalates as the waves go on. It starts with simple aliens, then scary ones, then their craft, simple first and advanced last.
+  Every attacker keeps its color across all four stages (on the craft it becomes the lights and glow), so you can still tell them apart at a glance.
+  Under each design is a lane at real game size with its HP bar.</p>
+  <div class="path">
+    <span class="st">1 · First Contact</span><span class="ar">→</span>
+    <span class="st">2 · The Hunt Begins</span><span class="ar">→</span>
+    <span class="st">3 · Invasion Fleet</span><span class="ar">→</span>
+    <span class="st">4 · The Armada</span>
+  </div>
+  <div class="roles">
+    <span><i style="background:#5dff9b"></i>Walker</span><span><i style="background:#ffe35d"></i>Runner</span>
+    <span><i style="background:#ff8bd0"></i>Swarm</span><span><i style="background:#7ab8ff"></i>Flyer</span>
+    <span><i style="background:#ff8f5d"></i>Tank</span><span><i style="background:#ff5d7a"></i>Boss</span>
+  </div>
+  <div id="list"></div>
+</main>
+
+<script>
+"use strict";
+const TAU = Math.PI * 2;
+let PX = 1; // pixels per cell for the current draw (glow size)
+
+// ---------------- helpers ----------------
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = f < 0 ? 0 : 255, a = Math.abs(f);
+  r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a);
+  return `rgb(${r},${g},${b})`;
+}
+const glow = (c, color, amt) => { c.shadowColor = color; c.shadowBlur = amt * PX; };
+const noGlow = c => { c.shadowBlur = 0; };
+const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+function poly(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); }
+function rr(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y); c.lineTo(x + w - r, y); c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r); c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h); c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r); c.quadraticCurveTo(x, y, x + r, y); c.closePath();
+}
+function hexPath(c, r, x = 0, y = 0) { c.beginPath(); for (let k = 0; k < 6; k++) { const a = k * TAU / 6; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } c.closePath(); }
+function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+  c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+  c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+  c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+}
+function redEye(c, x, y, r) {
+  glow(c, "#ff3030", 0.12); c.fillStyle = "#ff2a3a"; circle(c, x, y, r); c.fill(); noGlow(c);
+  c.fillStyle = "#ffd0d0"; circle(c, x - r * 0.3, y - r * 0.3, r * 0.3); c.fill();
+}
+const METAL = ["#dfe5f1", "#8e97ad", "#4a5068"];
+function metalGrad(c, y0, y1) {
+  const g = c.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, METAL[0]); g.addColorStop(0.55, METAL[1]); g.addColorStop(1, METAL[2]);
+  return g;
+}
+// Classic saucer: half-width w, height h, role-colored lights & underglow
+function saucer(c, t, w, h, accent, o = {}) {
+  glow(c, accent, 0.3); c.globalAlpha = 0.55; c.fillStyle = accent; oval(c, 0, h * 0.5, w * 0.55, h * 0.3); c.fill(); c.globalAlpha = 1; noGlow(c);
+  c.fillStyle = metalGrad(c, -h * 0.5, h * 0.5); oval(c, 0, 0, w, h * 0.5); c.fill();
+  c.strokeStyle = "#3a4058"; c.lineWidth = h * 0.05; c.beginPath(); c.ellipse(0, h * 0.06, w * 0.97, h * 0.3, 0, 0.05, Math.PI - 0.05); c.stroke();
+  const n = o.lights || 7, step = Math.floor(t * 8);
+  for (let k = 0; k < n; k++) {
+    const th = Math.PI * (k + 0.5) / n, x = Math.cos(th) * w * 0.82, y = Math.sin(th) * h * 0.26 + h * 0.06;
+    const on = (k + step) % 3 === 0;
+    if (on) glow(c, accent, 0.12);
+    c.fillStyle = on ? "#ffffff" : accent; circle(c, x, y, h * 0.07); c.fill(); noGlow(c);
+  }
+  // glass dome with an optional pilot
+  const dr = o.dome || 0.42;
+  c.save(); c.beginPath(); c.ellipse(0, -h * 0.2, w * dr, h * 0.62, 0, Math.PI, TAU); c.closePath(); c.clip();
+  const gg = c.createLinearGradient(0, -h * 0.85, 0, -h * 0.2); gg.addColorStop(0, "rgba(190,240,255,0.95)"); gg.addColorStop(1, "rgba(80,150,200,0.85)");
+  c.fillStyle = gg; c.fillRect(-w, -h, w * 2, h);
+  if (o.pilot) {
+    c.fillStyle = "#6fe39a"; oval(c, 0, -h * 0.38, w * 0.17, h * 0.22); c.fill();
+    c.fillStyle = "#0d1a14"; oval(c, -w * 0.07, -h * 0.4, w * 0.05, h * 0.07, 0.4); c.fill(); oval(c, w * 0.07, -h * 0.4, w * 0.05, h * 0.07, -0.4); c.fill();
+  }
+  c.fillStyle = "rgba(255,255,255,0.55)"; oval(c, -w * dr * 0.45, -h * 0.55, w * 0.08, h * 0.12, -0.6); c.fill();
+  c.restore();
+}
+
+// Stage 4 "dark tech" hull: darker than silver but still readable on the board
+function techGrad(c, y0, y1) {
+  const g = c.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, "#a3aecb"); g.addColorStop(0.5, "#4e5a7e"); g.addColorStop(1, "#232a40");
+  return g;
+}
+const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+const SIZE = { Walker: 0.28, Runner: 0.24, Swarm: 0.16, Flyer: 0.26, Tank: 0.36, Boss: 0.44 };
+const COLOR = { Walker: G, Runner: Y, Swarm: P, Flyer: B, Tank: O, Boss: R };
+
+// Every design is drawn upright (front or side view) at the origin; s = body radius in cells, t = seconds.
+const STAGES = [
+// ============================ STAGE 1 ============================
+{ title: "Stage 1 · First Contact", sub: "Curious little visitors… or are they? · waves 1–5", meta: "Friendly-looking first contact: bright, round and easy to read.", designs: [
+  { role: "Walker", name: "Blip", desc: "One-eyed blob that bounces along, antennae bobbing.",
+    draw(c, t, s) {
+      const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+      c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+      c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+      for (const sd of [-1, 1]) {
+        const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+        c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+        c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill();
+      }
+      c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+      c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+      c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+      if (Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+      else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+      c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+    } },
+  { role: "Runner", name: "Zip", desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+    draw(c, t, s) {
+      c.translate(0, -s * 0.1);
+      c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+      for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+      c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+      for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+        c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+      c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+      c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+      c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+      for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) {
+        const w = Math.sin(t * 6 + ph) * s * 0.06;
+        c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+        eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1);
+      }
+      c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+    } },
+  { role: "Swarm", name: "Goo", desc: "Little wobbling slime drops. Lots of them.",
+    draw(c, t, s) {
+      const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+      c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+      c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+      c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+      c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+      c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+    } },
+  { role: "Flyer", name: "Jelly", desc: "Floating jellyfish that drifts straight over your maze.",
+    draw(c, t, s) {
+      shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+      c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+      for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+        c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * 0.6, x + Math.sin(t * 4 + k + 1) * s * 0.15, s * 1.0); c.stroke(); }
+      const pul = 1 + 0.06 * Math.sin(t * 5);
+      const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+      glow(c, B, 0.25); c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+      c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill(); noGlow(c);
+      c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+    } },
+  { role: "Tank", name: "Chonk", desc: "Big round three-eyed bruiser. Slow, but soaks up hits.",
+    draw(c, t, s) {
+      c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+      c.fillStyle = shade(O, -0.3);
+      for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+      oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+      const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+      c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+      c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+      eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+      c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill();
+    } },
+  { role: "Boss", name: "Mother Blob", desc: "Huge blob covered in eyes that all look in different directions.",
+    draw(c, t, s) {
+      const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+      const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+      c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+      c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+      c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+      const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+      eyes.forEach(([x, y, r], i) => {
+        if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+        else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+      });
+      c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+    } },
+] },
+// ============================ STAGE 2 ============================
+{ title: "Stage 2 · The Hunt Begins", sub: "The real invaders crawl out of the dark. · waves 6–10", meta: "The real invaders show up: darker, spikier, red-eyed and fanged.", designs: [
+  { role: "Walker", name: "Stalker", desc: "Spiny insect with clacking mandibles and four red eyes.",
+    draw(c, t, s) {
+      const st = Math.sin(t * 8);
+      c.strokeStyle = shade(G, -0.62); c.lineWidth = s * 0.1; c.lineCap = "round";
+      for (const sd of [-1, 1]) for (const k of [0, 1]) { const ph = st * (k ? 1 : -1) * sd;
+        c.beginPath(); c.moveTo(sd * s * 0.4, s * 0.2); c.lineTo(sd * s * (0.95 + 0.1 * k), -s * 0.1 + ph * s * 0.12); c.lineTo(sd * s * (1.05 + 0.15 * k), s * 0.85); c.stroke(); }
+      c.fillStyle = shade(G, -0.6);
+      for (let k = -2; k <= 2; k++) { poly(c, [[k * s * 0.25 - s * 0.1, -s * 0.42], [k * s * 0.3, -s * (0.98 - Math.abs(k) * 0.14)], [k * s * 0.25 + s * 0.1, -s * 0.42]]); c.fill(); }
+      c.fillStyle = shade(G, -0.32); oval(c, 0, 0, s * 0.6, s * 0.58); c.fill();
+      c.strokeStyle = G; c.lineWidth = s * 0.04; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.32); c.quadraticCurveTo(0, -s * 0.47, s * 0.3, -s * 0.32); c.stroke();
+      redEye(c, -s * 0.22, -s * 0.1, s * 0.09); redEye(c, s * 0.22, -s * 0.1, s * 0.09); redEye(c, -s * 0.1, -s * 0.26, s * 0.06); redEye(c, s * 0.1, -s * 0.26, s * 0.06);
+      const o = 0.25 + 0.2 * Math.sin(t * 6); c.fillStyle = shade(G, -0.65);
+      for (const sd of [-1, 1]) { c.save(); c.translate(sd * s * 0.15, s * 0.35); c.rotate(sd * o);
+        poly(c, [[0, 0], [sd * s * 0.12, s * 0.05], [sd * s * 0.05, s * 0.45], [-sd * s * 0.05, s * 0.15]]); c.fill(); c.restore(); }
+    } },
+  { role: "Runner", name: "Ripper", desc: "Sprinting raptor-thing with a snapping, toothed jaw.",
+    draw(c, t, s) {
+      c.strokeStyle = shade(Y, -0.38); c.lineCap = "round"; c.lineWidth = s * 0.22;
+      c.beginPath(); c.moveTo(-s * 0.4, -s * 0.1); c.quadraticCurveTo(-s * 0.9, -s * 0.2 + Math.sin(t * 10) * s * 0.15, -s * 1.45, -s * 0.35 + Math.sin(t * 10 + 1) * s * 0.2); c.stroke();
+      c.strokeStyle = shade(Y, -0.58); c.lineWidth = s * 0.12;
+      for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.45, fy = s * 0.95 - Math.max(0, Math.cos(a)) * s * 0.25;
+        c.beginPath(); c.moveTo(0, s * 0.2); c.lineTo(fx * 0.3 - s * 0.15, s * 0.6); c.lineTo(fx, fy); c.lineTo(fx + s * 0.18, fy); c.stroke(); }
+      c.fillStyle = shade(Y, -0.18); oval(c, 0, 0, s * 0.6, s * 0.36, -0.15); c.fill();
+      c.fillStyle = shade(Y, -0.62);
+      for (let k = 0; k < 4; k++) { const x = -s * 0.45 + k * s * 0.28; poly(c, [[x - s * 0.08, -s * 0.28 + k * s * 0.02], [x - s * 0.02, -s * 0.62], [x + s * 0.1, -s * 0.3]]); c.fill(); }
+      c.save(); c.translate(s * 0.5, -s * 0.25);
+      const jaw = 0.12 + 0.3 * Math.max(0, Math.sin(t * 5));
+      c.save(); c.rotate(jaw); c.fillStyle = shade(Y, -0.4); poly(c, [[0, s * 0.03], [s * 0.62, s * 0.06], [s * 0.05, s * 0.2]]); c.fill();
+      c.fillStyle = "#ffffff"; for (let k = 0; k < 4; k++) { const x = s * 0.15 + k * s * 0.12; poly(c, [[x, s * 0.05], [x + s * 0.04, -s * 0.03], [x + s * 0.08, s * 0.05]]); c.fill(); }
+      c.restore();
+      c.fillStyle = shade(Y, -0.18); poly(c, [[0, -s * 0.16], [s * 0.68, -s * 0.06], [s * 0.7, s * 0.03], [0, s * 0.1]]); c.fill();
+      c.fillStyle = "#ffffff"; for (let k = 0; k < 4; k++) { const x = s * 0.15 + k * s * 0.13; poly(c, [[x, s * 0.02], [x + s * 0.04, s * 0.11], [x + s * 0.08, s * 0.02]]); c.fill(); }
+      redEye(c, s * 0.25, -s * 0.05, s * 0.06);
+      c.restore();
+    } },
+  { role: "Swarm", name: "Skitter", desc: "Spider-like larva with fangs. Comes in a tide.",
+    draw(c, t, s) {
+      c.strokeStyle = shade(P, -0.62); c.lineWidth = s * 0.12; c.lineCap = "round";
+      for (const sd of [-1, 1]) for (let k = 0; k < 3; k++) { const tw = Math.sin(t * 20 + k * 2 + sd) * 0.15;
+        c.beginPath(); c.moveTo(sd * s * 0.3, 0); c.lineTo(sd * s * (0.85 + tw * 0.3), -s * (0.5 - k * 0.35)); c.lineTo(sd * s * (1.1 + tw * 0.2), s * (-0.1 + k * 0.4)); c.stroke(); }
+      c.fillStyle = shade(P, -0.32); circle(c, 0, 0, s * 0.55); c.fill();
+      c.fillStyle = shade(P, -0.58); circle(c, 0, -s * 0.2, s * 0.3); c.fill();
+      redEye(c, -s * 0.18, -s * 0.05, s * 0.1); redEye(c, s * 0.18, -s * 0.05, s * 0.1); redEye(c, 0, -s * 0.28, s * 0.08);
+      c.fillStyle = "#ffffff"; poly(c, [[-s * 0.15, s * 0.3], [-s * 0.08, s * 0.62], [-s * 0.02, s * 0.3]]); c.fill(); poly(c, [[s * 0.02, s * 0.3], [s * 0.08, s * 0.62], [s * 0.15, s * 0.3]]); c.fill();
+    } },
+  { role: "Flyer", name: "Shrieker", desc: "Bat-winged screamer with fangs, swooping over the maze.",
+    draw(c, t, s) {
+      shadow(c, s, 1.05, 0.8); const f = Math.sin(t * 9); c.translate(0, -s * 0.2 + f * s * 0.05);
+      c.fillStyle = shade(B, -0.58);
+      for (const sd of [-1, 1]) { c.save(); c.scale(sd, 1); c.beginPath(); c.moveTo(s * 0.25, -s * 0.1);
+        c.quadraticCurveTo(s * 0.8, -s * (0.7 + 0.4 * f), s * 1.35, -s * (0.3 + 0.5 * f)); c.lineTo(s * 1.1, s * 0.05); c.lineTo(s * 0.9, -s * 0.05);
+        c.lineTo(s * 0.7, s * 0.2); c.lineTo(s * 0.5, s * 0.05); c.lineTo(s * 0.25, s * 0.25); c.closePath(); c.fill(); c.restore(); }
+      c.fillStyle = shade(B, -0.38); oval(c, 0, 0, s * 0.35, s * 0.45); c.fill();
+      poly(c, [[-s * 0.25, -s * 0.3], [-s * 0.3, -s * 0.75], [-s * 0.05, -s * 0.4]]); c.fill(); poly(c, [[s * 0.25, -s * 0.3], [s * 0.3, -s * 0.75], [s * 0.05, -s * 0.4]]); c.fill();
+      redEye(c, -s * 0.13, -s * 0.1, s * 0.08); redEye(c, s * 0.13, -s * 0.1, s * 0.08);
+      const m = 0.06 + 0.06 * Math.max(0, Math.sin(t * 4));
+      c.fillStyle = "#12060a"; oval(c, 0, s * 0.16, s * 0.13, s * m * 2); c.fill();
+      c.fillStyle = "#ffffff"; poly(c, [[-s * 0.1, s * 0.1], [-s * 0.06, s * 0.25], [-s * 0.03, s * 0.1]]); c.fill(); poly(c, [[s * 0.03, s * 0.1], [s * 0.06, s * 0.25], [s * 0.1, s * 0.1]]); c.fill();
+    } },
+  { role: "Tank", name: "Brute", desc: "Armour-plated hulk with tusks and huge clawed arms.",
+    draw(c, t, s) {
+      const st = Math.sin(t * 3); c.translate(0, -Math.abs(st) * s * 0.05);
+      c.fillStyle = shade(O, -0.58); rr(c, -s * 0.55, s * 0.45, s * 0.35, s * (0.5 + st * 0.05), s * 0.1); c.fill(); rr(c, s * 0.2, s * 0.45, s * 0.35, s * (0.5 - st * 0.05), s * 0.1); c.fill();
+      for (const sd of [-1, 1]) {
+        c.fillStyle = shade(O, -0.42); oval(c, sd * s * 0.85, s * 0.15 + sd * st * s * 0.06, s * 0.25, s * 0.45, sd * 0.2); c.fill();
+        c.fillStyle = "#e8d8c8"; for (let k = -1; k <= 1; k++) { const x = sd * s * 0.85 + k * s * 0.1; poly(c, [[x - s * 0.04, s * 0.55], [x, s * 0.76], [x + s * 0.04, s * 0.55]]); c.fill(); }
+      }
+      c.fillStyle = shade(O, -0.3); rr(c, -s * 0.7, -s * 0.55, s * 1.4, s * 1.1, s * 0.35); c.fill();
+      c.fillStyle = shade(O, -0.58); for (let k = 0; k < 3; k++) { rr(c, -s * 0.5 + k * s * 0.35, -s * 0.66, s * 0.28, s * 0.25, s * 0.06); c.fill(); }
+      c.fillStyle = shade(O, -0.52); rr(c, -s * 0.35, -s * 0.35, s * 0.7, s * 0.55, s * 0.15); c.fill();
+      redEye(c, -s * 0.15, -s * 0.15, s * 0.08); redEye(c, s * 0.15, -s * 0.15, s * 0.08);
+      c.fillStyle = "#f2e6d0"; poly(c, [[-s * 0.22, s * 0.05], [-s * 0.38, -s * 0.25], [-s * 0.12, s * 0.05]]); c.fill(); poly(c, [[s * 0.22, s * 0.05], [s * 0.38, -s * 0.25], [s * 0.12, s * 0.05]]); c.fill();
+    } },
+  { role: "Boss", name: "Hive Queen", desc: "Giant eye over a fanged maw, ringed by writhing tentacles.",
+    draw(c, t, s) {
+      c.lineCap = "round";
+      for (let k = 0; k < 8; k++) {
+        const a = k * TAU / 8 + 0.2, x = Math.cos(a) * s * 0.6, y = Math.sin(a) * s * 0.6, L = s * 0.95, w = Math.sin(t * 3 + k) * 0.6;
+        c.strokeStyle = shade(R, -0.45 - 0.1 * (k % 2)); c.lineWidth = s * 0.16;
+        const ex = x + Math.cos(a + w) * L, ey = y + Math.sin(a + w) * L;
+        c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a + w * 0.5) * L * 0.5, y + Math.sin(a + w * 0.5) * L * 0.5, ex, ey); c.stroke();
+        c.fillStyle = "#ffd0d8"; poly(c, [[ex - s * 0.04, ey], [ex + Math.cos(a + w) * s * 0.14, ey + Math.sin(a + w) * s * 0.14], [ex + s * 0.04, ey]]); c.fill();
+      }
+      const g = c.createRadialGradient(-s * 0.15, -s * 0.2, s * 0.1, 0, 0, s * 0.78); g.addColorStop(0, shade(R, 0.1)); g.addColorStop(1, shade(R, -0.55));
+      c.fillStyle = g; circle(c, 0, 0, s * 0.75); c.fill();
+      c.fillStyle = "#fff1f3"; circle(c, 0, -s * 0.18, s * 0.34); c.fill();
+      const lx = Math.cos(t * 0.9) * s * 0.11, ly = Math.sin(t * 1.3) * s * 0.08 - s * 0.18;
+      c.fillStyle = "#c41f3d"; circle(c, lx, ly, s * 0.18); c.fill(); c.fillStyle = "#120206"; oval(c, lx, ly, s * 0.05, s * 0.13); c.fill();
+      const m = 0.08 + 0.07 * Math.max(0, Math.sin(t * 2));
+      c.fillStyle = "#1a0408"; oval(c, 0, s * 0.38, s * 0.36, s * m * 2.2); c.fill();
+      c.fillStyle = "#ffffff";
+      for (let k = 0; k < 6; k++) { const x = -s * 0.28 + k * s * 0.112; poly(c, [[x, s * 0.38 - s * m * 2], [x + s * 0.05, s * 0.38 - s * m * 0.6], [x + s * 0.1, s * 0.38 - s * m * 2]]); c.fill(); }
+    } },
+] },
+// ============================ STAGE 3 ============================
+{ title: "Stage 3 · Invasion Fleet", sub: "Their ships touch down. · waves 11–15", meta: "The aliens bring machines. Silver hulls; each attacker's color moves to its lights and engine glow.", designs: [
+  { role: "Walker", name: "Hover Pod", desc: "Small piloted pod skimming the ground (that's a Blip at the controls).",
+    draw(c, t, s) {
+      shadow(c, s, 0.85, 0.75); c.translate(0, Math.sin(t * 4) * s * 0.06 - s * 0.05);
+      saucer(c, t, s * 0.95, s * 0.85, G, { pilot: true, lights: 5, dome: 0.48 });
+    } },
+  { role: "Runner", name: "Speeder", desc: "Capsule racer with a roaring thruster.",
+    draw(c, t, s) {
+      shadow(c, s, 0.6, 0.85); c.translate(0, Math.sin(t * 9) * s * 0.03);
+      const f = 0.7 + 0.3 * Math.sin(t * 30);
+      glow(c, Y, 0.3); c.fillStyle = Y; poly(c, [[-s * 0.85, -s * 0.15], [-s * (0.85 + 0.6 * f), 0], [-s * 0.85, s * 0.15]]); c.fill(); noGlow(c);
+      c.fillStyle = METAL[2]; poly(c, [[-s * 0.4, -s * 0.2], [-s * 0.75, -s * 0.55], [-s * 0.55, -s * 0.18]]); c.fill();
+      c.fillStyle = metalGrad(c, -s * 0.32, s * 0.32); rr(c, -s * 0.9, -s * 0.3, s * 1.75, s * 0.6, s * 0.3); c.fill();
+      c.fillStyle = Y; rr(c, -s * 0.6, s * 0.02, s * 1.0, s * 0.08, s * 0.04); c.fill();
+      c.fillStyle = "rgba(160,230,255,0.9)"; oval(c, s * 0.35, -s * 0.12, s * 0.32, s * 0.15); c.fill();
+      c.fillStyle = "#6fe39a"; circle(c, s * 0.3, -s * 0.13, s * 0.08); c.fill();
+      c.fillStyle = "rgba(255,255,255,0.6)"; oval(c, s * 0.42, -s * 0.18, s * 0.1, s * 0.04); c.fill();
+    } },
+  { role: "Swarm", name: "Probe", desc: "Tiny scanner orb with a blinking antenna.",
+    draw(c, t, s) {
+      shadow(c, s, 1.0, 0.6); c.translate(0, Math.sin(t * 6) * s * 0.1 - s * 0.1);
+      c.strokeStyle = METAL[1]; c.lineWidth = s * 0.1; c.beginPath(); c.moveTo(0, -s * 0.6); c.lineTo(s * 0.2, -s * 1.0); c.stroke();
+      c.fillStyle = Math.sin(t * 8) > 0 ? "#ffffff" : P; glow(c, P, 0.15); circle(c, s * 0.2, -s * 1.0, s * 0.13); c.fill(); noGlow(c);
+      const g = c.createRadialGradient(-s * 0.2, -s * 0.25, s * 0.05, 0, 0, s * 0.7); g.addColorStop(0, METAL[0]); g.addColorStop(1, METAL[2]);
+      c.fillStyle = g; circle(c, 0, 0, s * 0.62); c.fill();
+      c.fillStyle = P; rr(c, -s * 0.62, -s * 0.08, s * 1.24, s * 0.16, s * 0.06); c.fill();
+      c.fillStyle = "#1a0d18"; circle(c, s * 0.18, -s * 0.22, s * 0.14); c.fill(); c.fillStyle = P; circle(c, s * 0.2, -s * 0.22, s * 0.07); c.fill();
+    } },
+  { role: "Flyer", name: "Saucer", desc: "The classic flying saucer, rim lights chasing around it.",
+    draw(c, t, s) {
+      shadow(c, s, 1.15, 0.9); c.translate(0, Math.sin(t * 2.5) * s * 0.08 - s * 0.15);
+      c.rotate(Math.sin(t * 1.5) * 0.06);
+      saucer(c, t, s * 1.2, s * 0.8, B, { pilot: true, lights: 9 });
+    } },
+  { role: "Tank", name: "Hover Tank", desc: "Armoured hover-hull with a heavy cannon turret.",
+    draw(c, t, s) {
+      shadow(c, s, 0.9, 1.0); c.translate(0, Math.sin(t * 2) * s * 0.03);
+      glow(c, O, 0.3); c.globalAlpha = 0.6; c.fillStyle = O; oval(c, 0, s * 0.45, s * 0.75, s * 0.15); c.fill(); c.globalAlpha = 1; noGlow(c);
+      c.fillStyle = metalGrad(c, -s * 0.2, s * 0.45); poly(c, [[-s * 1.05, s * 0.05], [-s * 0.8, -s * 0.2], [s * 0.8, -s * 0.2], [s * 1.05, s * 0.05], [s * 0.8, s * 0.4], [-s * 0.8, s * 0.4]]); c.fill();
+      c.fillStyle = O; for (let k = 0; k < 4; k++) { rr(c, -s * 0.6 + k * s * 0.35, s * 0.12, s * 0.2, s * 0.08, s * 0.03); c.fill(); }
+      const aim = Math.sin(t * 0.8) * 0.15;
+      c.save(); c.translate(0, -s * 0.3); c.rotate(aim);
+      c.fillStyle = METAL[2]; rr(c, s * 0.15, -s * 0.09, s * 0.85, s * 0.18, s * 0.06); c.fill();
+      c.fillStyle = O; rr(c, s * 0.9, -s * 0.11, s * 0.12, s * 0.22, s * 0.04); c.fill();
+      c.restore();
+      c.fillStyle = metalGrad(c, -s * 0.6, -s * 0.1); rr(c, -s * 0.45, -s * 0.58, s * 0.8, s * 0.45, s * 0.15); c.fill();
+      glow(c, O, 0.15); c.fillStyle = O; rr(c, -s * 0.05, -s * 0.45, s * 0.28, s * 0.1, s * 0.04); c.fill(); noGlow(c);
+    } },
+  { role: "Boss", name: "Command Ship", desc: "Two-deck saucer with a pulsing tractor beam underneath.",
+    draw(c, t, s) {
+      const p = 0.5 + 0.5 * Math.sin(t * 3);
+      c.fillStyle = `rgba(255,93,122,${0.12 + 0.12 * p})`; poly(c, [[-s * 0.35, s * 0.25], [s * 0.35, s * 0.25], [s * 0.75, s * 1.15], [-s * 0.75, s * 1.15]]); c.fill();
+      c.translate(0, Math.sin(t * 1.8) * s * 0.05 - s * 0.15);
+      saucer(c, t, s * 1.35, s * 0.75, R, { lights: 11, dome: 0.0001 });
+      c.save(); c.translate(0, -s * 0.35);
+      c.fillStyle = metalGrad(c, -s * 0.25, s * 0.2); oval(c, 0, 0, s * 0.75, s * 0.22); c.fill();
+      for (let k = 0; k < 5; k++) { const on = (k + Math.floor(t * 6)) % 2 === 0; c.fillStyle = on ? "#ffffff" : R; circle(c, -s * 0.5 + k * s * 0.25, s * 0.05, s * 0.05); c.fill(); }
+      c.beginPath(); c.ellipse(0, -s * 0.12, s * 0.35, s * 0.3, 0, Math.PI, TAU); c.closePath();
+      c.fillStyle = "rgba(255,160,180,0.85)"; c.fill();
+      c.fillStyle = "#3a0a12"; circle(c, 0, -s * 0.25, s * 0.08); c.fill();
+      c.restore();
+    } },
+] },
+// ============================ STAGE 4 ============================
+{ title: "Stage 4 · The Armada", sub: "Everything they have. Hold the line. · waves 16+", meta: "Their best tech: dark hulls, energy shields and glowing cores.", designs: [
+  { role: "Walker", name: "Tripod", desc: "Three-legged war walker with a sweeping eye beam.",
+    draw(c, t, s) {
+      c.lineCap = "round";
+      const legs = [[-1, 0], [0, 2.1], [1, 4.2]];
+      for (const [sd, ph] of legs) {
+        const lift = Math.max(0, Math.sin(t * 5 + ph)), fx = sd * s * 0.75 + Math.cos(t * 5 + ph) * s * 0.15, fy = s * 1.0 - lift * s * 0.2;
+        c.strokeStyle = "#5a6688"; c.lineWidth = s * 0.12; c.beginPath(); c.moveTo(sd * s * 0.2, -s * 0.05); c.lineTo(sd * s * 0.6 + s * 0.05, s * 0.35); c.lineTo(fx, fy); c.stroke();
+        c.fillStyle = G; circle(c, sd * s * 0.6 + s * 0.05, s * 0.35, s * 0.06); c.fill();
+      }
+      c.translate(0, Math.sin(t * 5) * s * 0.04 - s * 0.25);
+      c.fillStyle = techGrad(c, -s * 0.45, s * 0.4); oval(c, 0, 0, s * 0.62, s * 0.42); c.fill();
+      c.fillStyle = "#12151f"; rr(c, -s * 0.38, -s * 0.12, s * 0.76, s * 0.2, s * 0.1); c.fill();
+      const ex = Math.sin(t * 1.5) * s * 0.25;
+      glow(c, G, 0.3); c.fillStyle = G; oval(c, ex, -s * 0.02, s * 0.12, s * 0.07); c.fill(); noGlow(c);
+      c.fillStyle = "#3a4058"; rr(c, -s * 0.08, -s * 0.62, s * 0.16, s * 0.25, s * 0.05); c.fill();
+    } },
+  { role: "Runner", name: "Interceptor", desc: "Dart-shaped fighter on glowing energy wings.",
+    draw(c, t, s) {
+      for (let k = 3; k >= 1; k--) { c.save(); c.translate(-k * s * 0.5, 0); c.globalAlpha = 0.18 / k; c.fillStyle = Y; poly(c, [[s * 1.0, 0], [-s * 0.7, -s * 0.7], [-s * 0.4, 0], [-s * 0.7, s * 0.7]]); c.fill(); c.restore(); }
+      c.globalAlpha = 1;
+      const p = 0.6 + 0.4 * Math.sin(t * 12);
+      glow(c, Y, 0.3); c.strokeStyle = Y; c.lineWidth = s * 0.08; c.globalAlpha = p;
+      c.beginPath(); c.moveTo(s * 0.1, -s * 0.12); c.lineTo(-s * 0.65, -s * 0.85); c.lineTo(-s * 0.45, -s * 0.2); c.stroke();
+      c.beginPath(); c.moveTo(s * 0.1, s * 0.12); c.lineTo(-s * 0.65, s * 0.85); c.lineTo(-s * 0.45, s * 0.2); c.stroke();
+      c.globalAlpha = 1; noGlow(c);
+      c.fillStyle = techGrad(c, -s * 0.25, s * 0.25); poly(c, [[s * 1.15, 0], [s * 0.2, -s * 0.25], [-s * 0.75, -s * 0.18], [-s * 0.6, 0], [-s * 0.75, s * 0.18], [s * 0.2, s * 0.25]]); c.fill();
+      c.fillStyle = "#4a5068"; poly(c, [[s * 0.9, 0], [s * 0.2, -s * 0.12], [-s * 0.4, 0], [s * 0.2, s * 0.12]]); c.fill();
+      glow(c, Y, 0.2); c.fillStyle = "#fff6c0"; oval(c, s * 0.45, 0, s * 0.18, s * 0.06); c.fill();
+      c.fillStyle = Y; poly(c, [[-s * 0.7, -s * 0.1], [-s * (0.7 + 0.45 * p), 0], [-s * 0.7, s * 0.1]]); c.fill(); noGlow(c);
+    } },
+  { role: "Swarm", name: "Nanite Trio", desc: "Three micro-drones linked by an energy web, spinning as one.",
+    draw(c, t, s) {
+      const pts = [0, 1, 2].map(k => { const a = t * 3 + k * TAU / 3; return [Math.cos(a) * s * 0.7, Math.sin(a) * s * 0.7]; });
+      glow(c, P, 0.25); c.strokeStyle = P; c.lineWidth = s * 0.07; c.globalAlpha = 0.6 + 0.4 * Math.sin(t * 15);
+      c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.stroke(); c.globalAlpha = 1;
+      c.fillStyle = P; circle(c, 0, 0, s * 0.18); c.fill(); noGlow(c);
+      for (const [x, y] of pts) {
+        c.save(); c.translate(x, y); c.rotate(t * 6);
+        c.fillStyle = techGrad(c, -s * 0.42, s * 0.22); poly(c, [[0, -s * 0.42], [s * 0.37, s * 0.22], [-s * 0.37, s * 0.22]]); c.fill();
+        c.strokeStyle = P; c.lineWidth = s * 0.05; c.stroke();
+        c.fillStyle = P; circle(c, 0, 0, s * 0.1); c.fill();
+        c.restore();
+      }
+    } },
+  { role: "Flyer", name: "Phase Saucer", desc: "Sleek saucer inside a shimmering shield, with a spinning energy ring.",
+    draw(c, t, s) {
+      shadow(c, s, 1.15, 0.9); c.translate(0, Math.sin(t * 2.5) * s * 0.08 - s * 0.15);
+      const sh = 0.1 + 0.08 * Math.sin(t * 4);
+      c.fillStyle = `rgba(122,184,255,${sh})`; oval(c, 0, -s * 0.08, s * 1.42, s * 0.8); c.fill();
+      c.strokeStyle = `rgba(200,230,255,${sh * 2.5})`; c.lineWidth = s * 0.03; c.stroke();
+      c.setLineDash([s * 0.3, s * 0.2]); c.lineDashOffset = -t * s * 4;
+      glow(c, B, 0.3); c.strokeStyle = B; c.lineWidth = s * 0.07;
+      c.beginPath(); c.ellipse(0, s * 0.02, s * 1.28, s * 0.36, 0, Math.PI, TAU); c.stroke(); noGlow(c); // back half of the ring
+      c.fillStyle = techGrad(c, -s * 0.3, s * 0.3); oval(c, 0, 0, s * 1.1, s * 0.3); c.fill();
+      const dg = c.createLinearGradient(0, -s * 0.5, 0, -s * 0.05); dg.addColorStop(0, "#d4ecff"); dg.addColorStop(1, "#3a6aa8");
+      c.fillStyle = dg; c.beginPath(); c.ellipse(0, -s * 0.05, s * 0.5, s * 0.42, 0, Math.PI, TAU); c.closePath(); c.fill();
+      c.fillStyle = "rgba(255,255,255,0.6)"; oval(c, -s * 0.2, -s * 0.3, s * 0.08, s * 0.05, -0.5); c.fill();
+      glow(c, B, 0.15); c.fillStyle = B;
+      for (let k = 0; k < 5; k++) { circle(c, -s * 0.7 + k * s * 0.35, s * 0.08, s * 0.05); c.fill(); }
+      glow(c, B, 0.3); c.strokeStyle = B; c.lineWidth = s * 0.07;
+      c.beginPath(); c.ellipse(0, s * 0.02, s * 1.28, s * 0.36, 0, 0, Math.PI); c.stroke(); // front half of the ring
+      c.setLineDash([]); noGlow(c);
+    } },
+  { role: "Tank", name: "Juggernaut", desc: "Heavy hex-armoured craft behind a flickering hex shield.",
+    draw(c, t, s) {
+      shadow(c, s, 0.95, 1.0);
+      c.fillStyle = techGrad(c, -s * 0.85, s * 0.85); hexPath(c, s * 0.85); c.fill();
+      c.fillStyle = "#38415e"; for (let k = 0; k < 6; k++) { const a = k * TAU / 6 + TAU / 12; hexPath(c, s * 0.22, Math.cos(a) * s * 0.55, Math.sin(a) * s * 0.55); c.fill(); }
+      const p = 0.5 + 0.5 * Math.sin(t * 3);
+      glow(c, O, 0.3 + 0.2 * p); c.fillStyle = O; hexPath(c, s * (0.25 + 0.05 * p)); c.fill(); noGlow(c);
+      c.fillStyle = "#fff0e0"; circle(c, 0, 0, s * 0.08); c.fill();
+      c.strokeStyle = O; c.lineWidth = s * 0.03;
+      for (let k = 0; k < 7; k++) {
+        const a = k * TAU / 7, flick = Math.sin(t * 6 + k * 2.3);
+        if (flick < -0.2) continue;
+        c.globalAlpha = 0.25 + 0.35 * flick; hexPath(c, s * 0.25, Math.cos(a) * s * 1.0, Math.sin(a) * s * 1.0); c.stroke();
+      }
+      c.globalAlpha = 1;
+    } },
+  { role: "Boss", name: "Mothership", desc: "Huge layered saucer: rotating light ring, turrets and a tractor beam.",
+    draw(c, t, s) {
+      const p = 0.5 + 0.5 * Math.sin(t * 2.5);
+      const beam = c.createLinearGradient(0, s * 0.2, 0, s * 1.2);
+      beam.addColorStop(0, `rgba(255,93,122,${0.35 + 0.2 * p})`); beam.addColorStop(1, "rgba(255,93,122,0)");
+      c.fillStyle = beam; poly(c, [[-s * 0.3, s * 0.2], [s * 0.3, s * 0.2], [s * 0.85, s * 1.25], [-s * 0.85, s * 1.25]]); c.fill();
+      c.translate(0, Math.sin(t * 1.5) * s * 0.04 - s * 0.15);
+      c.fillStyle = "#2e3550"; oval(c, 0, s * 0.12, s * 1.1, s * 0.25); c.fill();
+      c.fillStyle = techGrad(c, -s * 0.36, s * 0.36); oval(c, 0, 0, s * 1.45, s * 0.36); c.fill();
+      const n = 14;
+      for (let k = 0; k < n; k++) {
+        const th = (k / n) * TAU + t * 1.2, x = Math.cos(th) * s * 1.3, y = Math.sin(th) * s * 0.3;
+        if (Math.sin(th) < -0.2) continue; // only the front half shows
+        glow(c, R, 0.12); c.fillStyle = (k % 3 === 0) ? "#ffffff" : R; circle(c, x, y, s * 0.05); c.fill(); noGlow(c);
+      }
+      c.fillStyle = techGrad(c, -s * 0.55, -s * 0.1); c.beginPath(); c.ellipse(0, -s * 0.12, s * 0.85, s * 0.4, 0, Math.PI, TAU); c.closePath(); c.fill();
+      for (const tx of [-0.55, 0, 0.55]) {
+        c.save(); c.translate(tx * s, -s * (tx === 0 ? 0.48 : 0.32)); c.rotate(Math.sin(t + tx * 3) * 0.6 - Math.PI / 2);
+        c.fillStyle = "#2e3550"; rr(c, 0, -s * 0.04, s * 0.28, s * 0.08, s * 0.03); c.fill(); c.restore();
+        c.fillStyle = "#7d88a8"; circle(c, tx * s, -s * (tx === 0 ? 0.48 : 0.32), s * 0.1); c.fill();
+      }
+      glow(c, R, 0.4 * p + 0.2); c.fillStyle = R; oval(c, 0, -s * 0.2, s * 0.22, s * 0.1); c.fill(); noGlow(c);
+      c.fillStyle = "#ffe3e8"; oval(c, 0, -s * 0.2, s * 0.08, s * 0.04); c.fill();
+    } },
+] },
+];
+
+// ---------------- page ----------------
+const list = document.getElementById("list");
+const views = [];
+for (const st of STAGES) {
+  const sec = document.createElement("section");
+  sec.innerHTML = `<h2>${st.title}<small>${st.sub}</small></h2><div class="meta">${st.meta}</div><div class="grid"></div>`;
+  const grid = sec.querySelector(".grid");
+  for (const d of st.designs) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<canvas class="big"></canvas><canvas class="lane"></canvas>
+      <span class="lbl"><i style="background:${COLOR[d.role]}"></i>${d.role} <span>· ${d.name}</span></span><p>${d.desc}</p>`;
+    grid.appendChild(card);
+    views.push({ d, size: SIZE[d.role], big: card.querySelector(".big"), lane: card.querySelector(".lane"), seed: Math.random() * 10 });
+  }
+  list.appendChild(sec);
+}
+
+function sizeAll() {
+  const dpr = window.devicePixelRatio || 1;
+  for (const v of views) for (const cv of [v.big, v.lane]) {
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.max(1, Math.round(r.width * dpr)); cv.height = Math.max(1, Math.round(r.height * dpr));
+  }
+}
+
+function frame(now) {
+  const t = now / 1000;
+  for (const v of views) {
+    const tt = t + v.seed, s = v.size;
+    let c = v.big.getContext("2d"), W = v.big.width, H = v.big.height;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H);
+    const unit = (W * 0.25) / s;
+    PX = unit; c.setTransform(unit, 0, 0, unit, W / 2, H / 2);
+    c.save(); v.d.draw(c, tt, s); c.restore(); noGlow(c); c.globalAlpha = 1;
+    // real game size lane
+    c = v.lane.getContext("2d"); W = v.lane.width; H = v.lane.height;
+    const cell = H / 1.15;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.fillStyle = "#0f1424"; c.fillRect(0, 0, W, H);
+    c.strokeStyle = "rgba(120,140,200,0.12)"; c.lineWidth = 1;
+    c.beginPath(); for (let x = cell; x < W; x += cell) { c.moveTo(x, 0); c.lineTo(x, H); } c.stroke();
+    const span = W / cell + 2, speed = v.d.role === "Runner" ? 2.2 : (v.d.role === "Boss" || v.d.role === "Tank") ? 0.7 : 1.2;
+    const x = ((tt * speed) % span) - 1, y = H / cell / 2 + 0.05;
+    PX = cell; c.setTransform(cell, 0, 0, cell, 0, 0);
+    c.save(); c.translate(x, y); v.d.draw(c, tt, s); c.restore(); noGlow(c); c.globalAlpha = 1;
+    const w = Math.max(0.5, s * 2.2), by = y - s - 0.3;
+    c.fillStyle = "rgba(0,0,0,0.6)"; c.fillRect(x - w / 2, by, w, 0.08);
+    c.fillStyle = "#5dff9b"; c.fillRect(x - w / 2, by, w * 0.7, 0.08);
+  }
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener("resize", sizeAll);
+sizeAll();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
