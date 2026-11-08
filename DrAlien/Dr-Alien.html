@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b16">
 <title>Dr. Alien · Hive Containment</title>
 <style>
   :root {
@@ -22,6 +23,14 @@
     background: radial-gradient(ellipse at 50% 0, #1b2751, transparent 64%), var(--bg);
   }
   main { max-width: 970px; margin: auto; padding: 22px 20px; }
+  @supports (padding: max(0px)) {
+    main {
+      padding-left: max(20px, env(safe-area-inset-left));
+      padding-right: max(20px, env(safe-area-inset-right));
+      padding-top: max(22px, env(safe-area-inset-top));
+      padding-bottom: max(22px, env(safe-area-inset-bottom));
+    }
+  }
   main:has(.lab:not(.menu-layout)) { min-height: 100dvh; touch-action: none; }
   header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
   h1, h2, p { margin: 0; }
@@ -145,13 +154,25 @@
     transform-origin: 25% 50%; animation: demo-steer 3.8s steps(1) infinite;
   }
   .demo-capsule .cell { grid-area: auto; }
+  .demo-gesture {
+    grid-area: 1 / 1 / 2 / -1; place-self: center;
+    padding: 2px 8px; border-radius: 8px; background: #183456;
+    color: var(--cyan); font-size: clamp(10px, 3vw, 14px); font-weight: 800;
+    animation: 3.8s steps(1) infinite;
+  }
+  .demo-tap { animation-name: show-tap; }
+  .demo-swipe-right { visibility: hidden; animation-name: show-swipe-right; }
+  .demo-swipe-down { visibility: hidden; animation-name: show-swipe-down; }
+  @keyframes show-tap { 50%, 100% { visibility: hidden; } }
+  @keyframes show-swipe-right { 50% { visibility: visible; } 75%, 100% { visibility: hidden; } }
+  @keyframes show-swipe-down { 75%, 100% { visibility: visible; } }
   .demo-match { animation: demo-match 3.8s linear infinite; }
   .demo-drop { animation: demo-drop 3.8s linear infinite; }
   .demo-chain { animation: demo-chain 3.8s linear infinite; }
   .demo-second { animation: demo-second 3.8s linear infinite; }
   .demo-first { animation-name: demo-first; }
   @keyframes demo-steer {
-    25% { transform: translateX(var(--tile)); }
+    25% { transform: rotate(90deg); }
     50% { transform: translateX(var(--tile)) rotate(90deg); }
     75% { transform: translate(var(--tile), var(--tile)) rotate(90deg); }
   }
@@ -173,7 +194,10 @@
     .demo-drop, .demo-chain { transform: translateY(calc(2 * var(--tile))); }
   }
   @media (max-width: 670px) {
-    main { padding: 10px 8px; }
+    main {
+      padding: max(10px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+        max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    }
     header { align-items: start; margin-bottom: 10px; }
     .lab { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
     .lab:not(.menu-layout) { grid-template-rows: auto 1fr; }
@@ -188,7 +212,8 @@
     .hud .tag { letter-spacing: .07em; }
     .hud dl { margin-bottom: 8px; }
     .hud dl div { padding: 6px 0; }
-    .hud button { padding: 4px; min-height: 36px; }
+    .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .hud button { padding: 3px; min-height: 36px; font-size: clamp(10px, 2.8vw, 13px); }
     .menu-layout { grid-template-columns: minmax(0, 450px); }
     .menu-layout .queen-art { max-width: 110px; }
   }
@@ -196,6 +221,102 @@
     .lab:not(.menu-layout) .queen-art { max-width: 74px; }
     .hud .settings { gap: 5px; }
     .hud button { min-height: 32px; }
+  }
+  #fullscreen[aria-pressed="true"] { border-color: var(--cyan); }
+  @media (orientation: landscape) {
+    main:has(.lab:not(.menu-layout)) {
+      --top: max(8px, env(safe-area-inset-top));
+      --bottom: max(8px, env(safe-area-inset-bottom));
+      --play-height: calc(100dvh - var(--top) - var(--bottom));
+      max-width: none;
+      padding: var(--top) max(12px, env(safe-area-inset-right))
+        var(--bottom) max(12px, env(safe-area-inset-left));
+    }
+    main:has(.lab:not(.menu-layout)) header { display: none; }
+    .lab:not(.menu-layout) {
+      height: var(--play-height);
+      grid-template-columns: minmax(0, 1fr) min(40vw, calc((var(--play-height) - 22px) / 2)) minmax(0, 1fr);
+      grid-template-rows: 18px minmax(0, 1fr) auto;
+      gap: 4px clamp(8px, 2vw, 30px);
+    }
+    .lab:not(.menu-layout) .chamber { display: contents; }
+    .lab:not(.menu-layout) .queen {
+      grid-area: 1 / 1 / 4 / 2; align-self: center; justify-self: center;
+      width: min(100%, 330px); padding: clamp(8px, 2.5vh, 20px); text-align: center;
+    }
+    .lab:not(.menu-layout) .queen-art { max-width: min(100%, 36dvh, 250px); }
+    .lab:not(.menu-layout) .queen h2 { font-size: clamp(14px, 3dvh, 28px); }
+    .chamber-label { grid-area: 1 / 2; margin: 0; font-size: clamp(8px, 1.5vw, 11px); letter-spacing: .07em; }
+    .tank { grid-area: 2 / 2 / 4 / 3; align-self: stretch; min-height: 0; padding: 4px; }
+    #board {
+      height: 100%; grid-template-columns: repeat(8, minmax(0, 1fr));
+      grid-template-rows: repeat(16, minmax(0, 1fr));
+    }
+    #board .cell { aspect-ratio: auto; min-height: 0; min-width: 0; }
+    #board .piece { font-size: clamp(7px, 2.5dvh, 23px); }
+    .hud {
+      grid-area: 1 / 3 / 3 / 4; align-self: center; justify-self: center;
+      width: min(100%, 330px); padding: clamp(6px, 2dvh, 16px);
+    }
+    .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+    .hud button { min-height: 36px; padding: 4px; }
+    .hud dl { margin-bottom: 8px; }
+    .hud dl div { padding: 5px 0; }
+    #soft-drop {
+      grid-area: 3 / 3; justify-self: center;
+      width: min(100%, 330px); min-height: clamp(44px, 14dvh, 90px); margin: 0;
+      font-size: clamp(14px, 3dvh, 24px);
+    }
+  }
+  @media (orientation: landscape) and (max-height: 500px) {
+    .hud dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; }
+    .hud dl div { display: grid; gap: 2px; }
+    .hud dt { font-size: 11px; }
+    .hud dd { font-size: 13px; }
+    #next { padding: 3px 0 5px; }
+    #next .piece { width: 25px; height: 23px; }
+    .overlay { padding: 4px; gap: 6px; }
+    .overlay > .tag { display: none; }
+    .overlay h2 { font-size: clamp(14px, 5dvh, 24px); }
+    .overlay .muted { font-size: 11px; }
+    main:has(.menu-layout) { padding-top: max(6px, env(safe-area-inset-top)); }
+    main:has(.menu-layout) header { margin-bottom: 6px; }
+    main:has(.menu-layout) h1 { font-size: clamp(30px, 11dvh, 46px); }
+    .menu-layout { grid-template-columns: minmax(115px, 170px) minmax(0, 400px); }
+    .menu-layout .queen { border: 1px solid var(--line); border-radius: 16px 0 0 16px; align-self: stretch; align-content: center; }
+    .menu-layout .menu#menu { border: 1px solid var(--line); border-radius: 0 16px 16px 0; }
+    main:has(#guide-menu:not([hidden]), #settings-menu:not([hidden])) header { display: none; }
+    #guide-menu, #settings-menu { grid-column: 1 / -1; }
+    #guide-menu { padding: 8px 12px; }
+    .menu .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; margin: 8px 0; }
+    .menu button { min-height: 44px; }
+    .demo { --tile: clamp(18px, 8dvh, 35px); margin: 6px 0; padding: 4px 0; }
+    #guide-menu:not([hidden]) {
+      display: grid; grid-template-columns: minmax(145px, 1fr) 1fr;
+      gap: 4px 12px; align-items: center;
+    }
+    #guide-step, #guide-title, #guide-menu .menu-actions { grid-column: 1 / -1; }
+    #guide-title { margin: 0; }
+    #guide-copy { font-size: 14px; line-height: 1.35; text-align: left; }
+    #guide-menu .menu-actions { margin-top: 8px; }
+  }
+  @media (orientation: landscape) and (max-height: 330px) {
+    main:has(.menu-layout) { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+    main:has(.menu-layout) header .tag { display: none; }
+    .menu { padding: 8px 12px; }
+    .menu .menu-actions { margin-top: 8px; gap: 5px; }
+    #menu .menu-actions:has(#resume-game:not([hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #menu .menu-actions > .menu-row { grid-column: 1 / -1; gap: 5px; }
+    .menu .settings label { min-height: 40px; }
+    .menu select { min-height: 36px; }
+    .lab:not(.menu-layout) #queen-line { display: none; }
+    .hud .settings button { min-height: 29px; font-size: 11px; }
+    .hud dl { margin-bottom: 4px; }
+    .hud dl div { padding: 3px 0; }
+    #guide-menu:not([hidden]) { grid-template-columns: minmax(135px, 42%) minmax(0, 1fr); }
+    #guide-title { font-size: 24px; }
+    #guide-copy { font-size: 13px; line-height: 1.25; }
+    #guide-menu .menu-actions { margin-top: 3px; }
   }
 </style>
 </head>
@@ -269,6 +390,7 @@
         <button id="pause" type="button" disabled>Pause</button>
         <button id="restart" type="button" disabled>Restart</button>
         <button id="main-menu" type="button">Menu</button>
+        <button id="fullscreen" type="button" aria-label="Enter fullscreen" aria-pressed="false" hidden>Expand</button>
       </div>
     </section>
   </div>
@@ -474,9 +596,12 @@ function demoPiece(row, col, piece, animation = "") {
 
 const guidePages = [
   {
-    title: "Move and rotate",
-    copy: "<b>Tap</b> to rotate and <b>swipe left or right</b> to move. Swipe down or hold <b>Soft Drop</b> to drop faster. On a keyboard, use ← / → to move, ↓ to drop, and Z / X to rotate.",
-    demo: () => `<div class="demo-capsule">${demoPiece(1, 1, { color: 0, link: 0 })}${demoPiece(1, 2, { color: 1, link: 2 })}</div>`
+    title: "Tap & swipe",
+    copy: "<b>Tap the screen</b> to rotate.<br><b>Swipe left or right</b> to move.<br><b>Swipe down</b> to drop faster.<br>Or hold <b>Soft Drop</b>.<br><small>Keyboard: ← / → move, ↓ drop, Z / X rotate.</small>",
+    demo: () => `<span class="demo-gesture demo-tap">Tap ↻</span>
+      <span class="demo-gesture demo-swipe-right">Swipe →</span>
+      <span class="demo-gesture demo-swipe-down">Swipe ↓</span>
+      <div class="demo-capsule">${demoPiece(1, 1, { color: 0, link: 0 })}${demoPiece(1, 2, { color: 1, link: 2 })}</div>`
   },
   {
     title: "Match four",
@@ -769,8 +894,29 @@ function togglePause() {
   else byId("overlay").hidden = true;
 }
 
+const fullscreenButton = byId("fullscreen");
+const fullscreenRoot = document.documentElement;
+const canFullscreen = Boolean(document.fullscreenEnabled && fullscreenRoot.requestFullscreen);
+fullscreenButton.hidden = !canFullscreen;
+
+function enterFullscreen() {
+  if (canFullscreen && !document.fullscreenElement) fullscreenRoot.requestFullscreen().catch(() => {});
+}
+
+fullscreenButton.addEventListener("click", () => {
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else enterFullscreen();
+});
+document.addEventListener("fullscreenchange", () => {
+  const active = Boolean(document.fullscreenElement);
+  fullscreenButton.textContent = active ? "Exit full" : "Expand";
+  fullscreenButton.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
+  fullscreenButton.setAttribute("aria-pressed", String(active));
+});
+
 byId("play").addEventListener("click", () => {
   unlockAudio();
+  if (matchMedia("(orientation: landscape) and (pointer: coarse)").matches) enterFullscreen();
   start(true);
   showMenu(false);
 });
