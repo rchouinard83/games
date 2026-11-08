@@ -46,8 +46,12 @@
 <script>
 "use strict";
 const TAU = Math.PI * 2, PI = Math.PI;
-// The launcher lives in its own folder (AlienGameLauncher/), so go up to the root games folder first.
-const ROOT = "../";
+// All the games live in the root games folder. The launcher sits in its own AlienGameLauncher folder,
+// so build each link from this page's address with everything from "/AlienGameLauncher" onward removed.
+const ROOT = (() => {
+  const here = location.href.split(/[?#]/)[0], cut = here.search(/\/AlienGameLauncher(\/|\.html|$)/i);
+  return cut >= 0 ? here.slice(0, cut + 1) : here.slice(0, here.lastIndexOf("/") + 1); // if the launcher is in the root itself, use its folder
+})();
 // The games, in the order players usually meet them. href = folder/file inside the root games folder.
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
