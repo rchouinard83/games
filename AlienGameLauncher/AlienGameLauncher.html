@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Fifteen games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Sixteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -110,6 +110,8 @@ const GAMES = [
     desc: "Drift your saucer through neon rock fields. Split the rocks, dodge alien hunters, and take down each stage's mothership." },
   { name: "Alien Crossing", tag: "Hopper", color: "#5dff9b", href: "AlienCrossing/Alien-Crossing.html", art: artCrossing,
     desc: "Hop across busy space lanes, ride drifting platforms over hazards, and dodge fast trains to reach the landing pad." },
+  { name: "Alien Pachinko", tag: "Peg shooter", color: "#ff9a3c", href: "AlienPachinko/Alien-Pachinko.html", art: artPachinko,
+    desc: "Aim the saucer cannon and drop balls through the pegs. Hit every orange pod to free the trapped aliens, and use your alien's power." },
 ];
 
 // ---------- shared little drawings ----------
@@ -137,6 +139,23 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artPachinko(c, w, h, t) { // a ball zig-zags down through the pegs, lighting them, and frees an alien from an orange pod
+  sky(c, w, h, "#1a0e3a", "#06030e", 113);
+  const peg = (x, y, r, col, lit) => { if (lit) { c.fillStyle = col; c.globalAlpha = 0.35; c.beginPath(); c.arc(x, y, r + 5, 0, TAU); c.fill(); c.globalAlpha = 1; }
+    const g = c.createRadialGradient(x - r * 0.3, y - r * 0.4, 1, x, y, r); g.addColorStop(0, lit ? "#ffffff" : shade(col, 0.55)); g.addColorStop(1, lit ? col : shade(col, -0.35)); c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); };
+  const T = t % 4, path = [[w * 0.5, h * 0.12], [w * 0.4, h * 0.36], [w * 0.56, h * 0.56], [w * 0.46, h * 0.76], [w * 0.6, h * 1.1]];
+  const seg = Math.min(3, Math.floor(T / 0.55)), k = (T % 0.55) / 0.55, [ax, ay] = path[seg], [bx, by] = path[seg + 1];
+  const pods = [[w * 0.56, h * 0.56], [w * 0.22, h * 0.56], [w * 0.78, h * 0.36]];
+  for (let j = 0; j < 4; j++) for (let i = 0; i < 10; i++) { const x = w * 0.06 + i * w * 0.098 + (j % 2) * w * 0.049, y = h * 0.36 + j * h * 0.2;
+    if (pods.some(([px, py]) => Math.hypot(px - x, py - y) < 10)) continue;
+    peg(x, y, 6, "#4fd1ff", path.slice(1, seg + 1).some(([px, py]) => Math.hypot(px - x, py - y) < 26)); }
+  pods.forEach(([x, y], i) => { const hit = i === 0 && seg >= 2; if (!(hit && T > 2.6)) { peg(x, y, 8, "#ff9a3c", hit); if (!hit) eyeAlien(c, x, y + 1, 4.2, ["#5dff9b", "#ff8bd0", "#ffe35d"][i], t + i); } });
+  if (seg >= 2) { const f = Math.min(1, (T - 1.1) / 1.6); c.globalAlpha = 1 - f; eyeAlien(c, pods[0][0] + Math.sin(t * 6) * 6, pods[0][1] - f * h * 0.4, 7, "#5dff9b", t); c.globalAlpha = 1; }
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(ax + (bx - ax) * k, ay + (by - ay) * k - Math.sin(k * PI) * 12, 5, 0, TAU); c.fill();
+  // the cannon saucer at the top and the catcher saucer at the bottom
+  c.fillStyle = "#e2e8f6"; c.beginPath(); c.ellipse(w / 2, h * 0.1, 30, 8, 0, 0, TAU); c.fill(); c.fillStyle = "#3a3a5a"; c.fillRect(w / 2 - 4, h * 0.1, 8, 14);
+  const cx = w / 2 + Math.sin(t * 1.1) * w * 0.32; c.fillStyle = "#1a2a4a"; c.beginPath(); c.ellipse(cx, h * 0.95, 28, 7, 0, 0, TAU); c.fill(); c.strokeStyle = "#4fd1ff"; c.lineWidth = 2; c.stroke();
+}
 function artCrossing(c, w, h, t) { // Blip hops up across a road and a canal of barges toward the waiting saucer
   const rows = 6, rh = h / rows, lane = (i, col) => { c.fillStyle = col; c.fillRect(0, h - (i + 1) * rh, w, rh); };
   lane(0, "#3f8f52"); lane(1, "#26303e"); lane(2, "#26303e"); lane(3, "#367d47"); lane(4, "#1f6aa8"); lane(5, "#1a2a4a");
