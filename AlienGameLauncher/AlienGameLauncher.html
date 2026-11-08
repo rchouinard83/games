@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Eighteen games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Nineteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -116,6 +116,8 @@ const GAMES = [
     desc: "Fire goo bubbles, match three to pop them, and free the aliens trapped in the bubble wall before it creeps down on you." },
   { name: "Alien Slopes", tag: "Downhill snowboard", color: "#7fe8ff", href: "AlienSlopes/Alien-Slopes.html", art: artSlopes,
     desc: "Board down alien mountains, slip through the slalom gates, spin off ramps, and stay ahead of the Frost Gobbler rolling after you." },
+  { name: "Alien Sweeper", tag: "Logic puzzle", color: "#b06bff", href: "AlienSweeper/Alien-Sweeper.html", art: artSweeper,
+    desc: "Gobbler eggs are buried in the field. Read the numbers, flag the eggs, and dig every safe tile. Every board can be solved without guessing." },
 ];
 
 // ---------- shared little drawings ----------
@@ -143,6 +145,23 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artSweeper(c, w, h, t) { // tiles open in a wave from the centre, flags pop onto the eggs, then one egg hatches
+  sky(c, w, h, "#241a4a", "#08061a", 131);
+  const s = Math.min(26, (h - 16) / 5), C = Math.floor((w - 16) / s), R = 5, x0 = (w - C * s) / 2, y0 = (h - R * s) / 2, T = t % 6;
+  const egg = (r, k) => r >= 0 && r < R && k >= 0 && k < C && ((r * 7 + k * 3) % 11 === 0 || (r === 1 && k === C - 3));
+  const NUM = ["", "#5fb4ff", "#4fe08a", "#ff6d86", "#c08bff", "#ffab4d", "#3fe0e0", "#fff", "#ccc"];
+  const cr = (R - 1) / 2, cc = (C - 1) / 2;
+  for (let r = 0; r < R; r++) for (let k = 0; k < C; k++) {
+    const x = x0 + k * s, y = y0 + r * s, d = Math.hypot(r - cr, (k - cc) * 0.8) * 0.22, open = !egg(r, k) && T > d + 0.2;
+    if (!open) { const g = c.createLinearGradient(0, y, 0, y + s); g.addColorStop(0, "#a3a8cc"); g.addColorStop(1, "#6c7196"); c.fillStyle = g; c.beginPath(); c.roundRect ? c.roundRect(x + 1, y + 1, s - 2, s - 2, s * 0.18) : c.rect(x + 1, y + 1, s - 2, s - 2); c.fill();
+      if (egg(r, k) && T > 2.6 && !(r === 1 && k === C - 3 && T > 4)) { c.strokeStyle = "#e8ecff"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x + s * 0.4, y + s * 0.8); c.lineTo(x + s * 0.4, y + s * 0.2); c.stroke(); c.fillStyle = "#5dff9b"; c.beginPath(); c.moveTo(x + s * 0.42, y + s * 0.2); c.lineTo(x + s * 0.8, y + s * 0.32); c.lineTo(x + s * 0.42, y + s * 0.46); c.fill(); }
+      if (r === 1 && k === C - 3 && T > 4) { c.fillStyle = "#22253f"; c.fillRect(x, y, s, s); c.fillStyle = "#e6f4ff"; c.beginPath(); c.arc(x + s / 2, y + s * 0.55, s * 0.24, PI, 0); c.fill(); c.fillStyle = "#c0143c"; c.beginPath(); c.arc(x + s * 0.42, y + s * 0.5, s * 0.05, 0, TAU); c.arc(x + s * 0.58, y + s * 0.5, s * 0.05, 0, TAU); c.fill(); }
+      continue; }
+    c.fillStyle = "#22253f"; c.fillRect(x, y, s, s); c.strokeStyle = "rgba(255,255,255,0.06)"; c.strokeRect(x + 0.5, y + 0.5, s - 1, s - 1);
+    let n = 0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if ((a || b) && egg(r + a, k + b)) n++;
+    if (n) { c.fillStyle = NUM[n]; c.font = `900 ${Math.round(s * 0.6)}px system-ui`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(String(n), x + s / 2, y + s / 2 + 1); c.textBaseline = "alphabetic"; }
+  }
+}
 function artSlopes(c, w, h, t) { // an alien carves down between pines, leaving tracks, with the Frost Gobbler bouncing behind
   const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#d8e6f4"); c.fillStyle = g; c.fillRect(0, 0, w, h);
   const pine = (x, y, k) => { c.fillStyle = "rgba(20,30,70,0.18)"; c.beginPath(); c.ellipse(x, y, 11 * k, 3 * k, 0, 0, TAU); c.fill(); c.fillStyle = "#6b4a2e"; c.fillRect(x - 2 * k, y - 6 * k, 4 * k, 6 * k);
