@@ -253,7 +253,11 @@ function genBoard(s, l) {
   const ring = (cx, cy, r, n, spin = 0) => { for (let k = 0; k < n; k++) { const a = k / n * TAU; add(cx + Math.cos(a) * r, cy + Math.sin(a) * r, moving && spin ? { kind: "spin", cx: mirror ? BW - cx : cx, cy, r, a0: a, w: spin } : null); } };
   switch (l) {
     case 0: for (let j = 0; j < 10; j++) for (let x = 30 + (j % 2) * 20; x <= 330; x += 40) add(x, 165 + j * 42, moving && j % 3 === 1 ? { kind: "slide", amp: 18, w: 1.2, ph: j } : null); break;
-    case 1: for (let k = 0; k < 5; k++) { const r = 250 + k * 46; for (let a = -1.1; a <= 1.1; a += 40 / r) add(180 + Math.sin(a) * r, 690 - Math.cos(a) * r, moving && k % 2 ? { kind: "slide", amp: 14, w: 0.9, ph: k } : null); } break;
+    case 1: // rows of little arches, top to bottom, staggered like bricks
+      // (pegs at least ~30 apart, so the ball can always squeeze between them: no sealed-off areas)
+      for (let j = 0; j < 5; j++) { const y0 = 215 + j * 80, off = j % 2 ? 45 : 0;
+        for (let cx = 45 + off - 90; cx <= BW + 45; cx += 90) for (let a = PI; a <= TAU + 0.01; a += PI / 4) add(cx + Math.cos(a) * 38, y0 + Math.sin(a) * 32, moving && j % 2 ? { kind: "slide", amp: 14, w: 0.9, ph: j } : null); }
+      break;
     case 2: ring(95, 270, 58, 12, 0.6); ring(265, 270, 58, 12, -0.6); ring(180, 455, 70, 14, 0.5); add(95, 270); add(265, 270); add(180, 455);
       for (let x = 40; x <= 320; x += 40) add(x, 560); for (let x = 60; x <= 300; x += 40) add(x, 165); break;
     case 3: for (let k = 0; k < 6; k++) { const y0 = 165 + k * 70; for (let i = 0; i <= 8; i++) { const x = 20 + i * 40, y = y0 + Math.abs(i - 4) * 12; add(x, y, moving && k % 2 ? { kind: "slide", amp: 16, w: 1, ph: k } : null); } } break;
@@ -262,9 +266,10 @@ function genBoard(s, l) {
         const corners = [[0, -46], [46, 0], [0, 46], [-46, 0]], [ax, ay] = corners[k], [bx, by] = corners[(k + 1) % 4]; add(cx + ax + (bx - ax) * i / 4, cy + ay + (by - ay) * i / 4, moving ? { kind: "spin", cx, cy, r: 0, a0: 0, w: 0.5, local: [ax + (bx - ax) * i / 4, ay + (by - ay) * i / 4] } : null); } } break;
     case 6: for (let x = 28; x <= 332; x += 38) for (let j = 0; j < 10; j++) add(x, 160 + j * 42 + Math.sin(x * 0.035 + j * 0.8) * 16, moving && j % 3 === 0 ? { kind: "slide", amp: 12, w: 1.4, ph: x } : null); break;
     default: { // the boss board: a giant alien face made of pegs
-      ring(180, 320, 92, 30, 0.25); ring(180, 320, 38, 12, -0.7);
-      for (let a = 0.35; a <= PI - 0.35; a += 0.17) add(180 + Math.cos(a) * 110, 430 + Math.sin(a) * 46);
-      for (const sd of [-1, 1]) for (let k = 0; k < 6; k++) add(180 + sd * (60 + k * 12), 215 - k * 14);
+      // (rings use few enough pegs that the ball can get inside them)
+      ring(180, 320, 92, 18, 0.25); ring(180, 320, 40, 7, -0.7);
+      for (let a = 0.35; a <= PI - 0.35; a += 0.28) add(180 + Math.cos(a) * 110, 430 + Math.sin(a) * 46);
+      for (const sd of [-1, 1]) for (let k = 0; k < 4; k++) add(180 + sd * (60 + k * 18), 210 - k * 22);
       for (let x = 40; x <= 320; x += 35) add(x, 560); for (const x of [40, 320]) for (let y = 230; y <= 520; y += 36) add(x, y);
     }
   }
