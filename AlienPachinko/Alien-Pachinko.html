@@ -96,7 +96,8 @@ const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
 const TAU = Math.PI * 2, PI = Math.PI;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const BW = 360, BH = 640, LEVELS = 8;
+const BH = 640, LEVELS = 8, W0 = 360; // boards are designed 360 wide, then stretched sideways to fill wider screens
+let BW = 360;                          // the board's actual width: wider on wide screens (up to 640), so there's no dead space at the sides
 const GUN = { x: 180, y: 42 }, BALL_R = 6, PEG_R = 7, SHOT_SPEED = 470, GRAVITY = 560;
 const BOUNCE_PEG = 0.78, BOUNCE_WALL = 0.85, BUMPER_KICK = 1.25;
 const PEG_GAP = 2 * PEG_R + 2 * BALL_R + 4; // 30: the closest two pegs may be, so the ball always fits between them
@@ -247,21 +248,22 @@ const starsFor = left => left >= 4 ? 3 : left >= 2 ? 2 : 1; // balls left when t
 function seeded(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 function genBoard(s, l) {
   const R = seeded(s * 733 + l * 151 + 9), pegs = [], bumpers = [], mirror = s % 2 === 1, st = STAGES[s];
-  const add = (x, y, motion = null) => { if (mirror) x = BW - x;
-    if (motion && motion.kind === "spin" && !motion.local && motion.r > 150) motion = null; // big circles would swing pegs off the board, so those stay put if (x < 20 || x > BW - 20 || y < 128 || y > 585) return;
+  const add = (x, y, motion = null) => { if (mirror) x = W0 - x;
+    if (x < 20 || x > W0 - 20 || y < 128 || y > 585) return; // only inside the board's walls, below the cannon
+    if (motion && motion.kind === "spin" && !motion.local && motion.r > 150) motion = null; // big circles would swing pegs off the board, so those stay put
     // the ball (12 wide) fits between two pegs (14 wide each) only if their centres are more than 26 apart.
     // No peg is ever placed closer than PEG_GAP to another, so no board can have walls or sealed-off pockets.
     if (pegs.some(p => Math.hypot(p.x - x, p.y - y) < PEG_GAP)) return; pegs.push({ x, y, bx: x, by: y, type: "blue", lit: false, gone: false, motion, pop: 0 }); };
   const moving = st.twist === "moving";
-  const ring = (cx, cy, r, n, spin = 0) => { for (let k = 0; k < n; k++) { const a = k / n * TAU; add(cx + Math.cos(a) * r, cy + Math.sin(a) * r, moving && spin ? { kind: "spin", cx: mirror ? BW - cx : cx, cy, r, a0: a, w: spin } : null); } };
+  const ring = (cx, cy, r, n, spin = 0) => { for (let k = 0; k < n; k++) { const a = k / n * TAU; add(cx + Math.cos(a) * r, cy + Math.sin(a) * r, moving && spin ? { kind: "spin", cx: mirror ? W0 - cx : cx, cy, r, a0: a, w: spin } : null); } };
   switch (l) {
     case 0: for (let j = 0; j < 10; j++) for (let x = 30 + (j % 2) * 20; x <= 330; x += 40) add(x, 165 + j * 42, moving && j % 3 === 1 ? { kind: "slide", amp: 18, w: 1.2, ph: j } : null); break;
     case 1: // rows of little arches, top to bottom, staggered like bricks
       // (pegs at least ~30 apart, so the ball can always squeeze between them: no sealed-off areas)
       for (let j = 0; j < 5; j++) { const y0 = 215 + j * 80, off = j % 2 ? 45 : 0;
-        for (let cx = 45 + off - 90; cx <= BW + 45; cx += 90) for (let a = PI; a <= TAU + 0.01; a += PI / 3) add(cx + Math.cos(a) * 44, y0 + Math.sin(a) * 36, moving && j % 2 ? { kind: "slide", amp: 14, w: 0.9, ph: j } : null); }
+        for (let cx = 45 + off - 90; cx <= W0 + 45; cx += 90) for (let a = PI; a <= TAU + 0.01; a += PI / 3) add(cx + Math.cos(a) * 44, y0 + Math.sin(a) * 36, moving && j % 2 ? { kind: "slide", amp: 14, w: 0.9, ph: j } : null); }
       break;
-    case 2: ring(95, 270, 58, 10, 0.6); ring(265, 270, 58, 10, -0.6); ring(180, 455, 70, 12, 0.5); // ~36 between ring pegs: the ball can get inside add(95, 270); add(265, 270); add(180, 455);
+    case 2: ring(95, 270, 58, 10, 0.6); ring(265, 270, 58, 10, -0.6); ring(180, 455, 70, 12, 0.5); add(95, 270); add(265, 270); add(180, 455); // ~36 between ring pegs: the ball can get inside
       for (let x = 40; x <= 320; x += 40) add(x, 560); for (let x = 60; x <= 300; x += 40) add(x, 165); break;
     case 3: for (let k = 0; k < 6; k++) { const y0 = 165 + k * 70; for (let i = 0; i <= 8; i++) { const x = 20 + i * 40, y = y0 + Math.abs(i - 4) * 12; add(x, y, moving && k % 2 ? { kind: "slide", amp: 16, w: 1, ph: k } : null); } } break;
     case 4: // a spiral with evenly spaced pegs along the arm, and 46 between the turns
@@ -286,7 +288,14 @@ function genBoard(s, l) {
   idx.slice(want, want + 2).forEach(i => pegs[i].type = "green");
   if (st.twist === "bumpers") { let tries = 0; while (bumpers.length < 3 && tries++ < 200) { const x = 50 + R() * 260, y = 200 + R() * 330;
     if (!pegs.some(p => Math.hypot(p.x - x, p.y - y) < 15 + PEG_R + 2 * BALL_R + 10) && !bumpers.some(b => Math.hypot(b.x - x, b.y - y) < 80)) bumpers.push({ x, y, r: 15, flash: 0 }); } } // bumpers keep a ball-sized gap from every peg
+  stretchBoard(pegs, bumpers, BW / W0);
   return { pegs, bumpers };
+}
+// widen (or narrow) a board sideways. Spacing only grows when it widens, so the ball always still fits between pegs.
+function stretchBoard(pegs, bumpers, k) {
+  if (k === 1) return;
+  for (const p of pegs) { p.bx *= k; p.x *= k; const m = p.motion; if (m) { if (m.kind === "slide") m.amp *= k; else m.cx *= k; } } // spinning rings stay round, just move their centre
+  for (const b of bumpers) b.x *= k;
 }
 
 // ============================================================
@@ -512,7 +521,11 @@ function wrapText(c, text, x, y, maxW, lh) { const words = text.split(" "); let 
 function resize() {
   const st = $("stage"), d = Math.min(3, devicePixelRatio || 1);
   cssW = Math.max(1, st.clientWidth); cssH = Math.max(1, st.clientHeight); cv.width = Math.round(cssW * d); cv.height = Math.round(cssH * d);
-  K = Math.min(cssW / BW, cssH / BH); OX = (cssW - BW * K) / 2; OY = (cssH - BH * K) / 2; // the board keeps its shape and is centred
+  // the board fills the screen: taller screens see the 360-wide board, wider screens get a wider board (up to 640)
+  const nbw = Math.round(clamp(BH * cssW / cssH, W0, 640));
+  if (nbw !== BW) { const k = nbw / BW; BW = nbw; GUN.x = BW / 2; bgCv = null;
+    if (pegs.length) { stretchBoard(pegs, bumpers, k); for (const b of balls) b.x *= k; for (const f of floaters) f.x *= k; } }
+  K = Math.min(cssW / BW, cssH / BH); OX = (cssW - BW * K) / 2; OY = (cssH - BH * K) / 2;
 }
 addEventListener("resize", resize);
 if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
