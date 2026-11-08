@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Ten games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Eleven games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -100,6 +100,8 @@ const GAMES = [
     desc: "Swipe to cut the ropes and swing each snack into a hungry alien's mouth. Bubbles, puffers and crystals on every world." },
   { name: "Alien Putt", tag: "Mini golf", color: "#7fb8ff", href: "AlienPutt/Alien-Putt.html", art: artPutt,
     desc: "Pull back and putt your alien through 72 holes on four worlds: ice, wind, gravity wells, sand, portals and windmills." },
+  { name: "Alien Lockdown", tag: "Arcade puzzle", color: "#4fd1ff", href: "AlienLockdown/Alien-Lockdown.html", art: artLockdown,
+    desc: "Swipe force beams across the arena to fence in the bouncing aliens. Lock down 75% without getting your beams broken." },
 ];
 
 // ---------- shared little drawings ----------
@@ -127,6 +129,23 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artLockdown(c, w, h, t) { // aliens bounce in an arena, a beam grows down the middle and the empty side locks down
+  sky(c, w, h, "#0c1a33", "#04080f", 63);
+  const x0 = w * 0.06, y0 = h * 0.1, aw = w * 0.88, ah = h * 0.8, T = t % 4.4, cut = x0 + aw * 0.6;
+  const grow = Math.min(1, Math.max(0, (T - 0.5) / 1.1)), locked = T > 1.6 ? Math.min(1, (T - 1.6) * 3) : 0;
+  c.fillStyle = "rgba(255,255,255,0.04)"; for (let x = 0; x < aw; x += 18) c.fillRect(x0 + x, y0, 1, ah); for (let y = 0; y < ah; y += 18) c.fillRect(x0, y0 + y, aw, 1);
+  if (locked) { c.fillStyle = `rgba(43,95,134,${locked})`; c.fillRect(cut, y0, x0 + aw - cut, ah); }
+  c.strokeStyle = "#7fb8ff"; c.lineWidth = 4; c.strokeRect(x0, y0, aw, ah);
+  const mid = y0 + ah / 2;
+  if (T >= 0.5 && T < 1.6) { c.fillStyle = "#4fd1ff"; c.fillRect(cut - 3, mid - grow * ah / 2, 6, grow * ah / 2); c.fillStyle = "#ff8bd0"; c.fillRect(cut - 3, mid, 6, grow * ah / 2);
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(cut, mid - grow * ah / 2, 3.5, 0, TAU); c.arc(cut, mid + grow * ah / 2, 3.5, 0, TAU); c.fill(); }
+  if (T >= 1.6) { c.fillStyle = "#7fb8ff"; c.fillRect(cut - 3, y0, 6, ah); }
+  const tri = v => Math.abs(((v % 2) + 2) % 2 - 1), r = h * 0.065;
+  [["#5dff9b", 0.33, 0.47], ["#ffe35d", 0.52, 0.38], ["#7ab8ff", 0.27, 0.6]].forEach(([col, a, b], k) => {
+    const x = x0 + r + 4 + tri(t * a + k * 0.5) * (cut - x0 - 2 * r - 10), y = y0 + r * 1.6 + tri(t * b + k * 0.3) * (ah - r * 3);
+    eyeAlien(c, x, y, r, col, t + k); });
+  if (T > 1.7) { c.fillStyle = "#ffd25d"; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText("Locked!", cut + (x0 + aw - cut) / 2, mid + 5); }
+}
 function artPutt(c, w, h, t) { // an alien rolls off a bumper and drops into the cup, then hops to cheer
   sky(c, w, h, "#14284a", "#060c1c", 57);
   const x0 = w * 0.08, y0 = h * 0.16, cw = w * 0.84, ch = h * 0.7;
