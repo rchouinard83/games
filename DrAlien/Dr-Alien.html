@@ -547,6 +547,8 @@ const cells = Array.from({ length: COLS * ROWS }, () => {
   return cell;
 });
 for (let i = 0; i <= 20; i++) byId("start-level").add(new Option(i, i));
+// picking a start level in Settings starts a fresh campaign from there
+byId("start-level").addEventListener("change", () => { clearProgress(); if (phase === "ready") byId("play").textContent = "Start mission"; });
 
 let board = emptyBoard();
 let level = 0;
@@ -627,7 +629,8 @@ function showMenu(open) {
   byId("chamber").hidden = open;
   byId("hud").hidden = open;
   byId("resume-game").hidden = phase === "ready";
-  byId("play").textContent = phase === "ready" ? "Start mission" : "New mission";
+  const saved = loadProgress();
+  byId("play").textContent = phase === "ready" ? (saved && saved.level > 0 ? `Continue · Level ${saved.level}` : "Start mission") : `Restart level ${level}`;
   const focusTarget = phase === "ready" ? "play" : "resume-game";
   byId(open ? focusTarget : "board").focus({ preventScroll: true });
 }
@@ -771,13 +774,24 @@ function setOverlay(title, copy, action) {
   byId("overlay").hidden = false;
 }
 
+// Progress is saved on this device: the level you're on, your speed and score. Losing knocks you back one level.
+const PROGRESS_KEY = "dralien-progress";
+function loadProgress() {
+  try { const p = JSON.parse(localStorage.getItem(PROGRESS_KEY)); return p && Number.isFinite(p.level) ? p : null; } catch { return null; }
+}
+function saveProgress(atLevel = level) {
+  try { localStorage.setItem(PROGRESS_KEY, JSON.stringify({ level: atLevel, speed, score })); } catch { /* storage can be off for local files */ }
+}
+function clearProgress() { try { localStorage.removeItem(PROGRESS_KEY); } catch { /* ignore */ } }
+
 function start(newRun) {
   clearQueenReaction();
   if (newRun) {
-    level = Number(byId("start-level").value);
-    speed = Number(byId("speed").value);
-    score = 0;
+    const saved = loadProgress();
+    if (saved) { level = Math.max(0, Math.min(20, saved.level)); speed = saved.speed ?? Number(byId("speed").value); score = saved.score || 0; }
+    else { level = Number(byId("start-level").value); speed = Number(byId("speed").value); score = 0; }
   }
+  saveProgress();
   board = emptyBoard();
   matches.clear();
   paused = false;
@@ -800,11 +814,17 @@ function finish(won) {
   byId("queen-line").textContent = won
     ? "“Chamber clean. Bring me the next batch.”"
     : "“The feed is jammed. Vent the chamber.”";
-  setOverlay(
-    won ? "Chamber secured" : "Containment failed",
-    won ? "Every spore cleared." : "Capsules reached the feed port.",
-    won && level < 20 ? "Next level" : "New mission"
-  );
+  if (won) {
+    saveProgress(Math.min(20, level + 1)); // the next level is waiting if you close the game now
+    setOverlay("Chamber secured", "Every spore cleared.", level < 20 ? "Next level" : "New mission");
+  } else {
+    const was = level;
+    level = Math.max(0, level - 1); // a failed containment knocks you back one level
+    saveProgress();
+    setOverlay("Containment failed",
+      was > level ? `Capsules reached the feed port. Back to level ${level}.` : "Capsules reached the feed port.",
+      `Retry level ${level}`);
+  }
 }
 
 function spawn() {
@@ -980,10 +1000,11 @@ byId("action").addEventListener("click", () => {
   else if (phase === "won" && level < 20) {
     level++;
     start(false);
-  } else start(true);
+  } else if (phase === "lost") start(false); // retry at the level you were knocked back to
+  else { clearProgress(); start(true); }  // cleared level 20: start a fresh campaign
 });
 byId("pause").addEventListener("click", togglePause);
-byId("restart").addEventListener("click", () => start(true));
+byId("restart").addEventListener("click", () => start(false)); // restart the level you're on
 let dropTimer;
 
 function stopSoftDrop() {
