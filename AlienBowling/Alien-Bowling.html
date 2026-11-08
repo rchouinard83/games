@@ -207,7 +207,7 @@ const soundButton=()=>`<button data-act="sound" aria-pressed="${soundOn}">${soun
 function showSound(){for(const b of document.querySelectorAll("[data-act='sound']")){b.textContent=soundLabel();b.setAttribute("aria-pressed",String(soundOn));}}
 function toggleSound(){
   soundOn=!soundOn;try{localStorage.setItem(SOUND_KEY,soundOn?"1":"0");}catch{}
-  showSound();if(soundOn)playSound(520,.1,"triangle");
+  showSound();if(soundOn){enableSound();playSound(520,.1,"triangle");}else if(iosKeepAlive)iosKeepAlive.pause();
 }
 function playSound(hz,seconds=.12,type="sine",end=hz*.65){
   if(!audioCtx||!soundOn)return;
@@ -216,10 +216,38 @@ function playSound(hz,seconds=.12,type="sine",end=hz*.65){
   g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+seconds);
   o.connect(g).connect(audioCtx.destination);o.start();o.stop(t+seconds);
 }
-function enableSound(){
-  if(!audioCtx&&window.AudioContext)audioCtx=new AudioContext();
-  if(audioCtx?.state==="suspended")audioCtx.resume().catch(()=>{});
+// Getting sound going, iPhone-proof:
+//  1. older iPhones only have webkitAudioContext;
+//  2. iOS only starts audio inside a finished tap (touchend / click), so this also runs on those, not just pointerdown;
+//  3. the iPhone's silent switch mutes web audio. Asking for "playback" audio (iOS 17+), and on older iPhones
+//     playing a looping silent <audio> clip, makes the game sound like a video does, even with the switch on silent.
+let iosKeepAlive=null;
+function silentClipURL(){ // 0.1 s of silence as a tiny WAV file, built in memory
+  const n=800,b=new Uint8Array(44+n),v=new DataView(b.buffer),w=(o,s)=>{for(let i=0;i<s.length;i++)b[o+i]=s.charCodeAt(i);};
+  w(0,"RIFF");v.setUint32(4,36+n,true);w(8,"WAVE");w(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,8000,true);v.setUint32(28,8000,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,"data");v.setUint32(40,n,true);b.fill(128,44);
+  return URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
 }
+function enableSound(){
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!audioCtx&&AC){try{audioCtx=new AC();}catch{}}
+  if(!audioCtx)return;
+  try{if(navigator.audioSession&&navigator.audioSession.type!=="playback")navigator.audioSession.type="playback";}catch{}
+  if(audioCtx.state!=="running")audioCtx.resume().catch(()=>{});
+  if(!enableSound.woke){ // play one silent sample inside the tap: this is what actually "unlocks" audio on iOS
+    enableSound.woke=true;
+    try{const buf=audioCtx.createBuffer(1,1,22050),src=audioCtx.createBufferSource();src.buffer=buf;src.connect(audioCtx.destination);src.start(0);}catch{}
+  }
+  if(soundOn&&!navigator.audioSession){ // older iPhones: the silent clip switches audio to "playback" so the silent switch doesn't mute us
+    if(!iosKeepAlive){try{iosKeepAlive=new Audio(silentClipURL());iosKeepAlive.loop=true;iosKeepAlive.setAttribute("playsinline","");}catch{}}
+    if(iosKeepAlive&&iosKeepAlive.paused)iosKeepAlive.play().catch(()=>{});
+  }
+}
+// iOS counts touchend and click as "real" taps for starting audio; pointerdown alone isn't enough
+for(const ev of ["touchend","click"])document.addEventListener(ev,enableSound,{passive:true});
+document.addEventListener("visibilitychange",()=>{ // stop the silent clip in the background; it restarts on the next tap
+  if(document.hidden&&iosKeepAlive)iosKeepAlive.pause();
+});
 function frameTotals(card){
   let total=0;
   return card.map((r,i)=>{
