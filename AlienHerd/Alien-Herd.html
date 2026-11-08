@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#070b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Alien Herd (mockup)</title>
+<style>
+  :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 6px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+  #hud { width: 100%; max-width: 560px; display: flex; gap: 6px; }
+  .chip { background: rgba(10,16,34,0.85); border: 1px solid var(--line); border-radius: 12px; padding: 4px 9px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(10,16,34,0.85); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 12px; }
+  .hudBtn.on { background: #3a2f0e; border-color: #c9a227; color: var(--gold); }
+  #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  #cv { display: block; border-radius: 12px; border: 1px solid var(--line); touch-action: none; }
+  #skills { width: 100%; max-width: 560px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .skill { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px 5px; border-radius: 12px; border: 1px solid var(--line);
+    background: #121a3a; color: var(--ink); font: inherit; font-size: 11px; font-weight: 800; }
+  .skill canvas { width: 36px; height: 30px; }
+  .skill b { position: absolute; top: 3px; right: 6px; font-size: 13px; color: var(--gold); }
+  .skill.sel { border-color: var(--good); background: #173a2c; box-shadow: 0 0 0 2px rgba(93,255,155,0.35); }
+  .skill:disabled { opacity: 0.35; }
+  #bubble { position: fixed; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translate(-50%, -8px); max-width: min(92vw, 380px); background: #f4f7ff; color: #10162c;
+    border-radius: 14px; padding: 8px 12px; font-size: 14px; font-weight: 650; line-height: 1.3; box-shadow: 0 4px 16px rgba(0,0,0,0.45); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 4; }
+  #bubble.on { opacity: 1; transform: translate(-50%, 0); }
+  #bubble b { color: #1b5fd6; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(4,7,16,0.8); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 380px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 38px; line-height: 1.05; background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 24px; margin-bottom: 6px; }
+  #box p { color: #c9d3f0; font-size: 14px; line-height: 1.45; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  .list { text-align: left; display: grid; gap: 7px; margin: 10px 0 12px; }
+  .list div { display: flex; gap: 10px; align-items: center; font-size: 13.5px; color: #c9d3f0; }
+  .list canvas { width: 40px; height: 34px; flex: none; background: #0b1228; border-radius: 8px; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  #howCv { width: 100%; height: 200px; display: block; border-radius: 12px; background: #0a1024; border: 1px solid #22305a; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 18px; font-weight: 650; color: #e6ecff; line-height: 1.3; padding: 7px 12px; background: #0b1228; border: 1px solid #22305a; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; }
+  .how b.y { color: var(--gold); } .how b.c { color: var(--accent); } .how b.p { color: #ff8bd0; } .how b.r { color: var(--bad); } .how b.o { color: #ff8a3d; } .how b.g { color: var(--good); }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3a66; }
+  .dots i.on { background: var(--accent); }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .stats { display: flex; justify-content: center; gap: 18px; margin: 6px 0 10px; }
+  .stats div { font-size: 24px; font-weight: 900; }
+  .stats small { display: block; font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small>Out</small><span id="hOut">0</span></div>
+    <div class="chip"><small>Home</small><span id="hSaved">0/14</span></div>
+    <div class="chip"><small>Lost</small><span id="hLost">0</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="fastBtn">▶▶</button>
+    <button class="hudBtn" id="pauseBtn">❚❚</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="skills"></div>
+</div>
+<div id="bubble"></div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN HERD — mockup of one level.
+//  Little aliens walk blindly forward. Tap a job, then tap an alien, to guide enough of them to the saucer.
+//  The world is a small pixel grid (180 x 320) that can be dug away; it's drawn scaled up to fit the screen.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const LW = 180, LH = 320;                     // logical world size in "pixels"
+const ROCK = 1, STEEL = 2;
+const T = new Uint8Array(LW * LH);            // the terrain: 0 air, 1 rock (diggable), 2 steel (not)
+const HATCH = { x: 40, y: 28 }, EXIT = { x: 163, y: 289 }, LAVA_Y = 300, LAVA_X = 100;
+const TOTAL = 20, NEED = 14, SPAWN_EVERY = 1.3, SPLAT = 52, HEIGHT = 8;
+
+// ---------- the jobs you can give ----------
+const SKILLS = [
+  { id: "block", name: "Blocker", count: 2, tip: "Stands still and turns the others around." },
+  { id: "dig",   name: "Digger",  count: 3, tip: "Digs straight down through rock." },
+  { id: "bash",  name: "Basher",  count: 2, tip: "Tunnels sideways through a rock wall." },
+  { id: "build", name: "Builder", count: 3, tip: "Lays a staircase to bridge a gap." },
+  { id: "jet",   name: "Jetpack", count: 4, tip: "Floats down safely from any height." },
+];
+
+// ---------- terrain helpers ----------
+const at = (x, y) => { x |= 0; y |= 0; if (x < 0 || x >= LW) return STEEL; if (y < 0) return 0; if (y >= LH) return 0; return T[y * LW + x]; };
+const solid = (x, y) => at(x, y) > 0;
+function fill(x0, y0, x1, y1, v) { for (let y = Math.max(0, y0 | 0); y <= Math.min(LH - 1, y1 | 0); y++) for (let x = Math.max(0, x0 | 0); x <= Math.min(LW - 1, x1 | 0); x++) T[y * LW + x] = v; dirty = true; }
+function carve(x0, y0, x1, y1) { // remove rock (never steel); returns true if anything was rock
+  let hit = false;
+  for (let y = Math.max(0, y0 | 0); y <= Math.min(LH - 1, y1 | 0); y++) for (let x = Math.max(0, x0 | 0); x <= Math.min(LW - 1, x1 | 0); x++) if (T[y * LW + x] === ROCK) { T[y * LW + x] = 0; hit = true; }
+  if (hit) dirty = true; return hit;
+}
+function anyIn(x0, y0, x1, y1, v) { for (let y = y0 | 0; y <= (y1 | 0); y++) for (let x = x0 | 0; x <= (x1 | 0); x++) if (at(x, y) === v) return true; return false; }
+
+// ---------- the level: a Mars cliff-side, built so every job has a use ----------
+function buildLevel() {
+  T.fill(0);
+  fill(0, 0, 7, LH - 1, STEEL); fill(LW - 5, 0, LW - 1, LH - 1, STEEL);          // steel walls left and right
+  fill(8, 70, 150, 82, ROCK);                                                     // 1. top ledge
+  fill(98, 38, 108, 69, ROCK);                                                    //    a rock wall: Basher tunnels through
+  fill(110, 112, LW - 6, 124, ROCK);                                              // 2. ledge below (gap to the left: Builder bridges it)
+  fill(30, 112, 90, 126, ROCK); fill(22, 84, 29, 126, STEEL);                     // 3. middle shelf, thick: Digger goes down
+  fill(20, 160, 80, 170, ROCK);                                                   // 4. lower shelf: its left edge drops into lava, Blocker helps
+  for (let i = 0; i <= 130; i++) fill(80 + i * 0.5, 160 + i, 86 + i * 0.5, 162 + i, ROCK); // a ramp down to the floor (too far below the gap to survive a fall)
+  fill(LAVA_X, 290, LW - 6, LH - 1, ROCK);                                        // 5. the floor with the saucer above it
+  fill(8, LH - 6, LAVA_X - 1, LH - 1, STEEL);                                    // the lava pit's bottom
+  dirty = true;
+}
+
+// ============================================================
+//  STATE
+// ============================================================
+let aliens = [], spawned = 0, saved = 0, lost = 0, time = 0, spawnT = 0.5, selected = "dig", paused = true, fast = false, over = false, dirty = true, tick = 0, fx = [];
+const counts = {};
+function newLevel() {
+  buildLevel(); aliens = []; spawned = saved = lost = 0; time = 0; spawnT = 0.6; over = false; fx = [];
+  for (const s of SKILLS) counts[s.id] = s.count;
+  selected = "bash"; fast = false; renderSkills(); hud();
+  say("Get <b>14 of 20</b> aliens to the saucer. First problem: that <b>rock wall</b>. Tap <b>Basher</b>, then tap an alien next to the wall.", 6);
+}
+
+// ============================================================
+//  ALIEN BEHAVIOUR (30 steps per second)
+// ============================================================
+function spawn() { aliens.push({ x: HATCH.x, y: HATCH.y, dir: 1, state: "fall", fall: 0, t: 0, jet: false, bricks: 0, id: spawned++ }); }
+const blockers = () => aliens.filter(a => a.state === "block");
+function step() {
+  tick++;
+  for (const a of aliens) {
+    if (a.state === "saved" || a.state === "dead") { a.t++; continue; }
+    a.t++;
+    if (a.y >= LAVA_Y && a.x < LAVA_X) { kill(a, "lava"); continue; }
+    if (a.y > LH + 4) { kill(a, "fall"); continue; }
+    switch (a.state) {
+      case "fall": {
+        const sp = a.jet ? 0.6 : 2;
+        for (let k = 0; k < sp; k += 1) {
+          if (solid(a.x, a.y + 1)) {
+            if (a.fall > SPLAT && !a.jet) { kill(a, "splat"); break; }
+            a.state = "walk"; a.fall = 0; break;
+          }
+          a.y += Math.min(1, sp - k); a.fall += Math.min(1, sp - k);
+        }
+        break;
+      }
+      case "walk": if (tick % 2 === 0) walk(a); break;
+      case "block": if (!solid(a.x, a.y + 1)) a.state = "fall"; break;
+      case "dig":
+        if (tick % 4) break;
+        if (anyIn(a.x - 3, a.y + 1, a.x + 3, a.y + 2, STEEL)) { a.state = "walk"; say("Steel! Diggers can't get through that.", 2); break; }
+        if (!carve(a.x - 3, a.y + 1, a.x + 3, a.y + 1)) { a.state = "fall"; a.fall = 0; break; }
+        a.y += 1; dust(a.x, a.y + 2);
+        break;
+      case "bash": {
+        if (tick % 3) break;
+        const fx0 = a.dir > 0 ? a.x + 1 : a.x - 6, fx1 = a.dir > 0 ? a.x + 6 : a.x - 1;
+        if (anyIn(fx0, a.y - HEIGHT, fx1, a.y, STEEL)) { a.state = "walk"; a.dir *= -1; break; }
+        const hit = carve(fx0, a.y - HEIGHT, fx1, a.y - 1);
+        if (!hit && !anyIn(a.dir > 0 ? a.x + 1 : a.x - 10, a.y - HEIGHT, a.dir > 0 ? a.x + 10 : a.x - 1, a.y - 1, ROCK)) { a.state = "walk"; break; }
+        a.x += a.dir; dust(a.x + a.dir * 4, a.y - 4);
+        if (!solid(a.x, a.y + 1)) { a.state = "fall"; a.fall = 0; }
+        break;
+      }
+      case "build":
+        if (tick % 7) break;
+        if (a.bricks >= 12 || solid(a.x + a.dir * 2, a.y - HEIGHT)) { a.state = "walk"; break; }
+        fill(a.dir > 0 ? a.x : a.x - 6, a.y, a.dir > 0 ? a.x + 6 : a.x, a.y, ROCK); // one stair brick
+        a.x += a.dir * 2; a.y -= 1; a.bricks++;
+        if (a.bricks === 10) blip(1200);
+        break;
+    }
+    if (a.state !== "dead" && Math.abs(a.x - EXIT.x) < 4 && Math.abs(a.y - EXIT.y) < 4) { a.state = "saved"; a.t = 0; saved++; blip(880); hud();
+      if (saved === NEED) say("<b>That's enough to clear the level!</b> Bring the rest home too.", 3); }
+  }
+  aliens = aliens.filter(a => !((a.state === "saved" || a.state === "dead") && a.t > 45));
+}
+function walk(a) {
+  const nx = a.x + a.dir;
+  if (blockers().some(b => b !== a && Math.abs(b.x - nx) < 3 && Math.abs(b.y - a.y) < 6)) { a.dir *= -1; return; }
+  if (solid(nx, a.y)) { // terrain ahead at foot level: climb up to 3, otherwise turn
+    for (let up = 1; up <= 3; up++) if (!solid(nx, a.y - up) && !solid(nx, a.y - up - HEIGHT + 2)) { a.x = nx; a.y -= up; return; }
+    a.dir *= -1; return;
+  }
+  if (solid(nx, a.y - HEIGHT + 2)) { a.dir *= -1; return; } // low ceiling
+  a.x = nx;
+  if (!solid(a.x, a.y + 1)) { // walk down small steps, fall off bigger ones
+    for (let d = 1; d <= 3; d++) if (solid(a.x, a.y + d + 1)) { a.y += d; return; }
+    a.state = "fall"; a.fall = 0;
+  }
+}
+function kill(a, why) {
+  a.state = "dead"; a.t = 0; a.why = why; lost++; hud(); blip(why === "lava" ? 140 : 220, "sawtooth");
+  for (let k = 0; k < 10; k++) fx.push({ x: a.x, y: a.y - 3, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 2, life: 1, col: why === "lava" ? "#ff8a3d" : "#5dff9b" });
+  if (lost === 1) say(why === "lava" ? "Into the lava! A <b>Blocker</b> can stop the others walking off that edge." : why === "splat" ? "Too far to fall! Give an alien a <b>Jetpack</b> before a big drop." : "Lost one!", 3.5);
+}
+function dust(x, y) { if (Math.random() < 0.5) fx.push({ x, y, vx: (Math.random() - 0.5) * 1.5, vy: -Math.random(), life: 0.6, col: "#c8744e" }); }
+
+function assign(a, id) {
+  if (counts[id] <= 0) return false;
+  if (id === "jet") { if (a.jet) return false; a.jet = true; }
+  else {
+    if (a.state !== "walk") return false;
+    if (id === "block") a.state = "block";
+    else if (id === "dig") { if (!solid(a.x, a.y + 1)) return false; a.state = "dig"; }
+    else if (id === "bash") a.state = "bash";
+    else if (id === "build") { a.state = "build"; a.bricks = 0; }
+  }
+  counts[id]--; renderSkills(); blip(660);
+  const tips = { bash: "Tunnelling! Bashers stop once they break through.", build: "Building a staircase. Twelve steps, then they walk on.", dig: "Digging down. They'll drop through when they break out.", block: "Blocker in place. Everyone else turns around here.", jet: "Jetpack on. That alien can fall any distance now." };
+  if (!assign.seen?.[id]) { (assign.seen ||= {})[id] = 1; say(tips[id], 2.6); }
+  return true;
+}
+
+// ============================================================
+//  INPUT: tap a job, then tap an alien
+// ============================================================
+let K = 2; // screen pixels per world pixel
+cv.addEventListener("pointerdown", e => {
+  audio(); if (paused || over) return;
+  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / K, y = (e.clientY - r.top) / K;
+  let best = null, bd = 11;
+  for (const a of aliens) { if (a.state === "saved" || a.state === "dead") continue; const d = Math.hypot(a.x - x, a.y - 4 - y); if (d < bd) { bd = d; best = a; } }
+  if (!best) return;
+  if (!assign(best, selected)) { blip(200, "square"); }
+});
+
+// ============================================================
+//  DRAWING
+// ============================================================
+const terrainCv = document.createElement("canvas"); terrainCv.width = LW; terrainCv.height = LH;
+const tctx = terrainCv.getContext("2d"), timg = tctx.createImageData(LW, LH);
+const NOISE = new Float32Array(LW * LH).map(() => Math.random());
+function paintTerrain() { // rock is shaded red-brown with speckle; steel is grey plates
+  const d = timg.data;
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) {
+    const i = y * LW + x, v = T[i], o = i * 4, n = NOISE[i];
+    if (!v) { d[o + 3] = 0; continue; }
+    const edge = !solid(x, y - 1); // a lighter top crust
+    if (v === ROCK) { const k = edge ? 1.25 : 0.82 + n * 0.25 - Math.min(0.3, (y % 40) / 200); d[o] = 190 * k; d[o + 1] = 98 * k; d[o + 2] = 66 * k; }
+    else { const plate = (x % 12 === 0 || y % 12 === 0) ? 0.7 : 1, k = (0.8 + n * 0.12) * plate; d[o] = 130 * k; d[o + 1] = 140 * k; d[o + 2] = 158 * k; }
+    d[o + 3] = 255;
+  }
+  tctx.putImageData(timg, 0, 0); dirty = false;
+}
+let skyCv = null;
+function paintSky(w, h) {
+  skyCv = document.createElement("canvas"); skyCv.width = w; skyCv.height = h; const c = skyCv.getContext("2d");
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#1a0a08"); g.addColorStop(0.6, "#4a1c14"); g.addColorStop(1, "#2a0e0a"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(255,255,255,${0.2 + Math.random() * 0.5})`; c.fillRect(Math.random() * w, Math.random() * h * 0.5, 1.5, 1.5); }
+  const pg = c.createRadialGradient(w * 0.74, h * 0.1, 2, w * 0.78, h * 0.12, h * 0.07); pg.addColorStop(0, "#f0a070"); pg.addColorStop(1, "#8a3020");
+  c.fillStyle = pg; c.beginPath(); c.arc(w * 0.78, h * 0.12, h * 0.07, 0, TAU); c.fill();
+}
+// a little alien, drawn at screen scale. foot at (x,y) in world units
+function alienArt(c, x, y, k, dir, state, t, jet) {
+  const s = k * 1.15, bob = state === "walk" ? Math.abs(Math.sin(t * 0.5)) * s * 0.5 : 0;
+  c.save(); c.translate(x * k, y * k - bob);
+  if (jet && state === "fall") { c.fillStyle = "#4fd1ff"; c.beginPath(); c.ellipse(0, -9 * s, 5 * s, 2 * s, 0, Math.PI, 0); c.fill(); // jet canopy
+    c.fillStyle = `rgba(255,200,120,${0.5 + 0.5 * Math.sin(t)})`; c.beginPath(); c.ellipse(0, s * 0.5, 1.2 * s, 2.2 * s, 0, 0, TAU); c.fill(); }
+  const col = state === "block" ? "#ff8bd0" : state === "dig" || state === "bash" ? "#ffd25d" : state === "build" ? "#4fd1ff" : "#5dff9b";
+  c.strokeStyle = "#1a3a24"; c.lineWidth = s * 0.7; c.lineCap = "round"; // legs
+  const step = state === "walk" ? Math.sin(t * 0.5) * s : 0;
+  c.beginPath(); c.moveTo(-1 * s, -2 * s); c.lineTo(-1.2 * s + step, 0); c.moveTo(1 * s, -2 * s); c.lineTo(1.2 * s - step, 0); c.stroke();
+  c.fillStyle = col; c.beginPath(); c.ellipse(0, -4.4 * s, 2.8 * s, 3.2 * s, 0, 0, TAU); c.fill(); // body
+  if (state === "block") { c.strokeStyle = col; c.lineWidth = s; c.beginPath(); c.moveTo(-4.5 * s, -5 * s); c.lineTo(4.5 * s, -5 * s); c.stroke(); } // arms out
+  c.strokeStyle = col; c.lineWidth = s * 0.5; c.beginPath(); c.moveTo(0, -7.4 * s); c.lineTo(0, -9.2 * s); c.stroke(); // antenna
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(0, -9.4 * s, s * 0.6, 0, TAU); c.fill();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(dir * 0.4 * s, -5 * s, 1.5 * s, 0, TAU); c.fill(); // one big eye
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(dir * 0.9 * s, -5 * s, 0.7 * s, 0, TAU); c.fill();
+  if (state === "dig" || state === "bash") { c.strokeStyle = "#c9d3e6"; c.lineWidth = s * 0.6; c.beginPath(); // a little pick
+    const a = Math.sin(t * 0.8) * 0.8; c.moveTo(dir * 2 * s, -4 * s); c.lineTo(dir * (2 + Math.cos(a) * 3) * s, (-4 + (state === "dig" ? 3 : -Math.sin(a) * 3)) * s); c.stroke(); }
+  if (state === "build") { c.fillStyle = "#c8744e"; c.fillRect(dir * 2 * s, -3 * s, 2.4 * s, 1.4 * s); }
+  c.restore();
+}
+function saucerArt(c, x, y, k, t) {
+  const bx = x * k, by = (y - 34) * k;
+  const g = c.createLinearGradient(0, by, 0, y * k); g.addColorStop(0, "rgba(93,255,155,0.45)"); g.addColorStop(1, "rgba(93,255,155,0.05)"); // tractor beam
+  c.fillStyle = g; c.beginPath(); c.moveTo(bx - 4 * k, by + 3 * k); c.lineTo(bx + 4 * k, by + 3 * k); c.lineTo(bx + 9 * k, y * k); c.lineTo(bx - 9 * k, y * k); c.closePath(); c.fill();
+  c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(bx, by, 14 * k, 4 * k, 0, 0, TAU); c.fill();
+  c.fillStyle = "rgba(190,235,255,0.6)"; c.beginPath(); c.ellipse(bx, by - 2 * k, 6 * k, 4.5 * k, 0, Math.PI, 0); c.fill();
+  for (let i = -3; i <= 3; i++) { c.fillStyle = (Math.floor(t * 8) + i) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(bx + i * 3.6 * k, by + 1 * k, 0.9 * k, 0, TAU); c.fill(); }
+}
+function hatchArt(c, k, t) {
+  const x = HATCH.x * k, y = (HATCH.y - 10) * k;
+  c.fillStyle = "#3a4568"; c.beginPath(); c.roundRect(x - 12 * k, y - 6 * k, 24 * k, 8 * k, 2 * k); c.fill();
+  c.fillStyle = "#10162c"; c.fillRect(x - 7 * k, y + 2 * k, 14 * k, 2 * k);
+  c.fillStyle = spawned < TOTAL ? (Math.floor(t * 4) % 2 ? "#5dff9b" : "#2f7a5c") : "#5a2030"; c.beginPath(); c.arc(x, y - 2 * k, 1.5 * k, 0, TAU); c.fill();
+}
+function draw(t) {
+  const W = LW * K, H = LH * K, d = Math.min(3, devicePixelRatio || 1);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  if (!skyCv || skyCv.width !== W) paintSky(W, H);
+  ctx.drawImage(skyCv, 0, 0);
+  // lava pit
+  const lg = ctx.createLinearGradient(0, LAVA_Y * K, 0, LH * K); lg.addColorStop(0, "#ffb84d"); lg.addColorStop(1, "#c0301a");
+  ctx.fillStyle = lg; ctx.fillRect(8 * K, (LAVA_Y + Math.sin(t * 2) * 0.6) * K, (LAVA_X - 8) * K, (LH - LAVA_Y) * K);
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = "rgba(255,230,120,0.6)"; ctx.beginPath(); ctx.arc((14 + i * 14 + Math.sin(t + i) * 3) * K, (LAVA_Y + 3 + Math.sin(t * 3 + i) * 1.5) * K, 1.2 * K, 0, TAU); ctx.fill(); }
+  if (dirty) paintTerrain();
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(terrainCv, 0, 0, W, H); ctx.imageSmoothingEnabled = true;
+  hatchArt(ctx, K, t); saucerArt(ctx, EXIT.x, EXIT.y, K, t);
+  for (const a of aliens) {
+    if (a.state === "dead") continue;
+    if (a.state === "saved") { ctx.globalAlpha = Math.max(0, 1 - a.t / 40); alienArt(ctx, a.x, a.y - a.t * 0.8, K, a.dir, "fall", t * 30, false); ctx.globalAlpha = 1; continue; }
+    alienArt(ctx, a.x, a.y, K, a.dir, a.state, a.t, a.jet);
+  }
+  for (const p of fx) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.col; ctx.fillRect(p.x * K, p.y * K, K, K); } ctx.globalAlpha = 1;
+}
+
+// ---------- skill buttons ----------
+function skillIcon(cvs, id) {
+  const c = cvs.getContext("2d"); cvs.width = 72; cvs.height = 60; c.clearRect(0, 0, 72, 60);
+  const st = { block: "block", dig: "dig", bash: "bash", build: "build", jet: "fall" }[id];
+  if (id === "dig") { c.fillStyle = "#c8744e"; c.fillRect(10, 46, 52, 14); c.fillStyle = "#0b1228"; c.fillRect(28, 44, 16, 10); }
+  if (id === "bash") { c.fillStyle = "#c8744e"; c.fillRect(46, 8, 20, 50); c.fillStyle = "#0b1228"; c.fillRect(44, 26, 14, 24); }
+  if (id === "build") { c.fillStyle = "#c8744e"; for (let i = 0; i < 5; i++) c.fillRect(30 + i * 7, 52 - i * 4, 10, 3); }
+  alienArt(c, (id === "bash" ? 30 : 36) / 4, (id === "jet" ? 50 : 52) / 4, 4, 1, st, 3, id === "jet"); // alienArt works in world units, so divide by the scale
+}
+function renderSkills() {
+  $("skills").innerHTML = SKILLS.map(s => `<button class="skill ${s.id === selected ? "sel" : ""}" data-id="${s.id}" ${counts[s.id] ? "" : "disabled"}><b>${counts[s.id]}</b><canvas data-skill="${s.id}"></canvas>${s.name}</button>`).join("");
+  for (const b of $("skills").querySelectorAll(".skill")) b.onclick = () => { audio(); selected = b.dataset.id; renderSkills(); };
+  for (const c of $("skills").querySelectorAll("canvas[data-skill]")) skillIcon(c, c.dataset.skill);
+}
+function hud() { $("hOut").textContent = `${aliens.filter(a => a.state !== "saved" && a.state !== "dead").length}/${spawned}`; $("hSaved").textContent = `${saved}/${NEED}`; $("hLost").textContent = lost; }
+
+// ---------- Zib & sound ----------
+let bubbleT = 0;
+function say(html, secs = 3) { $("bubble").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
+let AC = null;
+function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
+function blip(f, type = "triangle") { if (!AC) return; const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15); o.connect(g).connect(AC.destination); o.start(t); o.stop(t + 0.2); }
+
+// ---------- menus ----------
+let menuAnim = null; // animation for the open menu (how-to demos)
+function openMenu(html, anim = null) { paused = true; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-skill]")) skillIcon(c, c.dataset.skill); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("pauseBtn").textContent = "❚❚"; last = performance.now(); }
+const seenHelp = () => { try { return localStorage.getItem("alienHerd.seenHelp") === "1"; } catch (e) { return true; } };
+function titleMenu() {
+  openMenu(`<p class="kicker">Mockup · Level 1 · Mars cliffs</p><h1>Alien Herd</h1>
+    <p>A crowd of little aliens walks blindly forward. Give them jobs to get <b>${NEED} of ${TOTAL}</b> home to the saucer.</p>
+    <div class="list">${SKILLS.map(s => `<div><canvas data-skill="${s.id}"></canvas><span><b>${s.name}</b> · ${s.tip}</span></div>`).join("")}</div>
+    <button class="big main" data-act="play">Start ▶</button>
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`);
+}
+function endMenu() {
+  const win = saved >= NEED;
+  openMenu(`<p class="kicker">Mars cliffs</p><h2>${win ? "Level cleared!" : "Not enough made it"}</h2>
+    <div class="stats"><div>${saved}<small>Home</small></div><div>${NEED}<small>Needed</small></div><div>${lost}<small>Lost</small></div></div>
+    <p>${win ? "The saucer is full. In the full game, the next level would be waiting." : "Try a different plan: a Blocker at the lava edge saves a lot of lives."}</p>
+    <button class="big main" data-act="start">${win ? "Play again" : "Try again"}</button>
+    <button class="big" data-act="help" data-arg="end|0">How to play</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`);
+}
+
+// ---------- How to play: six pages, each with a live demo ----------
+const HOWTO = [
+  { title: "Meet the herd", lines: ["Aliens <b>walk on their own</b>", "They <b>turn at walls</b>", "They <b>walk off edges</b>"], demo: demoWalk },
+  { title: "Give them jobs", lines: ["<b>1.</b> Tap a <b>job</b> at the bottom", "<b>2.</b> Tap an <b>alien</b>", "Number = <b>jobs left</b>"], demo: demoTap },
+  { title: "Dig and bash", lines: ["<b class='y'>Digger</b> digs <b>down</b>", "<b class='y'>Basher</b> tunnels <b>sideways</b>", "<b>Grey steel</b> stops both"], demo: demoDigBash },
+  { title: "Build and block", lines: ["<b class='c'>Builder</b> makes <b>stairs</b> over gaps", "<b class='p'>Blocker</b> <b>turns everyone back</b>"], demo: demoBuildBlock },
+  { title: "Stay safe", lines: ["<b class='r'>Big falls</b> and <b class='o'>lava</b> are deadly", "<b class='c'>Jetpack</b> = <b>safe landing</b>"], demo: demoJet },
+  { title: "Bring them home", lines: [`Walk them into the <b class='g'>beam</b>`, `Save <b>${NEED} of ${TOTAL}</b> to win`, "<b>▶▶</b> faster · <b>❚❚</b> pause · <b>?</b> help"], demo: demoHome },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
+  const done = first ? "start" : back === "game" ? "resume" : back === "end" ? "end" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : back === "game" ? "Back to the game" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    t => { const cvs = $("howCv"); if (!cvs) return; const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+      if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+      const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0);
+      const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#1a0a08"); g.addColorStop(1, "#4a1c14"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+      p.demo(c, t, w, h, w / 120); }); // demos work in a 120-unit-wide mini world
+}
+// demo helpers (positions in mini-world units, k = screen pixels per unit)
+function dRock(c, k, x0, y0, x1, y1, steel = false) {
+  c.fillStyle = steel ? "#828c9e" : "#9a4e34"; c.fillRect(x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k);
+  c.fillStyle = steel ? "#a8b2c4" : "#d27a52"; c.fillRect(x0 * k, y0 * k, (x1 - x0) * k, Math.max(1.5, k * 0.8));
+}
+function dHole(c, k, x0, y0, x1, y1) { c.fillStyle = "#2a0e0a"; c.fillRect(x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k); }
+function dLabel(c, k, x, y, text, col = "#e6ecff") { c.fillStyle = col; c.font = `800 ${Math.max(10, k * 3.4)}px system-ui`; c.textAlign = "center"; c.fillText(text, x * k, y * k); }
+function dFinger(c, k, x, y, down) { c.fillStyle = down ? "rgba(93,255,155,0.35)" : "rgba(255,255,255,0.22)"; c.beginPath(); c.arc(x * k, y * k, 5 * k, 0, TAU); c.fill();
+  c.fillStyle = down ? "#5dff9b" : "rgba(255,255,255,0.85)"; c.beginPath(); c.arc(x * k, y * k, 2.2 * k, 0, TAU); c.fill(); }
+const dA = (c, k, x, y, dir, st, t, jet = false) => alienArt(c, x * 1.6, y * 1.6, k / 1.6, dir, st, t * 30, jet); // x, y in mini-world units
+function demoWalk(c, t, w, h, k) {
+  dRock(c, k, 22, 30, 80, 70); dRock(c, k, 74, 6, 80, 30); dRock(c, k, 44, 28, 52, 30); dRock(c, k, 0, 58, 22, 70);
+  const T = t % 8; let x, y = 30, dir = 1;
+  if (T < 3) { x = 26 + T * 15; dir = 1; } else if (T < 6) { x = 71 - (T - 3) * 15; dir = -1; } else if (T < 6.4) { x = 22; y = 30 + (T - 6) * 70; dir = -1; } else { x = 22 - (T - 6.4) * 9; y = 58; dir = -1; }
+  y = Math.min(y, 58); if (T < 6 && x > 44 && x < 52) y = 28; // climbing the small bump
+  dA(c, k, x, y, dir, T >= 6 && T < 6.4 ? "fall" : "walk", t);
+  dLabel(c, k, 64, 50, "turns at walls →", "#ffd25d"); dLabel(c, k, 14, 50, "← walks off edges", "#ffd25d"); dLabel(c, k, 44, 40, "↑ climbs bumps", "#9fe8ff");
+}
+function demoTap(c, t, w, h, k) {
+  const T = t % 7, bar = 50, names = ["Blocker", "Digger", "Basher", "Builder", "Jetpack"];
+  dRock(c, k, 0, 28, 120, 40);
+  const digging = T > 2.6, depth = digging ? Math.min(12, (T - 2.6) * 4) : 0, ax = digging ? 60 : 30 + T * 11.5;
+  if (depth) dHole(c, k, ax - 4, 28, ax + 4, 28 + depth);
+  const fallen = depth >= 12, ay = fallen ? Math.min(70, 40 + (T - 5.6) * 40) : 28 + depth;
+  if (ay < 66) dA(c, k, ax, ay, 1, digging ? (fallen ? "fall" : "dig") : "walk", t);
+  for (let i = 0; i < 5; i++) { const bx = 4 + i * 23, sel = i === 1 && T > 1;
+    c.fillStyle = sel ? "#173a2c" : "#121a3a"; c.strokeStyle = sel ? "#5dff9b" : "#2a3a66"; c.lineWidth = 1.5; c.beginPath(); c.roundRect(bx * k, bar * k, 21 * k, 12 * k, 2 * k); c.fill(); c.stroke();
+    dLabel(c, k, bx + 10.5, bar + 8, names[i], sel ? "#5dff9b" : "#c9d3f0"); }
+  const fx = T < 1 ? 70 - T * 42 : T < 2.4 ? 27 + (T - 1) / 1.4 * (ax - 27) : ax, fy = T < 1 ? 66 : T < 2.4 ? 56 - (T - 1) / 1.4 * 36 : 20;
+  const down = (T > 0.85 && T < 1.15) || (T > 2.35 && T < 2.7);
+  if (T < 3.4) dFinger(c, k, fx, fy, down);
+  dLabel(c, k, 25, 10, T < 1.2 ? "1. tap a job" : T < 2.7 ? "2. tap an alien" : "3. it gets to work!", "#ffd25d");
+}
+function demoDigBash(c, t, w, h, k) {
+  const T = t % 6;
+  dRock(c, k, 0, 30, 54, 44); // left: digger
+  const depth = Math.min(14, Math.max(0, (T - 0.6) * 4)); if (depth) dHole(c, k, 23, 30, 31, 30 + depth);
+  const ay = depth >= 14 ? Math.min(66, 44 + (T - 4.1) * 30) : 30 + depth; if (ay < 64) dA(c, k, 27, ay, 1, depth >= 14 ? "fall" : depth ? "dig" : "walk", t);
+  dRock(c, k, 0, 64, 54, 70); dLabel(c, k, 27, 12, "Digger: down", "#ffd25d");
+  dRock(c, k, 60, 44, 120, 50); dRock(c, k, 92, 14, 100, 44); dRock(c, k, 112, 10, 120, 44, true); // right: basher
+  const bx = T < 1.6 ? 66 + T * 15 : Math.min(108, 90 + (T - 1.6) * 5.5), dug = Math.max(0, Math.min(8, bx - 90));
+  if (dug) dHole(c, k, 92, 30, 92 + dug, 44);
+  dA(c, k, bx, 44, 1, bx > 90 && bx < 100 ? "bash" : "walk", t);
+  dLabel(c, k, 92, 10, "Basher: sideways", "#ffd25d"); dLabel(c, k, 116, 56, "steel", "#c9d3e6");
+}
+function demoBuildBlock(c, t, w, h, k) {
+  const T = t % 7;
+  dRock(c, k, 0, 40, 18, 70); dRock(c, k, 40, 40, 58, 70); dHole(c, k, 18, 40, 40, 70); // left: builder over a gap
+  const n = Math.min(12, Math.floor(T * 3.2)); c.fillStyle = "#d27a52";
+  for (let i = 0; i < n; i++) c.fillRect((14 + i * 2) * k, (39 - i) * k, 6 * k, 1 * k);
+  if (n < 12) dA(c, k, (14 + n * 2), (39 - n + 1), 1, "build", t);
+  else { const wx = Math.min(54, 38 + (T - 3.75) * 9), wy = wx < 40 ? 28 : Math.min(40, 28 + (wx - 40) * 3); dA(c, k, wx, wy, 1, "walk", t); }
+  dLabel(c, k, 29, 12, "Builder: stairs", "#9fe8ff");
+  dRock(c, k, 62, 40, 120, 46); // right: blocker turning others round
+  dA(c, k, 100, 40, 1, "block", t);
+  for (let i = 0; i < 2; i++) { const ph = (t * 0.9 + i * 0.5) % 2, x = ph < 1 ? 68 + ph * 26 : 94 - (ph - 1) * 26; dA(c, k, x, 40, ph < 1 ? 1 : -1, "walk", t + i); }
+  dRock(c, k, 114, 46, 120, 70); dLabel(c, k, 92, 12, "Blocker: turn back", "#ff8bd0");
+}
+function demoJet(c, t, w, h, k) {
+  const T = t % 6;
+  dRock(c, k, 0, 14, 40, 20); dRock(c, k, 0, 64, 84, 70);
+  const lg = c.createLinearGradient(0, 62 * k, 0, 70 * k); lg.addColorStop(0, "#ffb84d"); lg.addColorStop(1, "#c0301a"); c.fillStyle = lg; c.fillRect(84 * k, (62 + Math.sin(t * 3) * 0.5) * k, 36 * k, 8 * k);
+  const jy = Math.min(64, 14 + Math.max(0, T - 0.5) * 14); dA(c, k, 44, jy, 1, jy < 64 ? "fall" : "walk", t, true); // jetpack: floats down
+  if (jy >= 64) dLabel(c, k, 44, 56, "safe ✓", "#5dff9b");
+  const fy = 14 + Math.max(0, T - 0.5) * 60;
+  if (fy < 64) dA(c, k, 30, fy, -1, "fall", t);
+  else if (T < 4.5) { for (let i = 0; i < 8; i++) { const a = i / 8 * TAU, r = (T - 1.33) * 8; c.fillStyle = i % 2 ? "#5dff9b" : "#ff5d7a"; c.fillRect((30 + Math.cos(a) * r) * k, (62 + Math.sin(a) * r * 0.5) * k, k * 1.2, k * 1.2); }
+    dLabel(c, k, 26, 54, "SPLAT!", "#ff5d7a"); }
+  dLabel(c, k, 20, 10, "too high to fall", "#ffd25d"); dLabel(c, k, 102, 56, "lava!", "#ff8a3d"); dLabel(c, k, 62, 30, "Jetpack", "#9fe8ff");
+}
+function demoHome(c, t, w, h, k) {
+  dRock(c, k, 0, 54, 120, 70);
+  saucerArt(c, 92, 54, k, t); // saucer + beam
+  const home = 11 + Math.min(3, Math.floor((t % 6) / 1.6));
+  for (let i = 0; i < 3; i++) { const ph = ((t % 6) - i * 1.6), x = 20 + ph * 26; if (ph < 0) continue;
+    if (x < 90) dA(c, k, x, 54, 1, "walk", t + i); else { const up = (x - 90) * 1.5; if (up < 40) { c.globalAlpha = Math.max(0, 1 - up / 40); dA(c, k, 92, (54 - up), 1, "fall", t); c.globalAlpha = 1; } } }
+  c.fillStyle = "rgba(10,16,34,0.85)"; c.beginPath(); c.roundRect(4 * k, 4 * k, 34 * k, 13 * k, 3 * k); c.fill();
+  dLabel(c, k, 21, 13, `Home ${home}/${NEED}`, home >= NEED ? "#5dff9b" : "#e6ecff");
+}
+
+const ACT = {
+  start: () => { newLevel(); closeMenu(); },
+  play: () => { if (!seenHelp()) { try { localStorage.setItem("alienHerd.seenHelp", "1"); } catch (e) {} helpMenu("first", 0); } else ACT.start(); },
+  help: arg => { const [back, page] = String(arg).split("|"); helpMenu(back, +(page || 0)); },
+  title: () => titleMenu(),
+  end: () => endMenu(),
+  resume: () => closeMenu(),
+};
+$("pauseBtn").onclick = () => { if (over) return; paused = !paused; $("pauseBtn").textContent = paused ? "▶" : "❚❚"; if (!paused) last = performance.now(); };
+$("helpBtn").onclick = () => { audio(); if (over || !$("overlay").classList.contains("hidden")) return; helpMenu("game", 0); };
+$("fastBtn").onclick = () => { fast = !fast; $("fastBtn").classList.toggle("on", fast); $("fastBtn").textContent = fast ? "2×" : "▶▶"; };
+
+// ============================================================
+//  LOOP
+// ============================================================
+function resize() {
+  const st = $("stage"), w = st.clientWidth, h = st.clientHeight, d = Math.min(3, devicePixelRatio || 1);
+  K = Math.max(1, Math.min(w / LW, h / LH));
+  cv.style.width = LW * K + "px"; cv.style.height = LH * K + "px"; cv.width = Math.round(LW * K * d); cv.height = Math.round(LH * K * d); skyCv = null;
+}
+addEventListener("resize", resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = now;
+  if (!paused && !over) {
+    acc += dt * (fast ? 2 : 1);
+    while (acc >= 1 / 30) {
+      acc -= 1 / 30; time += 1 / 30;
+      spawnT -= 1 / 30; if (spawnT <= 0 && spawned < TOTAL) { spawn(); spawnT = SPAWN_EVERY; hud(); }
+      step();
+      for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life -= 1 / 30; if (p.life <= 0) fx.splice(i, 1); }
+    }
+    if (spawned >= TOTAL && aliens.every(a => a.state === "saved" || a.state === "dead" || a.state === "block") && !over) { over = true; setTimeout(endMenu, 900); }
+    hud();
+  }
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
+  draw(now / 1000);
+  if (menuAnim) menuAnim(now / 1000);
+  requestAnimationFrame(frame);
+}
+resize(); newLevel(); $("bubble").classList.remove("on"); bubbleT = 0;
+titleMenu();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
