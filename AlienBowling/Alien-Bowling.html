@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alien Bowling">
+<link rel="apple-touch-icon" href="../AlienGameLauncher/icons/apple-touch-icon.png">
 <title>Alien Bowling · Alien Arcade</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101229;color:#f9f6ec;--accent:#e8ff83}
@@ -42,6 +44,12 @@ h2{margin:3px 0;font-size:1.55rem;letter-spacing:-.04em}.panel p{font-size:.88re
 .how b{color:var(--accent)}.how b.r{color:#ff8f9f}.how b.y{color:#ffd25d}
 .dots{display:flex;justify-content:center;gap:6px;margin:6px 0 8px}.dots i{width:7px;height:7px;border-radius:50%;background:#424464}.dots i.on{background:var(--accent)}
 .topRight{display:flex;align-items:center;gap:8px}#fsBtn{min-width:44px;padding:4px 8px}
+#fsSheet{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center;background:#04071099;padding:12px}
+#fsSheet .box{width:100%;max-width:420px;background:#25233e;border:1px solid #6d658a;border-radius:16px;padding:16px 14px calc(14px + env(safe-area-inset-bottom))}
+#fsSheet h3{font-size:1.2rem;margin:0 0 4px}#fsSheet p{font-size:.86rem;line-height:1.4;color:#dfd9f1;margin:4px 0 8px}
+#fsSheet ol{margin:0 0 10px;padding:0;list-style:none;display:grid;gap:8px}
+#fsSheet li{background:#171832;border-radius:10px;padding:8px 10px;font-size:.88rem;line-height:1.35}#fsSheet li b{color:var(--accent)}
+#fsSheet button{width:100%}
 /* big view (phones that can't go full screen): drop the title so the lane gets the room */
 body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content:flex-end}body.bigView main{gap:4px}
 [hidden]{display:none!important}
@@ -931,8 +939,28 @@ function animate(now){
     let tipShown=standalone;
     const set=on=>{document.body.classList.toggle("bigView",on);btn.innerHTML=ICON(on);btn.setAttribute("aria-label",on?"Normal view":"Big view");btn.setAttribute("aria-pressed",String(on));
       try{localStorage.setItem("alienArcade.bowling.bigView",on?"1":"0");}catch{}setTimeout(resize,60);};
+    // the sheet explaining the two real ways to lose Safari's bars on an iPhone
+    const sheet=()=>{
+      const el=document.createElement("div");el.id="fsSheet";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");
+      // every iPhone browser runs on Safari's engine, so none of them can fill the screen; the steps differ per browser
+      const ua=navigator.userAgent,chrome=/CriOS/.test(ua),otherApp=/FxiOS|EdgiOS|OPiOS/.test(ua);
+      const steps=chrome
+        ?`<li><b>Best:</b> tap <b>Share</b> (□↑) at the right of Chrome's address bar, then <b>Add to Home Screen</b> (scroll the list down if you don't see it). Open Alien Bowling from its new icon: no bars at all.</li>
+          <li>Chrome can't hide its own bars. If <b>Add to Home Screen</b> isn't in the list, update Chrome, or open this page in <b>Safari</b> and add it from there.</li>`
+        :otherApp
+        ?`<li><b>Best:</b> open this page in <b>Safari</b>, tap <b>Share</b> (□↑), then <b>Add to Home Screen</b>. Open Alien Bowling from its new icon: no bars at all.</li>`
+        :`<li><b>Quick:</b> tap the <b>aA</b> (or ☰ page menu) at the left of the address bar, then <b>Hide Toolbar</b>. Tap the top of the screen to bring it back.</li>
+          <li><b>Best:</b> tap <b>Share</b> (□↑), then <b>Add to Home Screen</b>, then open Alien Bowling from its new icon. It runs like an app with no bars at all.</li>`;
+      el.innerHTML=`<div class="box"><h3>Full screen on iPhone</h3>
+        <p>Apple doesn't let any iPhone browser (Safari, Chrome or others) fill the screen with a web page. Here's what works:</p>
+        <ol>${steps}</ol>
+        <p>I've also hidden the title so the lane gets more room. Tap the corners button again to bring it back.</p>
+        <button class="primary" type="button">Got it</button></div>`;
+      el.addEventListener("click",e=>{if(e.target===el||e.target.tagName==="BUTTON")el.remove();});
+      document.body.appendChild(el);
+    };
     btn.addEventListener("click",()=>{enableSound();const on=!document.body.classList.contains("bigView");set(on);
-      if(on&&!tipShown){tipShown=true;setStatus("Tip: for true full screen on iPhone, tap Share → Add to Home Screen, then open it from there.");}});
+      if(on&&!tipShown){tipShown=true;sheet();}});
     let saved=false;try{saved=localStorage.getItem("alienArcade.bowling.bigView")==="1";}catch{}
     set(saved||standalone);return;
   }
