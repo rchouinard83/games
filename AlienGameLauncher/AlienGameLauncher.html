@@ -7,6 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Alien Arcade</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-title" content="Alien Arcade">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --accent: #4fd1ff; --gold: #ffd25d; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,12 +29,29 @@
   .card { display: flex; flex-direction: column; background: rgba(14, 21, 48, 0.88); border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
     color: inherit; text-decoration: none; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
   .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--c); box-shadow: 0 10px 30px -10px var(--c); outline: none; }
-  .card canvas { width: 100%; height: 170px; display: block; background: #0a1024; }
+  .card canvas, .card img.clip { width: 100%; height: 170px; display: block; background: #0a1024; object-fit: cover; }
   .info { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .info h2 { font-size: 21px; display: flex; align-items: center; gap: 8px; }
   .info h2 .tag { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 2px 7px; }
   .info p { color: #c9d3f0; font-size: 14px; line-height: 1.4; flex: 1; }
   .play { align-self: flex-start; margin-top: 4px; padding: 9px 18px; border-radius: 12px; font-weight: 800; font-size: 15px; color: #06120c; background: var(--c); }
+  /* Add to Home Screen button and the how-to sheet */
+  header { position: relative; }
+  #install { margin-left: auto; align-self: flex-start; display: none; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px;
+    border: 1px solid #2f7a5c; background: #1d4a3a; color: var(--good); font: inherit; font-weight: 800; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  #install.show { display: inline-flex; }
+  #install svg { width: 18px; height: 18px; }
+  @media (max-width: 520px) { #install .long { display: none; } }
+  #sheet { position: fixed; inset: 0; z-index: 10; display: none; align-items: flex-end; justify-content: center; background: rgba(4,7,16,0.7); padding: 12px; }
+  #sheet.open { display: flex; }
+  #sheet .box { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); }
+  #sheet h3 { font-size: 20px; margin-bottom: 4px; }
+  #sheet p { color: #c9d3f0; font-size: 14px; line-height: 1.45; }
+  #sheet ol { margin: 12px 0 14px 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  #sheet li { display: flex; align-items: center; gap: 12px; font-size: 15px; color: var(--ink); }
+  #sheet li .n { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #17224a; border: 1px solid var(--line); display: grid; place-items: center; }
+  #sheet li .n svg { width: 20px; height: 20px; }
+  #sheet button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-weight: 800; font-size: 16px; }
   footer { color: var(--dim); font-size: 13px; text-align: center; margin-top: 22px; line-height: 1.5; }
 </style>
 </head>
@@ -39,9 +61,13 @@
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
     <div><h1>Alien Arcade</h1><p>Five games from the same galaxy. Pick one and play.</p></div>
+    <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
+      <span>Add<span class="long"> to Home Screen</span></span></button>
   </header>
   <div class="grid" id="grid"></div>
   <footer>Best on a phone. Tip: use <b>Add to Home Screen</b> to play full screen.</footer>
+  <div id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><div class="box" id="sheetBox"></div></div>
 </main>
 <script>
 "use strict";
@@ -52,17 +78,18 @@ const ROOT = (() => {
   const here = location.href.split(/[?#]/)[0], cut = here.search(/\/AlienGameLauncher(\/|\.html|$)/i);
   return cut >= 0 ? here.slice(0, cut + 1) : here.slice(0, here.lastIndexOf("/") + 1); // if the launcher is in the root itself, use its folder
 })();
+// Bump the ?v= number on a clip after re-recording it, so browsers fetch the new file.
 // The games, in the order players usually meet them. href = folder/file inside the root games folder.
 const GAMES = [
-  { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
+  { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", clip: "previews/defense.webp?v=2", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
   { name: "Alien Launch", tag: "Flight", color: "#ffb84d", href: "AlienLaunch/Alien-Launch.html", art: artLaunch,
     desc: "Blast off, weave through obstacles and tunnels, grab fuel, then land softly. Every planet pulls harder." },
-  { name: "Alien Landing", tag: "Traffic control", color: "#4fd1ff", href: "AlienLanding/Alien-Landing.html", art: artLanding,
+  { name: "Alien Landing", tag: "Traffic control", color: "#4fd1ff", href: "AlienLanding/Alien-Landing.html", clip: "previews/landing.webp?v=3", art: artLanding,
     desc: "Draw flight paths to land saucers, haulers and carrier ships on the right pads without a crash." },
-  { name: "Alien Snake", tag: "Arcade", color: "#c77dff", href: "AlienSnake/Alien-Snake.html", art: artSnake,
+  { name: "Alien Snake", tag: "Arcade", color: "#c77dff", href: "AlienSnake/Alien-Snake.html", clip: "previews/snake.webp?v=3", art: artSnake,
     desc: "Fly the rescue saucer, pick up stranded aliens and tow them home. Don't hit your own pods." },
-  { name: "Dr Alien", tag: "Puzzle", color: "#ff8bd0", href: "DrAlien/Dr-Alien.html", art: artDrAlien,
+  { name: "Dr Alien", tag: "Puzzle", color: "#ff8bd0", href: "DrAlien/Dr-Alien.html", clip: "previews/dralien.webp?v=2", art: artDrAlien,
     desc: "Drop capsules with Dr. Hive Queen and match colours to clear every spore before the lab jams." },
 ];
 
@@ -110,21 +137,86 @@ function artDefense(c, w, h, t) { // a maze of towers with aliens walking the pa
   }
   c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(cs * 0.3, 4.5 * cs, cs * 0.3, 0, TAU); c.fill(); // the base
 }
-function artLaunch(c, w, h, t) { // the lander weaving between pillars
-  sky(c, w, h, "#060c1c", "#1a2a4a", 7);
-  c.fillStyle = "#c06a48"; c.beginPath(); c.arc(w * 0.85, h * 0.25, h * 0.16, 0, TAU); c.fill();
-  const off = (t * 60) % 150;
-  for (let k = -1; k < w / 150 + 1; k++) { const x = k * 150 - off + 40, gy = h * (0.5 + 0.18 * Math.sin(k * 1.9)), gap = 60;
-    const g = c.createLinearGradient(x - 14, 0, x + 14, 0); g.addColorStop(0, "#5a8ab8"); g.addColorStop(0.5, "#e8f6ff"); g.addColorStop(1, "#4a7aa8");
-    c.fillStyle = g; c.fillRect(x - 14, 0, 28, gy - gap / 2); c.fillRect(x - 14, gy + gap / 2, 28, h); }
-  c.fillStyle = "#5dff9b"; c.beginPath(); c.roundRect(w * 0.58, h * 0.32, 14, 20, 5); c.fill(); // a fuel cell
-  const y = h * 0.5 + Math.sin(t * 2) * h * 0.16, x = w * 0.3, r = 15, thr = Math.cos(t * 2) < 0;
-  if (thr) { c.fillStyle = "#ffb84d"; c.beginPath(); c.moveTo(x - 5, y + 9); c.lineTo(x, y + 22 + Math.random() * 6); c.lineTo(x + 5, y + 9); c.fill(); }
-  c.strokeStyle = "#9aa6c0"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 8, y + 5); c.lineTo(x - 14, y + 13); c.moveTo(x + 8, y + 5); c.lineTo(x + 14, y + 13); c.stroke();
-  c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(x, y + 3, r, r * 0.45, 0, 0, TAU); c.fill();
-  c.fillStyle = "rgba(190,235,255,0.4)"; c.beginPath(); c.arc(x, y, r * 0.62, PI, 0); c.fill();
-  eyeAlien(c, x, y + 1, r * 0.4, "#5dff9b", t);
+function launchLander(c, x, y, r, ang, t, thrusting) {
+  c.save(); c.translate(x, y); c.rotate(ang);
+  if (thrusting) { const fl = 0.7 + 0.3 * Math.sin(t * 40); // flame
+    const g = c.createLinearGradient(0, r * 0.6, 0, r * 2); g.addColorStop(0, "#fff6c0"); g.addColorStop(0.4, "#ffb84d"); g.addColorStop(1, "rgba(255,90,40,0)");
+    c.fillStyle = g; c.beginPath(); c.moveTo(-r * 0.35, r * 0.6); c.quadraticCurveTo(0, r * (1.6 + fl * 0.8), r * 0.35, r * 0.6); c.fill(); }
+  c.strokeStyle = "#9aa6c0"; c.lineWidth = r * 0.12; c.lineCap = "round"; // legs
+  c.beginPath(); c.moveTo(-r * 0.55, r * 0.35); c.lineTo(-r * 0.95, r * 0.95); c.moveTo(r * 0.55, r * 0.35); c.lineTo(r * 0.95, r * 0.95); c.stroke();
+  c.beginPath(); c.moveTo(-r * 1.15, r * 0.95); c.lineTo(-r * 0.75, r * 0.95); c.moveTo(r * 0.75, r * 0.95); c.lineTo(r * 1.15, r * 0.95); c.stroke();
+  const b = c.createLinearGradient(0, -r, 0, r); b.addColorStop(0, "#e8f0ff"); b.addColorStop(0.5, "#9aa6c0"); b.addColorStop(1, "#4a5578"); // body
+  c.fillStyle = b; c.beginPath(); c.ellipse(0, r * 0.25, r, r * 0.45, 0, 0, TAU); c.fill(); c.strokeStyle = "#2a3350"; c.lineWidth = r * 0.07; c.stroke();
+  for (let k = -2; k <= 2; k++) { c.fillStyle = (Math.floor(t * 6) + k) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(k * r * 0.38, r * 0.32, r * 0.07, 0, TAU); c.fill(); }
+  c.fillStyle = "rgba(190,235,255,0.35)"; c.beginPath(); c.arc(0, -r * 0.05, r * 0.6, PI, 0); c.fill(); // glass dome
+  c.strokeStyle = "rgba(220,245,255,0.7)"; c.lineWidth = r * 0.05; c.stroke();
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(0, r * 0.1, r * 0.4, PI, 0); c.fill(); // Zib
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -r * 0.12, r * 0.2, 0, TAU); c.fill();
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(r * 0.05, -r * 0.1 + (thrusting ? -r * 0.04 : r * 0.03), r * 0.09, 0, TAU); c.fill();
+  c.strokeStyle = "#5dff9b"; c.lineWidth = r * 0.06; c.beginPath(); c.moveTo(0, -r * 0.3); c.lineTo(0, -r * 0.5); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(0, -r * 0.52, r * 0.06, 0, TAU); c.fill();
+  c.restore();
 }
+
+function launchFuelCell(c, x, y, r, t) {
+  c.save(); c.translate(x, y + Math.sin(t * 3) * r * 0.2);
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  c.fillStyle = `rgba(93,255,155,${0.12 + pulse * 0.12})`; c.beginPath(); c.arc(0, 0, r * 1.9, 0, TAU); c.fill();
+  c.rotate(Math.sin(t * 1.5) * 0.2);
+  const g = c.createLinearGradient(-r, 0, r, 0); g.addColorStop(0, "#1f8a50"); g.addColorStop(0.5, "#8bffbf"); g.addColorStop(1, "#1f8a50");
+  c.fillStyle = g; c.beginPath(); c.roundRect(-r * 0.7, -r, r * 1.4, r * 2, r * 0.45); c.fill();
+  c.strokeStyle = "#e8fff2"; c.lineWidth = Math.max(1.5, r * 0.12); c.stroke();
+  c.fillStyle = "#c9d3e6"; c.fillRect(-r * 0.35, -r * 1.25, r * 0.7, r * 0.28);
+  c.fillStyle = "#0b3a22"; c.beginPath(); c.moveTo(r * 0.12, -r * 0.6); c.lineTo(-r * 0.3, r * 0.08); c.lineTo(0, r * 0.08); c.lineTo(-r * 0.12, r * 0.6); c.lineTo(r * 0.3, -r * 0.08); c.lineTo(0, -r * 0.08); c.closePath(); c.fill();
+  c.restore();
+}
+
+function launchIceSpire(c, x, y0, y1, w, seed, top) {
+  c.save();
+  const g = c.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, "#5a8ab8"); g.addColorStop(0.5, "#e8f6ff"); g.addColorStop(1, "#4a7aa8");
+  c.fillStyle = g; c.beginPath();
+  const tip = top ? y1 : y0, base = top ? y0 : y1, dir = top ? 1 : -1;
+  c.moveTo(x - w, base); for (let k = 0; k <= 6; k++) { const yy = base + (tip - base) * k / 6; c.lineTo(x - w * (1 - k / 7) + Math.sin(seed + k * 2) * w * 0.15, yy); }
+  c.lineTo(x, tip + dir * w * 0.25); for (let k = 6; k >= 0; k--) { const yy = base + (tip - base) * k / 6; c.lineTo(x + w * (1 - k / 7) + Math.sin(seed + k * 3) * w * 0.15, yy); }
+  c.closePath(); c.fill(); c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 2; c.stroke();
+  c.restore();
+}
+
+function artLaunch(c, w, h, t) { // Oort Gate approach
+  sky(c, w, h, "#060c1c", "#14284a", 7);
+  const padX = w * 0.8, planetY = h * 0.23, planetR = h * 0.12;
+  const planet = c.createRadialGradient(padX - planetR * 0.3, planetY - planetR * 0.3, planetR * 0.1, padX, planetY, planetR);
+  planet.addColorStop(0, "#e8f6ff"); planet.addColorStop(1, "#6a9ac8");
+  c.fillStyle = planet; c.beginPath(); c.arc(padX, planetY, planetR, 0, TAU); c.fill();
+
+  launchIceSpire(c, w * 0.19, -4, h * 0.25, h * 0.12, 1, true);
+  launchIceSpire(c, w * 0.19, h * 0.71, h + 4, h * 0.12, 4, false);
+
+  const ground = h * 0.86, padWidth = Math.min(h * 0.35, w * 0.2);
+  const terrain = c.createLinearGradient(0, ground, 0, h);
+  terrain.addColorStop(0, "#bcd8f0"); terrain.addColorStop(1, "#5a7a9c");
+  c.fillStyle = terrain; c.beginPath();
+  c.moveTo(w * 0.56, h); c.lineTo(w * 0.58, ground + 4); c.lineTo(w * 0.65, ground - 2);
+  c.lineTo(w * 0.7, ground); c.lineTo(w * 0.9, ground);
+  c.lineTo(w * 0.95, ground - 3); c.lineTo(w, ground + 2); c.lineTo(w, h); c.closePath(); c.fill();
+
+  const beamTop = h * 0.44, padLeft = padX - padWidth / 2;
+  const beam = c.createLinearGradient(0, beamTop, 0, ground);
+  beam.addColorStop(0, "rgba(93,255,155,0)"); beam.addColorStop(1, "rgba(93,255,155,0.28)");
+  c.fillStyle = beam; c.fillRect(padLeft, beamTop, padWidth, ground - beamTop);
+  c.fillStyle = "#2a3350"; c.fillRect(padLeft, ground - 3, padWidth, 8);
+  c.fillStyle = "#5dff9b"; c.fillRect(padLeft, ground - 5, padWidth, 3);
+  for (let k = 0; k < 5; k++) {
+    c.fillStyle = Math.floor(t * 4) % 5 === k ? "#fff" : "#5dff9b";
+    c.beginPath(); c.arc(padLeft + padWidth * k / 4, ground - 7, 2, 0, TAU); c.fill();
+  }
+
+  launchFuelCell(c, w * 0.55, h * 0.29, h * 0.045, t);
+  const sway = Math.sin(t * 1.7);
+  launchLander(c, w * (0.48 + sway * 0.045), h * (0.53 + sway * 0.055),
+    h * 0.12, 0.09 * Math.cos(t * 1.7), t, Math.cos(t * 1.7) < 0);
+}
+
 function artLanding(c, w, h, t) { // a saucer following a dotted path onto its pad, a hauler lining up for the runway
   sky(c, w, h, "#1d3352", "#122238", 11);
   c.fillStyle = "#262c3e"; c.fillRect(w * 0.55, h * 0.62, w * 0.38, 26); c.strokeStyle = "#ffb84d"; c.lineWidth = 2; c.strokeRect(w * 0.55, h * 0.62, w * 0.38, 26);
@@ -163,9 +255,9 @@ const lerp = (a, b, k) => a + (b - a) * k;
 // ---------- build the cards ----------
 const grid = document.getElementById("grid");
 grid.innerHTML = GAMES.map((g, i) => `<a class="card" href="${ROOT + g.href}" style="--c:${g.color}">
-  <canvas data-i="${i}" aria-hidden="true"></canvas>
+  ${g.clip ? `<img class="clip" src="${g.clip}" alt="${g.name} gameplay" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('canvas'),{className:'fallback'}))">` : `<canvas data-i="${i}" aria-hidden="true"></canvas>`}
   <div class="info"><h2>${g.name} <span class="tag">${g.tag}</span></h2><p>${g.desc}</p><span class="play">Play ▶</span></div></a>`).join("");
-const canvases = [...grid.querySelectorAll("canvas")];
+const canvases = [...grid.querySelectorAll("canvas[data-i]")]; // drawn previews; the other cards show recorded gameplay clips
 
 // ---------- background stars and Commander Zib ----------
 const bg = document.getElementById("stars"), bc = bg.getContext("2d");
@@ -199,15 +291,49 @@ function frame(now) {
   const t = reduce ? 2 : now / 1000;
   drawStars(t); drawZib(t);
   for (const cv of canvases) {
-    if (!visible.has(cv) && cv.width) continue;
+    if (!reduce && !visible.has(cv)) continue;
     const d = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
-    if (cv.width !== Math.round(w * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    if (cv.width !== Math.round(w * d) || cv.height !== Math.round(h * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
     const c = cv.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
     GAMES[+cv.dataset.i].art(c, w, h, t);
   }
   if (!reduce) requestAnimationFrame(frame);
 }
+if (reduce) window.addEventListener("resize", () => requestAnimationFrame(frame));
 requestAnimationFrame(frame);
+
+// ---------- Add to Home Screen ----------
+// Android/Chrome: use the browser's own install prompt. iPhone/iPad: show the Share → Add to Home Screen steps.
+(() => {
+  const btn = document.getElementById("install"), sheet = document.getElementById("sheet"), box = document.getElementById("sheetBox");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (standalone) return; // already running from the home screen
+  const ua = navigator.userAgent, ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/i.test(ua), notSafari = ios && /CriOS|FxiOS|EdgiOS/.test(ua);
+  let prompt = null;
+  addEventListener("beforeinstallprompt", e => { e.preventDefault(); prompt = e; btn.classList.add("show"); });
+  addEventListener("appinstalled", () => { btn.classList.remove("show"); sheet.classList.remove("open"); });
+  if (ios || android) btn.classList.add("show"); // phones always get the button; desktop only when the browser can install
+  const share = '<svg viewBox="0 0 24 24" fill="none" stroke="#4fd1ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-8 4-4 4 4"/><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/></svg>';
+  const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="#5dff9b" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8m-4-4h8"/></svg>';
+  const dots = '<svg viewBox="0 0 24 24" fill="#c9d3f0"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+  const tap = '<svg viewBox="0 0 24 24" fill="none" stroke="#ffd25d" stroke-width="2" stroke-linecap="round"><path d="M5 12l5 5L20 7"/></svg>';
+  function show(html) { box.innerHTML = html + '<button type="button" id="sheetClose">Got it</button>'; sheet.classList.add("open"); document.getElementById("sheetClose").onclick = () => sheet.classList.remove("open"); }
+  sheet.addEventListener("click", e => { if (e.target === sheet) sheet.classList.remove("open"); });
+  btn.addEventListener("click", async () => {
+    if (prompt) { prompt.prompt(); const r = await prompt.userChoice; prompt = null; if (r.outcome === "accepted") btn.classList.remove("show"); return; }
+    if (ios) show(`<h3 id="sheetTitle">Add to your Home Screen</h3>
+      <p>${notSafari ? "On iPhone this works best from <b>Safari</b>. Open this page in Safari, then:" : "Play Alien Arcade full screen, like an app:"}</p>
+      <ol><li><span class="n">${share}</span><span>Tap the <b>Share</b> button ${/iPad/.test(ua) ? "at the top" : "at the bottom"} of Safari</span></li>
+        <li><span class="n">${plus}</span><span>Scroll down and tap <b>Add to Home Screen</b></span></li>
+        <li><span class="n">${tap}</span><span>Tap <b>Add</b>. Commander Zib is now on your Home Screen</span></li></ol>`);
+    else show(`<h3 id="sheetTitle">Add to your Home Screen</h3>
+      <p>Play Alien Arcade full screen, like an app:</p>
+      <ol><li><span class="n">${dots}</span><span>Tap the browser <b>menu</b> (⋮) at the top right</span></li>
+        <li><span class="n">${plus}</span><span>Tap <b>Install app</b> or <b>Add to Home screen</b></span></li>
+        <li><span class="n">${tap}</span><span>Confirm. Commander Zib is now on your Home Screen</span></li></ol>`);
+  });
+})();
 </script>
 </body>
 </html>
