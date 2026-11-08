@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#03060f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alien Rocks">
+<link rel="apple-touch-icon" href="../AlienGameLauncher/icons/apple-touch-icon.png">
+<title>Alien Rocks</title>
+<style>
+  :root { --bg: #03060f; --panel: #0c1630; --line: #24396a; --ink: #e6f0ff; --dim: #8fa3cc; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; padding: calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left)); gap: 4px; }
+  #hud { display: flex; gap: 5px; align-items: stretch; width: 100%; max-width: 760px; margin: 0 auto; }
+  .chip { background: rgba(10,20,42,0.9); border: 1px solid var(--line); border-radius: 11px; padding: 3px 8px 4px; font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+  .chip small { display: block; font-size: 9px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hHull { letter-spacing: -1px; color: var(--bad); } #hHull i { color: #2a3556; font-style: normal; }
+  .meter { width: 54px; height: 7px; margin-top: 4px; border-radius: 4px; background: #1a2546; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #4fd1ff, #b8f3ff); border-radius: 4px; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(10,20,42,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 11px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; min-width: 40px; }
+  @media (max-width: 420px) { #scoreChip { display: none; } .chip { padding: 3px 6px 4px; } .meter { width: 44px; } .hudBtn { padding: 0 8px; min-width: 36px; } } /* narrow phones: the score is on the results screen */
+  #stage { flex: 1; min-height: 0; width: 100%; position: relative; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 12px; touch-action: none; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(2,4,10,0.78); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 430px; max-height: calc(100% - 16px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; box-shadow: 0 0 40px rgba(79,209,255,0.12); }
+  #box h1 { font-size: 46px; line-height: 1.02; letter-spacing: -0.02em; background: linear-gradient(90deg, #4fd1ff, #c77dff 55%, #ff8bd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 26px; margin-bottom: 4px; }
+  #box p { color: #d2def5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  #titleArt { width: 100%; height: 150px; display: block; border-radius: 12px; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #142450; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #123f3a; border-color: #2a8a72; color: var(--good); }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .stageCard { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .stageCard canvas { width: 56px; height: 56px; flex: none; border-radius: 12px; }
+  .stageCard span { flex: 1; min-width: 0; }
+  .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .levels .big { margin: 0; padding: 10px 0 8px; font-size: 20px; }
+  .levels .big small { font-size: 11px; color: var(--gold); }
+  .levels .big small i, .bigStars i { color: #24396a; font-style: normal; }
+  .stars { color: var(--gold); }
+  .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; }
+  .score { font-size: 15px; color: var(--dim); font-weight: 700; }
+  .facts { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
+  .facts span { background: #08122a; border: 1px solid #24396a; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 800; color: var(--accent); }
+  .chars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .charBtn { background: #08122a; border: 2px solid #24396a; border-radius: 14px; padding: 6px 4px 8px; color: var(--ink); font: inherit; font-weight: 800; font-size: 14px; }
+  .charBtn.on { border-color: var(--good); background: #0e2e26; }
+  .charBtn canvas { width: 100%; aspect-ratio: 1; display: block; }
+  #howCv { width: 100%; height: 190px; display: block; border-radius: 12px; background: #050b1c; border: 1px solid #24396a; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 17px; font-weight: 650; line-height: 1.3; padding: 7px 12px; background: #08122a; border: 1px solid #24396a; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; } .how b.c { color: var(--accent); } .how b.y { color: var(--gold); } .how b.g { color: var(--good); } .how b.r { color: var(--bad); } .how b.p { color: #ff8bd0; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #24396a; }
+  .dots i.on { background: var(--accent); }
+  #fsSheet { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(2,4,10,0.6); padding: 12px; }
+  #fsSheet .sheet { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); text-align: left; }
+  #fsSheet h3 { font-size: 19px; margin-bottom: 6px; } #fsSheet p { font-size: 14px; color: #d2def5; line-height: 1.4; margin: 4px 0 8px; }
+  #fsSheet ol { list-style: none; display: grid; gap: 8px; margin: 0 0 10px; } #fsSheet li { background: #08122a; border-radius: 10px; padding: 8px 10px; font-size: 14px; line-height: 1.35; } #fsSheet li b { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small id="hStage">Oort</small><span id="hLevel">Level 1</span></div>
+    <div class="chip"><small>Hull</small><span id="hHull">♥♥♥♥♥</span></div>
+    <div class="chip"><small>Shield</small><div class="meter"><i id="hShield"></i></div></div>
+    <div class="chip" id="scoreChip"><small>Score</small><span id="hScore">0</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="fsBtn" aria-label="Full screen" aria-pressed="false"></button>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN ROCKS — fly a saucer through drifting rock fields, blast rocks into smaller rocks,
+//  dodge alien hunters, and take down each stage's mothership.
+//  The world is W x 640 units and wraps around at every edge. W follows the screen's shape,
+//  so portrait and landscape both fill the screen at the same size.
+//  Touch: left half = steering stick (point where to fly, push further for more thrust),
+//         right half = hold to fire, bottom-right button = hold for shield.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const H = 640;
+let W = 360;
+const SHIP_R = 12, TURN = 9, THRUST = 430, MAX_V = 340;
+const BULLET_SPEED = 560, FIRE_EVERY = 0.16, BULLET_LIFE = 0.85;
+const ROCK_R = [40, 23, 12], ROCK_SCORE = [20, 50, 100], ROCK_DMG = [2, 1, 1];
+const MAX_HP = 5, SHIELD_MAX = 100, SHIELD_DRAIN = 42, SHIELD_REGEN = 9, INVULN = 1.3;
+const ENEMY_SHOT = 230, LEVELS = 8;
+const STICK_PX = 60; // how far your thumb moves (screen pixels) for full thrust
+
+// ============================================================
+//  THE CAST: Stage 1 "First Contact" aliens from Alien Defense (attacker-design.html)
+// ============================================================
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15, desc: "Little wobbling slime drop. Squishy and bouncy.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95, desc: "Big round three-eyed bruiser. Built like a bowling ball.",
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+// ============================================================
+//  STAGES: each world changes how the field plays. Level 8 of every stage is a mothership boss.
+// ============================================================
+const STAGES = [
+  { name: "The Oort Gate", short: "Oort", color: "#7fb8ff", sky: ["#081a36", "#01040b"], neb: ["rgba(79,140,255,0.16)", "rgba(160,120,255,0.10)"],
+    rock: "#9fe8ff", rockFill: "rgba(120,210,255,0.10)", drag: 0.22, rockSpeed: 0.85, trait: "ice", boss: "chonk", hunters: ["blip", "goo"],
+    intro: "An icy rock field. Space is slippery here: your saucer <b>drifts</b> a long way." },
+  { name: "Jupiter Storm", short: "Jupiter", color: "#ffb84d", sky: ["#2a1306", "#060201"], neb: ["rgba(255,150,60,0.16)", "rgba(255,90,60,0.10)"],
+    rock: "#ffc27a", rockFill: "rgba(255,170,90,0.10)", drag: 0.6, rockSpeed: 1, trait: "vortex", boss: "jelly", hunters: ["jelly", "runner"],
+    intro: "The <b>Great Red Spot</b> pulls everything toward it. Stay out of its eye!" },
+  { name: "Mars, the Red Wall", short: "Mars", color: "#ff8f5d", sky: ["#2a0a08", "#070202"], neb: ["rgba(255,90,70,0.15)", "rgba(255,160,90,0.08)"],
+    rock: "#ff9a7a", rockFill: "rgba(255,110,80,0.12)", drag: 0.6, rockSpeed: 1.05, trait: "tough", boss: "goo", hunters: ["runner", "chonk"],
+    intro: "<b>Tough red rocks</b>: the big ones take two hits to crack." },
+  { name: "Earth, Final Stand", short: "Earth", color: "#5dff9b", sky: ["#06201a", "#010604"], neb: ["rgba(80,255,170,0.12)", "rgba(80,170,255,0.10)"],
+    rock: "#b8f5d0", rockFill: "rgba(120,255,180,0.08)", drag: 0.6, rockSpeed: 1.1, trait: "hunters", boss: "mother", hunters: ["runner", "chonk", "goo"],
+    intro: "Alien <b>hunters</b> everywhere, and Mother Blob's mothership guarding home." },
+];
+function levelInfo(s, l) {
+  const st = STAGES[s], boss = l === LEVELS - 1;
+  return { boss, big: boss ? 2 : Math.min(8, 2 + Math.floor(l * 0.7) + s), speed: st.rockSpeed * (1 + l * 0.05 + s * 0.04),
+    hunters: boss ? 1 : l < 2 ? 0 : Math.floor((l - 1) / 2) + (st.trait === "hunters" ? 1 : 0), aimErr: Math.max(0.06, 0.3 - l * 0.025 - s * 0.03) };
+}
+
+// ---------- save: stars and best score per level, your pilot, sound ----------
+const KEY = "alienRocks.v1";
+let SAVE = { best: STAGES.map(() => Array(LEVELS).fill(0)), score: STAGES.map(() => Array(LEVELS).fill(0)), char: "blip", seenHelp: false, sound: true };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.best)) {
+  SAVE.best = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => clamp(+((s.best[i] || [])[l]) || 0, 0, 3)));
+  SAVE.score = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => +(((s.score || [])[i] || [])[l]) || 0));
+  SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "blip"; SAVE.seenHelp = !!s.seenHelp; SAVE.sound = s.sound !== false; } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
+const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every level for testing
+const stageOpen = s => TEST_ALL || s === 0 || SAVE.best[s - 1].every(n => n > 0);
+const levelOpen = (s, l) => TEST_ALL || (l === 0 ? stageOpen(s) : SAVE.best[s][l - 1] > 0);
+const stageStars = s => SAVE.best[s].reduce((a, n) => a + n, 0);
+const starsFor = hp => hp >= MAX_HP ? 3 : hp >= 3 ? 2 : 1;
+
+// ============================================================
+//  THE GAME STATE
+// ============================================================
+const wd = (d, size) => ((d + size / 2) % size + size) % size - size / 2; // shortest wrapped distance
+const wrapX = x => ((x % W) + W) % W, wrapY = y => ((y % H) + H) % H;
+let si = 0, li = 0, S = STAGES[0], L = null, state = "play", endT = 0, resultShown = false, t = 0, shake = 0;
+let ship = null, rocks = [], bullets = [], hunters = [], boss = null, pickups = [], fx = [], rings = [], banner = null;
+let score = 0, hunterQueue = 0, hunterT = 0, totalRocks = 1, beatT = 1, beatHi = false;
+const VORTEX = { r: 30, reach: 260, pull: 16000 };
+function rockShape() { return Array.from({ length: 11 }, () => 0.75 + Math.random() * 0.4); }
+function makeRock(x, y, size, speedMul) {
+  const a = Math.random() * TAU, v = (30 + Math.random() * 40) * speedMul * (1 + size * 0.35);
+  return { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, size, r: ROCK_R[size], hp: S.trait === "tough" && size === 0 ? 2 : 1, ang: Math.random() * TAU, spin: (Math.random() - 0.5) * 1.6, shape: rockShape(), flash: 0 };
+}
+function loadLevel(s, l) {
+  si = s; li = l; S = STAGES[s]; L = levelInfo(s, l);
+  ship = { x: W / 2, y: H / 2, vx: 0, vy: 0, ang: -PI / 2, hp: MAX_HP, inv: 1.5, energy: SHIELD_MAX, shielding: false, fireT: 0, triple: 0, thrust: 0, hitT: 0 };
+  rocks = []; bullets = []; hunters = []; pickups = []; fx = []; rings = []; boss = null; score = 0; shake = 0;
+  for (let k = 0; k < L.big; k++) { let x, y; do { x = Math.random() * W; y = Math.random() * H; } while (Math.hypot(wd(x - ship.x, W), wd(y - ship.y, H)) < 170); rocks.push(makeRock(x, y, 0, L.speed)); }
+  totalRocks = Math.max(1, rocks.length * 7);
+  hunterQueue = L.hunters; hunterT = 5 + Math.random() * 3;
+  if (L.boss) { boss = { x: W / 2, y: -70, vx: 0, vy: 0, r: 46, hp: 40 + s * 15, maxHp: 40 + s * 15, fireT: 2.5, spawnT: 5, pilot: S.boss, flash: 0, enter: 1 }; }
+  state = "play"; endT = 0; resultShown = false; beatT = 1;
+  banner = { text: L.boss ? "MOTHERSHIP INCOMING" : `${S.short.toUpperCase()} · LEVEL ${l + 1}`, sub: L.boss ? `${CHARS.byId(S.boss).name} is at the controls` : `${L.big} big rocks${L.hunters ? ` · ${L.hunters} hunter${L.hunters > 1 ? "s" : ""}` : ""}`, t: 2.4 };
+  hud(true);
+}
+
+// ---------- input: twin thumbs ----------
+const input = { stick: null, fire: null, shieldPtr: null, keys: new Set() };
+let cssW = 360, cssH = 640, K = 1, OX = 0, OY = 0;
+const shieldBtn = () => ({ x: cssW - 52, y: cssH - 52, r: 36 }); // screen pixels
+function onDown(e) {
+  audio(); if (paused || state !== "play") return;
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, sb = shieldBtn();
+  cv.setPointerCapture(e.pointerId);
+  if (Math.hypot(x - sb.x, y - sb.y) < sb.r + 10 && input.shieldPtr === null) input.shieldPtr = e.pointerId;
+  else if (x < cssW / 2 && !input.stick) input.stick = { id: e.pointerId, ox: x, oy: y, x, y };
+  else if (!input.fire) input.fire = { id: e.pointerId, x, y };
+}
+function onMove(e) { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  if (input.stick && input.stick.id === e.pointerId) { input.stick.x = x; input.stick.y = y; }
+  if (input.fire && input.fire.id === e.pointerId) { input.fire.x = x; input.fire.y = y; } }
+function onUp(e) { if (input.stick && input.stick.id === e.pointerId) input.stick = null; if (input.fire && input.fire.id === e.pointerId) input.fire = null; if (input.shieldPtr === e.pointerId) input.shieldPtr = null; }
+cv.addEventListener("pointerdown", onDown); cv.addEventListener("pointermove", onMove);
+for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) cv.addEventListener(ev, onUp);
+addEventListener("keydown", e => { if (!paused && ["ArrowLeft", "ArrowRight", "ArrowUp", "Space", "ShiftLeft", "ShiftRight", "KeyS"].includes(e.code)) { e.preventDefault(); input.keys.add(e.code); audio(); }
+  if (e.code === "Escape" && !e.repeat) { if (!paused && state === "play") pauseMenu(); else if (paused && menuName === "pause") closeMenu(); } });
+addEventListener("keyup", e => input.keys.delete(e.code));
+
+// ============================================================
+//  UPDATE
+// ============================================================
+function update(dt) {
+  t += dt; shake = Math.max(0, shake - dt);
+  for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 1 - 1.6 * dt; p.vy *= 1 - 1.6 * dt; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); }
+  for (let i = rings.length - 1; i >= 0; i--) { rings[i].t += dt; if (rings[i].t > rings[i].life) rings.splice(i, 1); }
+  if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+  if (paused || !ship) return;
+  if (state !== "play") { thrustSound(0); endT += dt; if (endT > 1.8 && !resultShown) { resultShown = true; resultMenu(); } moveRocks(dt); return; }
+  steerShip(dt); moveRocks(dt); moveBullets(dt); moveHunters(dt); moveBoss(dt); movePickups(dt); collide(); heartbeat(dt);
+  if (!rocks.length && !hunters.length && hunterQueue <= 0 && !boss && state === "play") {
+    state = "won"; endT = 0; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, "triangle", 0.08, 0, i * 0.1));
+    banner = { text: "SECTOR CLEAR", sub: `Hull ${ship.hp}/${MAX_HP}`, t: 2 };
+  }
+  hud();
+}
+function steerShip(dt) {
+  const sh = ship, k = input.keys; let thrust = 0, target = null;
+  sh.inv = Math.max(0, sh.inv - dt); sh.hitT = Math.max(0, sh.hitT - dt); sh.triple = Math.max(0, sh.triple - dt); sh.fireT -= dt;
+  if (input.stick) { const dx = input.stick.x - input.stick.ox, dy = input.stick.y - input.stick.oy, m = Math.hypot(dx, dy);
+    if (m > 10) { target = Math.atan2(dy, dx); thrust = clamp((m - 10) / (STICK_PX - 10), 0, 1); } }
+  if (k.has("ArrowLeft")) sh.ang -= TURN * 0.6 * dt; if (k.has("ArrowRight")) sh.ang += TURN * 0.6 * dt; if (k.has("ArrowUp")) thrust = 1;
+  if (target !== null) { const d = wd(target - sh.ang, TAU); sh.ang += clamp(d, -TURN * dt, TURN * dt); thrust *= Math.max(0, Math.cos(d)); } // only push once you're roughly facing that way
+  sh.thrust = thrust;
+  sh.vx += Math.cos(sh.ang) * THRUST * thrust * dt; sh.vy += Math.sin(sh.ang) * THRUST * thrust * dt;
+  if (S.trait === "vortex") pullToVortex(sh, dt, 1);
+  const drag = Math.exp(-S.drag * dt); sh.vx *= drag; sh.vy *= drag;
+  const sp = Math.hypot(sh.vx, sh.vy); if (sp > MAX_V) { sh.vx *= MAX_V / sp; sh.vy *= MAX_V / sp; }
+  sh.x = wrapX(sh.x + sh.vx * dt); sh.y = wrapY(sh.y + sh.vy * dt);
+  if (thrust > 0.1 && Math.random() < thrust * 0.9) { const a = sh.ang + PI + (Math.random() - 0.5) * 0.5, v = 80 + Math.random() * 90;
+    fx.push({ x: sh.x - Math.cos(sh.ang) * 11, y: sh.y - Math.sin(sh.ang) * 11, vx: Math.cos(a) * v + sh.vx * 0.5, vy: Math.sin(a) * v + sh.vy * 0.5, life: 0.35, max: 0.35, col: Math.random() < 0.5 ? "#ffd25d" : "#ff8f5d", r: 2.2 }); }
+  thrustSound(thrust);
+  // shield: hold the button (or Shift / S). It drains while on and slowly refills while off.
+  const want = input.shieldPtr !== null || k.has("ShiftLeft") || k.has("ShiftRight") || k.has("KeyS");
+  sh.shielding = want && sh.energy > 0;
+  if (sh.shielding) sh.energy = Math.max(0, sh.energy - SHIELD_DRAIN * dt); else sh.energy = Math.min(SHIELD_MAX, sh.energy + SHIELD_REGEN * dt);
+  // fire: hold the right side (or Space)
+  if ((input.fire || k.has("Space")) && sh.fireT <= 0) { sh.fireT = FIRE_EVERY; for (const off of sh.triple > 0 ? [-0.16, 0, 0.16] : [0]) shoot(sh, sh.ang + off); }
+}
+function shoot(sh, a) {
+  bullets.push({ x: sh.x + Math.cos(a) * 14, y: sh.y + Math.sin(a) * 14, vx: Math.cos(a) * BULLET_SPEED + sh.vx, vy: Math.sin(a) * BULLET_SPEED + sh.vy, life: BULLET_LIFE, enemy: false });
+  tone(880, 0.07, "square", 0.025, 0.45);
+}
+function pullToVortex(o, dt, k) { // Jupiter: everything is pulled toward the storm's eye in the middle
+  const dx = wd(W / 2 - o.x, W), dy = wd(H / 2 - o.y, H), d = Math.hypot(dx, dy); if (d > VORTEX.reach || d < 1) return;
+  const f = VORTEX.pull * k / (d + 60); o.vx += dx / d * f * dt; o.vy += dy / d * f * dt;
+  o.vx += -dy / d * f * 0.35 * dt; o.vy += dx / d * f * 0.35 * dt; // and swirled round it
+}
+function moveRocks(dt) { for (const r of rocks) { if (S.trait === "vortex") pullToVortex(r, dt, 0.25); r.x = wrapX(r.x + r.vx * dt); r.y = wrapY(r.y + r.vy * dt); r.ang += r.spin * dt; r.flash = Math.max(0, r.flash - dt); } }
+function moveBullets(dt) {
+  for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i]; b.x = wrapX(b.x + b.vx * dt); b.y = wrapY(b.y + b.vy * dt); b.life -= dt; if (b.life <= 0) bullets.splice(i, 1); }
+}
+function moveHunters(dt) {
+  if (hunterQueue > 0 && (hunterT -= dt) <= 0) { // a hunter warps in from an edge
+    hunterQueue--; hunterT = 9 + Math.random() * 5;
+    const side = Math.random() < 0.5 ? 0 : W, pilot = S.hunters[Math.floor(Math.random() * S.hunters.length)];
+    hunters.push({ x: side, y: 80 + Math.random() * (H - 160), vx: 0, vy: 0, head: side ? PI : 0, turnT: 0, fireT: 1.6, hp: S.trait === "hunters" ? 4 : 3, pilot, flash: 0 });
+    rings.push({ x: side ? W - 20 : 20, y: hunters[hunters.length - 1].y, t: 0, life: 0.6, col: "#ff5d7a", r: 40 }); tone(300, 0.4, "sawtooth", 0.04, 2);
+  }
+  for (const h of hunters) {
+    h.flash = Math.max(0, h.flash - dt);
+    if ((h.turnT -= dt) <= 0) { h.turnT = 1.8 + Math.random() * 1.6; h.head += (Math.random() - 0.5) * 2.2; }
+    h.vx += (Math.cos(h.head) * 95 - h.vx) * dt * 1.5; h.vy += (Math.sin(h.head) * 95 - h.vy) * dt * 1.5;
+    h.x = wrapX(h.x + h.vx * dt); h.y = wrapY(h.y + h.vy * dt);
+    if ((h.fireT -= dt) <= 0) { h.fireT = 1.5 + Math.random() * 0.9; enemyShot(h.x, h.y, aimAt(h.x, h.y) + (Math.random() - 0.5) * 2 * L.aimErr); }
+  }
+}
+const aimAt = (x, y) => Math.atan2(wd(ship.y - y, H), wd(ship.x - x, W));
+function enemyShot(x, y, a, sp = ENEMY_SHOT) { bullets.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 3, enemy: true }); tone(330, 0.12, "sawtooth", 0.03, 0.6); }
+function moveBoss(dt) {
+  if (!boss) return; const b = boss; b.flash = Math.max(0, b.flash - dt);
+  if (b.enter > 0) { b.enter = Math.max(0, b.enter - dt * 0.4); b.y += (H * 0.28 - b.y) * dt * 1.2; return; } // it glides in from the top
+  const rage = b.hp < b.maxHp / 2 ? 1.5 : 1, tx = W / 2 + Math.sin(t * 0.35 * rage) * W * 0.32, ty = H * 0.4 + Math.sin(t * 0.5 * rage + 1) * H * 0.22;
+  b.x += (tx - b.x) * dt * 0.8; b.y += (ty - b.y) * dt * 0.8;
+  if ((b.fireT -= dt) <= 0) { b.fireT = 2.3 / rage; const a = aimAt(b.x, b.y); for (let k = -2; k <= 2; k++) enemyShot(b.x, b.y, a + k * 0.22, 200); }
+  if ((b.spawnT -= dt) <= 0) { b.spawnT = 6 / rage; for (let k = 0; k < 2; k++) rocks.push(Object.assign(makeRock(b.x, b.y, 2, L.speed * 1.4), { x: b.x, y: b.y })); }
+}
+function movePickups(dt) { for (let i = pickups.length - 1; i >= 0; i--) { const p = pickups[i]; p.x = wrapX(p.x + p.vx * dt); p.y = wrapY(p.y + p.vy * dt); p.vx *= 1 - dt * 0.5; p.vy *= 1 - dt * 0.5; p.life -= dt; if (p.life <= 0) pickups.splice(i, 1); } }
+
+// ---------- collisions ----------
+const near = (a, b, r) => Math.hypot(wd(a.x - b.x, W), wd(a.y - b.y, H)) < r;
+function collide() {
+  // your shots and theirs
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i]; let used = false;
+    if (b.enemy) { if (near(b, ship, SHIP_R + 4)) { used = true; if (ship.shielding) { sparks(b.x, b.y, "#b8f3ff", 8); tone(1200, 0.06, "sine", 0.04); } else hurt(1); } }
+    else {
+      for (const r of rocks) if (near(b, r, r.r)) { used = true; hitRock(r, b); break; }
+      if (!used) for (const h of hunters) if (near(b, h, 16)) { used = true; h.hp--; h.flash = 0.12; sparks(b.x, b.y, "#ff8bd0", 6); tone(500, 0.06, "square", 0.03); if (h.hp <= 0) killHunter(h); break; }
+      if (!used && boss && boss.enter <= 0 && near(b, boss, boss.r)) { used = true; boss.hp--; boss.flash = 0.1; sparks(b.x, b.y, "#ffd25d", 5); tone(240, 0.05, "square", 0.03); if (boss.hp <= 0) killBoss(); }
+    }
+    if (used) bullets.splice(i, 1);
+  }
+  // you against rocks, hunters, the boss and the storm's eye
+  for (const r of rocks) if (near(r, ship, r.r + SHIP_R - 3)) {
+    const nx = wd(ship.x - r.x, W), ny = wd(ship.y - r.y, H), d = Math.hypot(nx, ny) || 1;
+    if (ship.shielding) { // bounce off the shield
+      r.vx = -nx / d * Math.hypot(r.vx, r.vy) - nx / d * 40; r.vy = -ny / d * Math.hypot(r.vx, r.vy) - ny / d * 40; r.x = wrapX(ship.x - nx / d * (r.r + SHIP_R + 4)); r.y = wrapY(ship.y - ny / d * (r.r + SHIP_R + 4));
+      ship.energy = Math.max(0, ship.energy - 12); sparks(ship.x + (-nx / d) * 16, ship.y + (-ny / d) * 16, "#b8f3ff", 10); tone(700, 0.1, "sine", 0.05, 1.5);
+    } else if (ship.inv <= 0) { hurt(ROCK_DMG[r.size]); ship.vx += nx / d * 160; ship.vy += ny / d * 160; breakRock(r, nx / d, ny / d); }
+    break;
+  }
+  for (const h of hunters) if (near(h, ship, 16 + SHIP_R) && !ship.shielding && ship.inv <= 0) { hurt(1); h.hp = 0; killHunter(h); break; }
+  if (boss && boss.enter <= 0 && near(boss, ship, boss.r + SHIP_R)) { const nx = wd(ship.x - boss.x, W), ny = wd(ship.y - boss.y, H), d = Math.hypot(nx, ny) || 1;
+    ship.vx = nx / d * 260; ship.vy = ny / d * 260; if (!ship.shielding && ship.inv <= 0) hurt(2); }
+  if (S.trait === "vortex" && Math.hypot(wd(ship.x - W / 2, W), wd(ship.y - H / 2, H)) < VORTEX.r && ship.inv <= 0 && !ship.shielding) { // the eye of the storm
+    hurt(1); const a = Math.atan2(wd(ship.y - H / 2, H), wd(ship.x - W / 2, W)); ship.vx = Math.cos(a) * 280; ship.vy = Math.sin(a) * 280; }
+  for (let i = pickups.length - 1; i >= 0; i--) if (near(pickups[i], ship, SHIP_R + 12)) { grab(pickups[i]); pickups.splice(i, 1); }
+  hunters = hunters.filter(h => h.hp > 0);
+}
+function hitRock(r, b) {
+  r.hp--; r.flash = 0.1;
+  if (r.hp > 0) { sparks(b.x, b.y, S.rock, 6); tone(180, 0.08, "square", 0.04); return; }
+  const sp = Math.hypot(b.vx, b.vy) || 1; breakRock(r, b.vx / sp, b.vy / sp);
+}
+function breakRock(r, dx, dy) {
+  const i = rocks.indexOf(r); if (i < 0) return; rocks.splice(i, 1);
+  score += ROCK_SCORE[r.size]; boom(r.x, r.y, S.rock, 10 + (2 - r.size) * 8, r.r);
+  boomSound(r.size); shake = Math.max(shake, 0.12 + (2 - r.size) * 0.08);
+  if (r.size < 2) for (let k = 0; k < 2; k++) { // split into two smaller rocks that fly apart
+    const n = makeRock(r.x, r.y, r.size + 1, L.speed), a = Math.atan2(dy, dx) + (k ? 1 : -1) * (0.6 + Math.random() * 0.5), v = Math.hypot(n.vx, n.vy);
+    n.vx = Math.cos(a) * v + r.vx * 0.4; n.vy = Math.sin(a) * v + r.vy * 0.4; rocks.push(n); }
+  if (Math.random() < [0.16, 0.1, 0.05][r.size]) dropPickup(r.x, r.y);
+}
+function killHunter(h) { h.hp = 0; score += 300; boom(h.x, h.y, "#ff5d7a", 26, 20); boomSound(0); shake = 0.25; dropPickup(h.x, h.y); }
+function killBoss() { const b = boss; score += 2000; for (let k = 0; k < 4; k++) setTimeout(() => { boom(b.x + (Math.random() - 0.5) * 60, b.y + (Math.random() - 0.5) * 40, k % 2 ? "#ffd25d" : "#ff5d7a", 40, 50); boomSound(0); shake = 0.5; }, k * 180); boss = null; }
+function dropPickup(x, y) {
+  const roll = Math.random(), type = ship.hp < MAX_HP && roll < 0.3 ? "heal" : roll < 0.65 ? "shield" : "triple";
+  pickups.push({ x, y, vx: (Math.random() - 0.5) * 40, vy: (Math.random() - 0.5) * 40, type, life: 9 });
+}
+function grab(p) {
+  rings.push({ x: p.x, y: p.y, t: 0, life: 0.5, col: PICK[p.type].col, r: 34 });
+  if (p.type === "heal") { ship.hp = Math.min(MAX_HP, ship.hp + 1); banner = { text: "+1 HULL", t: 1, small: true }; }
+  else if (p.type === "shield") { ship.energy = SHIELD_MAX; banner = { text: "SHIELD FULL", t: 1, small: true }; }
+  else { ship.triple = 9; banner = { text: "TRIPLE SHOT", t: 1, small: true }; }
+  [660, 990, 1320].forEach((f, i) => tone(f, 0.12, "triangle", 0.06, 0, i * 0.06)); hud(true);
+}
+function hurt(n) {
+  if (state !== "play") return;
+  ship.hp = Math.max(0, ship.hp - n); ship.inv = INVULN; ship.hitT = 0.35; shake = 0.4;
+  sparks(ship.x, ship.y, "#ff5d7a", 18); tone(120, 0.35, "sawtooth", 0.08, 0.5); hud(true);
+  if (ship.hp <= 0) { state = "lost"; endT = 0; boom(ship.x, ship.y, CHARS.byId(SAVE.char).color, 60, 40); boomSound(0); banner = { text: "SAUCER DOWN", t: 2 }; thrustSound(0); }
+}
+
+// ---------- effects ----------
+function sparks(x, y, col, n) { for (let k = 0; k < n; k++) { const a = Math.random() * TAU, v = 40 + Math.random() * 160; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.4 + Math.random() * 0.3, max: 0.7, col, r: 1.8 }); } }
+function boom(x, y, col, n, r) {
+  for (let k = 0; k < n; k++) { const a = Math.random() * TAU, v = 30 + Math.random() * (120 + r * 3); fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.5 + Math.random() * 0.6, max: 1.1, col: k % 4 ? col : "#ffffff", r: 1.5 + Math.random() * 2.2 }); }
+  rings.push({ x, y, t: 0, life: 0.45, col, r: r * 1.6 });
+}
+// the classic heartbeat: two low notes that speed up as the field empties
+function heartbeat(dt) {
+  if ((beatT -= dt) > 0) return;
+  const left = Math.min(1, (rocks.reduce((a, r) => a + (r.size === 0 ? 7 : r.size === 1 ? 3 : 1), 0) + hunters.length * 3 + (boss ? 10 : 0)) / totalRocks);
+  beatT = 0.32 + 0.6 * left; beatHi = !beatHi; tone(beatHi ? 62 : 55, 0.16, "triangle", 0.09);
+}
+
+// ---------- HUD ----------
+let lastHud = "";
+function hud(force) {
+  if (!ship) return;
+  const key = `${si}|${li}|${ship.hp}|${Math.round(ship.energy)}|${score}`; if (!force && key === lastHud) return; lastHud = key;
+  $("hStage").textContent = S.short; $("hLevel").textContent = `Level ${li + 1}`;
+  $("hHull").innerHTML = "♥".repeat(ship.hp) + `<i>${"♥".repeat(MAX_HP - ship.hp)}</i>`;
+  $("hShield").style.width = `${ship.energy / SHIELD_MAX * 100}%`; $("hScore").textContent = score.toLocaleString();
+}
+
+// ============================================================
+//  DRAWING: neon on deep space
+// ============================================================
+let bgCv = null;
+function buildBg() { // the deep background: gradient, nebula clouds and far stars (redrawn when the screen or stage changes)
+  bgCv = document.createElement("canvas"); const d = Math.min(2, devicePixelRatio || 1); bgCv.width = Math.round(W * d); bgCv.height = Math.round(H * d);
+  const c = bgCv.getContext("2d"); c.scale(d, d);
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, S.sky[0]); g.addColorStop(1, S.sky[1]); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  let sd = 5 + si * 41; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let k = 0; k < 7; k++) { const x = R() * W, y = R() * H, r = 90 + R() * 200, ng = c.createRadialGradient(x, y, 0, x, y, r); ng.addColorStop(0, S.neb[k % 2]); ng.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = ng; c.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (let k = 0; k < W * H / 1400; k++) { c.fillStyle = `rgba(255,255,255,${0.1 + R() * 0.35})`; c.fillRect(R() * W, R() * H, 1, 1); }
+  bgCv.key = `${si}|${W}`;
+}
+const STARS = Array.from({ length: 90 }, (_, i) => ({ x: Math.random(), y: Math.random(), z: [0.2, 0.45, 0.8][i % 3] }));
+function drawStars(c) { // near stars drift against your movement for a sense of speed
+  for (const s of STARS) { const vx = ship ? ship.vx : 0, vy = ship ? ship.vy : 0;
+    s.x = ((s.x - vx * s.z * 0.00004 + 1) % 1); s.y = ((s.y - vy * s.z * 0.00004 + 1) % 1);
+    c.fillStyle = `rgba(200,225,255,${0.25 + s.z * 0.6})`; const sz = 0.8 + s.z * 1.4; c.fillRect(s.x * W, s.y * H, sz, sz); }
+}
+function wrapDraw(x, y, r, fn) { // draw something again on the far side when it overlaps an edge, so wrapping looks seamless
+  const xs = [x], ys = [y]; if (x < r) xs.push(x + W); if (x > W - r) xs.push(x - W); if (y < r) ys.push(y + H); if (y > H - r) ys.push(y - H);
+  for (const xx of xs) for (const yy of ys) fn(xx, yy);
+}
+function neon(c, col, w) { c.strokeStyle = col; c.globalAlpha = 0.25; c.lineWidth = w * 3.2; c.stroke(); c.globalAlpha = 1; c.lineWidth = w; c.stroke(); }
+function rockPath(c, r, x, y) { c.beginPath(); r.shape.forEach((f, k) => { const a = r.ang + k / r.shape.length * TAU; c.lineTo(x + Math.cos(a) * r.r * f, y + Math.sin(a) * r.r * f); }); c.closePath(); }
+function drawRock(c, r, x, y, st = S) {
+  rockPath(c, r, x, y); c.fillStyle = st.rockFill; c.fill(); c.lineJoin = "round"; neon(c, r.flash > 0 ? "#ffffff" : st.rock, 1.8);
+  if (st.trait === "tough" && r.size === 0) { c.strokeStyle = r.hp > 1 ? "rgba(255,154,122,0.55)" : "rgba(255,255,255,0.7)"; c.lineWidth = 1.2; // cracks show how tough it is
+    c.beginPath(); c.moveTo(x - r.r * 0.4, y - r.r * 0.1); c.lineTo(x, y + r.r * 0.15); c.lineTo(x + r.r * 0.35, y - r.r * 0.2); if (r.hp <= 1) { c.moveTo(x, y + r.r * 0.15); c.lineTo(x - r.r * 0.1, y + r.r * 0.5); } c.stroke(); }
+  else if (r.size < 2) { c.strokeStyle = st.rock; c.globalAlpha = 0.35; c.lineWidth = 1; c.beginPath(); c.arc(x + r.r * 0.25, y - r.r * 0.15, r.r * 0.2, 0, TAU); c.stroke(); c.beginPath(); c.arc(x - r.r * 0.3, y + r.r * 0.25, r.r * 0.12, 0, TAU); c.stroke(); c.globalAlpha = 1; }
+}
+function drawShip(c, sh, x, y, tt, col, pilot, scale = 1) {
+  c.save(); c.translate(x, y); c.scale(scale, scale);
+  if (sh.thrust > 0.05) { c.save(); c.rotate(sh.ang); const fl = (10 + sh.thrust * 14) * (0.8 + Math.random() * 0.4); // engine flame
+    const g = c.createLinearGradient(-8, 0, -8 - fl, 0); g.addColorStop(0, "rgba(255,240,180,0.95)"); g.addColorStop(0.4, "rgba(255,160,60,0.8)"); g.addColorStop(1, "rgba(255,80,40,0)");
+    c.fillStyle = g; c.beginPath(); c.moveTo(-7, -5); c.lineTo(-8 - fl, 0); c.lineTo(-7, 5); c.closePath(); c.fill(); c.restore(); }
+  c.save(); c.rotate(sh.ang); // the hull: a sleek dart
+  c.beginPath(); c.moveTo(17, 0); c.lineTo(-10, -11); c.lineTo(-5, 0); c.lineTo(-10, 11); c.closePath();
+  c.fillStyle = "rgba(10,20,40,0.85)"; c.fill(); c.lineJoin = "round"; neon(c, sh.hitT > 0 ? "#ff5d7a" : col, 1.8); c.restore();
+  c.fillStyle = "rgba(180,235,255,0.25)"; c.beginPath(); c.arc(0, 0, 7.5, 0, TAU); c.fill(); c.strokeStyle = "rgba(220,245,255,0.7)"; c.lineWidth = 1; c.stroke(); // glass dome
+  c.save(); c.beginPath(); c.arc(0, 0, 7.5, 0, TAU); c.clip(); CHARS.draw(c, pilot, 0, 1, 5, tt); c.restore(); // your pilot, always upright
+  if (sh.shielding) { c.strokeStyle = `rgba(150,230,255,${0.6 + 0.3 * Math.sin(tt * 30)})`; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, 21, 0, TAU); c.stroke(); c.fillStyle = "rgba(120,210,255,0.12)"; c.fill(); }
+  c.restore();
+}
+function drawSaucer(c, x, y, r, pilot, tt, flash, col = "#ff5d7a") { // an alien hunter saucer (or, bigger, the mothership)
+  c.save(); c.translate(x, y);
+  c.fillStyle = "rgba(180,235,255,0.22)"; c.beginPath(); c.ellipse(0, -r * 0.18, r * 0.5, r * 0.45, 0, PI, TAU); c.fill();
+  c.save(); c.beginPath(); c.ellipse(0, -r * 0.18, r * 0.5, r * 0.45, 0, PI, TAU); c.closePath(); c.clip(); CHARS.draw(c, pilot, 0, -r * 0.12, r * 0.32, tt); c.restore();
+  c.strokeStyle = "rgba(220,245,255,0.6)"; c.lineWidth = 1; c.beginPath(); c.ellipse(0, -r * 0.18, r * 0.5, r * 0.45, 0, PI, TAU); c.stroke();
+  c.beginPath(); c.ellipse(0, 0, r, r * 0.34, 0, 0, TAU); c.fillStyle = "rgba(20,10,30,0.9)"; c.fill(); neon(c, flash > 0 ? "#ffffff" : col, 1.8);
+  for (let k = 0; k < 6; k++) { c.fillStyle = (Math.floor(tt * 8) + k) % 2 ? "#ffd25d" : col; c.beginPath(); c.arc(-r * 0.7 + k * r * 0.28, r * 0.05, Math.max(1.4, r * 0.06), 0, TAU); c.fill(); }
+  c.restore();
+}
+const PICK = { heal: { col: "#ff5d7a", icon: "♥" }, shield: { col: "#4fd1ff", icon: "◈" }, triple: { col: "#ffd25d", icon: "⋔" } };
+function drawPickup(c, p, x, y, tt) {
+  if (p.life < 2 && Math.floor(tt * 8) % 2) return; // blinks before it vanishes
+  const P = PICK[p.type], pul = 1 + 0.12 * Math.sin(tt * 6);
+  c.beginPath(); c.arc(x, y, 10 * pul, 0, TAU); c.fillStyle = "rgba(10,20,40,0.8)"; c.fill(); neon(c, P.col, 1.6);
+  c.fillStyle = P.col; c.font = "900 12px system-ui"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(P.icon, x, y + 1); c.textBaseline = "alphabetic";
+}
+function drawVortex(c, tt) { // Jupiter's Great Red Spot
+  c.save(); c.translate(W / 2, H / 2);
+  const g = c.createRadialGradient(0, 0, 4, 0, 0, VORTEX.reach); g.addColorStop(0, "rgba(255,90,50,0.35)"); g.addColorStop(0.3, "rgba(255,130,60,0.12)"); g.addColorStop(1, "rgba(255,130,60,0)");
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, VORTEX.reach, 0, TAU); c.fill();
+  for (let k = 0; k < 5; k++) { c.strokeStyle = `rgba(255,${150 + k * 15},90,${0.35 - k * 0.05})`; c.lineWidth = 2; c.beginPath();
+    for (let a = 0; a < 5.5; a += 0.1) { const r = VORTEX.r + a * (14 + k * 6); c.lineTo(Math.cos(a - tt * (1.2 - k * 0.15) + k) * r, Math.sin(a - tt * (1.2 - k * 0.15) + k) * r); } c.stroke(); }
+  c.fillStyle = "#2a0602"; c.beginPath(); c.arc(0, 0, VORTEX.r, 0, TAU); c.fill(); neon(c, "#ff5d3a", 2);
+  c.restore();
+}
+function draw(tt) {
+  const d = Math.min(3, devicePixelRatio || 1);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!ship) return;
+  if (!bgCv || bgCv.key !== `${si}|${W}`) buildBg();
+  const sh = shake > 0 ? shake * 14 : 0, sx = (Math.random() - 0.5) * sh, sy = (Math.random() - 0.5) * sh;
+  ctx.setTransform(K * d, 0, 0, K * d, (OX + sx * K) * d, (OY + sy * K) * d);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  ctx.drawImage(bgCv, 0, 0, W, H); drawStars(ctx);
+  if (S.trait === "vortex") drawVortex(ctx, tt);
+  for (const r of rocks) wrapDraw(r.x, r.y, r.r * 1.2, (x, y) => drawRock(ctx, r, x, y));
+  for (const p of pickups) wrapDraw(p.x, p.y, 14, (x, y) => drawPickup(ctx, p, x, y, tt));
+  for (const h of hunters) wrapDraw(h.x, h.y, 22, (x, y) => drawSaucer(ctx, x, y, 17, h.pilot, tt, h.flash));
+  if (boss) drawSaucer(ctx, boss.x, boss.y, boss.r, boss.pilot, tt, boss.flash, "#c77dff");
+  ctx.globalCompositeOperation = "lighter";
+  for (const b of bullets) { if (b.enemy) { ctx.fillStyle = "rgba(255,93,122,0.35)"; ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, TAU); ctx.fill(); ctx.fillStyle = "#ffb0c0"; ctx.beginPath(); ctx.arc(b.x, b.y, 2.6, 0, TAU); ctx.fill(); }
+    else { const sp = Math.hypot(b.vx, b.vy) || 1; ctx.strokeStyle = "rgba(120,230,255,0.9)"; ctx.lineWidth = 2.4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - b.vx / sp * 10, b.y - b.vy / sp * 10); ctx.stroke(); } }
+  for (const p of fx) { ctx.globalAlpha = clamp(p.life / (p.max || 1), 0, 1); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); }
+  for (const r of rings) { const k = r.t / r.life; ctx.globalAlpha = 1 - k; ctx.strokeStyle = r.col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(r.x, r.y, r.r * (0.3 + k), 0, TAU); ctx.stroke(); }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+  if (state !== "lost" && !(ship.inv > 0 && state === "play" && Math.floor(tt * 14) % 2)) wrapDraw(ship.x, ship.y, 24, (x, y) => drawShip(ctx, ship, x, y, tt, CHARS.byId(SAVE.char).color, SAVE.char));
+  ctx.restore();
+  if (boss && boss.enter <= 0) { const w = Math.min(W * 0.6, 260), x0 = W / 2 - w / 2; // the mothership's health bar
+    ctx.fillStyle = "rgba(6,10,24,0.8)"; ctx.beginPath(); ctx.roundRect(x0 - 4, 8, w + 8, 20, 6); ctx.fill();
+    ctx.fillStyle = "#c77dff"; ctx.fillRect(x0, 18, w * boss.hp / boss.maxHp, 6); ctx.fillStyle = "#e6f0ff"; ctx.font = "800 9px system-ui"; ctx.textAlign = "center"; ctx.fillText(`MOTHERSHIP · ${CHARS.byId(boss.pilot).name.toUpperCase()}`, W / 2, 16); }
+  if (banner) { const a = clamp(Math.min(banner.t * 2, 1), 0, 1); ctx.globalAlpha = a; ctx.textAlign = "center";
+    ctx.font = `900 ${banner.small ? 18 : 30}px system-ui`; ctx.fillStyle = S.color; ctx.shadowColor = S.color; ctx.shadowBlur = 14; ctx.fillText(banner.text, W / 2, H * (banner.small ? 0.2 : 0.42)); ctx.shadowBlur = 0;
+    if (banner.sub) { ctx.font = "700 14px system-ui"; ctx.fillStyle = "#d2def5"; ctx.fillText(banner.sub, W / 2, H * 0.42 + 26); } ctx.globalAlpha = 1; }
+  // touch controls, in screen pixels
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  if (state === "play" && !paused) {
+    const st = input.stick;
+    if (st) { ctx.strokeStyle = "rgba(160,200,255,0.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(st.ox, st.oy, STICK_PX, 0, TAU); ctx.stroke();
+      const dx = st.x - st.ox, dy = st.y - st.oy, m = Math.min(STICK_PX, Math.hypot(dx, dy)), a = Math.atan2(dy, dx);
+      ctx.fillStyle = "rgba(160,220,255,0.45)"; ctx.beginPath(); ctx.arc(st.ox + Math.cos(a) * m, st.oy + Math.sin(a) * m, 22, 0, TAU); ctx.fill(); }
+    if (input.fire) { ctx.strokeStyle = "rgba(255,210,93,0.5)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(input.fire.x, input.fire.y, 26 + Math.sin(tt * 20) * 3, 0, TAU); ctx.stroke(); }
+    const sb = shieldBtn(), e = ship.energy / SHIELD_MAX; // the shield button, with its energy around the rim
+    ctx.fillStyle = ship.shielding ? "rgba(79,209,255,0.35)" : "rgba(10,20,42,0.55)"; ctx.beginPath(); ctx.arc(sb.x, sb.y, sb.r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = "rgba(79,209,255,0.25)"; ctx.lineWidth = 4; ctx.stroke();
+    ctx.strokeStyle = e > 0.25 ? "#4fd1ff" : "#ff5d7a"; ctx.beginPath(); ctx.arc(sb.x, sb.y, sb.r, -PI / 2, -PI / 2 + e * TAU); ctx.stroke();
+    ctx.fillStyle = "#e6f0ff"; ctx.font = "900 11px system-ui"; ctx.textAlign = "center"; ctx.fillText("SHIELD", sb.x, sb.y + 4);
+    if (si === 0 && li === 0 && t < 9) { ctx.globalAlpha = clamp(9 - t, 0, 1) * 0.7; ctx.fillStyle = "#d2def5"; ctx.font = "800 13px system-ui";
+      ctx.fillText("◀ drag here to fly", cssW * 0.25, cssH - 24); ctx.fillText("hold here to fire ▶", cssW * 0.7, cssH * 0.55); ctx.globalAlpha = 1; }
+  }
+}
+// the world's width follows the screen's shape, so it always fills the screen at the same size
+function resize() {
+  const st = $("stage"), d = Math.min(3, devicePixelRatio || 1);
+  cssW = Math.max(1, st.clientWidth); cssH = Math.max(1, st.clientHeight);
+  cv.width = Math.round(cssW * d); cv.height = Math.round(cssH * d);
+  W = Math.round(clamp(H * cssW / cssH, 360, 1140)); K = Math.min(cssW / W, cssH / H); OX = (cssW - W * K) / 2; OY = (cssH - H * K) / 2;
+  if (ship) { for (const o of [ship, ...rocks, ...hunters, ...pickups, ...bullets]) o.x = wrapX(o.x); if (boss) boss.x = clamp(boss.x, 0, W); }
+}
+addEventListener("resize", resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
+addEventListener("blur", () => { if (!paused && state === "play") pauseMenu(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && !paused && state === "play") pauseMenu(); });
+
+// ============================================================
+//  SOUND (iPhone-proof start-up, like Alien Bowling)
+// ============================================================
+let AC = null, noiseBuf = null, thrustNode = null, keepAlive = null;
+function silentClipURL() { const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true); b.fill(128, 44);
+  return URL.createObjectURL(new Blob([b], { type: "audio/wav" })); }
+function audio() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!AC && C) { try { AC = new C(); } catch (e) {} if (AC) { noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    try { const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0); } catch (e) {} } }
+  if (!AC) return;
+  try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch (e) {} // iPhone: play even with the silent switch on
+  if (AC.state !== "running") AC.resume().catch(() => {});
+  if (SAVE.sound && !navigator.audioSession) { if (!keepAlive) { try { keepAlive = new Audio(silentClipURL()); keepAlive.loop = true; keepAlive.setAttribute("playsinline", ""); } catch (e) {} }
+    if (keepAlive && keepAlive.paused) keepAlive.play().catch(() => {}); }
+}
+for (const ev of ["touchend", "click"]) document.addEventListener(ev, audio, { passive: true });
+function tone(f, dur, type = "sine", vol = 0.08, slideTo = 0, delay = 0) { if (!AC || !SAVE.sound) return; const s = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, s); if (slideTo) o.frequency.exponentialRampToValueAtTime(f * slideTo, s + dur);
+  g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); o.connect(g).connect(AC.destination); o.start(s); o.stop(s + dur + 0.05); }
+function boomSound(size) { if (!AC || !SAVE.sound || !noiseBuf) return; const s = AC.currentTime, src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = noiseBuf; f.type = "lowpass"; f.frequency.setValueAtTime([900, 1500, 2600][size] || 900, s); f.frequency.exponentialRampToValueAtTime(120, s + 0.5);
+  const vol = [0.22, 0.15, 0.1][size] || 0.2; g.gain.setValueAtTime(vol, s); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.55); src.connect(f).connect(g).connect(AC.destination); src.start(s); src.stop(s + 0.6); }
+function thrustSound(k) { // a soft engine rumble that follows how hard you push
+  if (!AC || !noiseBuf) return;
+  if (!thrustNode) { const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain(); src.buffer = noiseBuf; src.loop = true; f.type = "lowpass"; f.frequency.value = 420; g.gain.value = 0; src.connect(f).connect(g).connect(AC.destination); src.start(); thrustNode = g; }
+  thrustNode.gain.setTargetAtTime(SAVE.sound && !paused ? k * 0.07 : 0, AC.currentTime, 0.05);
+}
+
+// ============================================================
+//  MENUS
+// ============================================================
+let menuAnim = null, paused = true, menuName = "";
+function openMenu(html, anim = null, name = "") { paused = true; menuName = name; input.stick = input.fire = null; input.shieldPtr = null; thrustSound(0); menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-stage]")) stageIcon(c, +c.dataset.stage); }
+function closeMenu() { paused = false; menuAnim = null; menuName = ""; $("overlay").classList.add("hidden"); last = performance.now(); }
+const starStr = n => "★".repeat(n) + `<i>${"★".repeat(3 - n)}</i>`;
+const soundBtn = () => `<button class="big" data-act="sound">${SAVE.sound ? "🔊 Sound: On" : "🔇 Sound: Off"}</button>`;
+function fitCanvas(cvs) { const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); } const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return [c, w, h]; }
+const demoRock = (size, ang = 0, seed = 1) => { const sh = []; let s = seed * 9301 + 49297; for (let k = 0; k < 11; k++) { s = (s * 9301 + 49297) % 233280; sh.push(0.75 + s / 233280 * 0.4); } return { r: ROCK_R[size], size, hp: 1, ang, shape: sh, flash: 0 }; };
+function stageIcon(cvs, s) {
+  const c = cvs.getContext("2d"), n = 112; cvs.width = cvs.height = n; const st = STAGES[s];
+  const g = c.createLinearGradient(0, 0, 0, n); g.addColorStop(0, st.sky[0]); g.addColorStop(1, st.sky[1]); c.fillStyle = g; c.fillRect(0, 0, n, n);
+  const ng = c.createRadialGradient(70, 40, 0, 70, 40, 60); ng.addColorStop(0, st.neb[0]); ng.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = ng; c.fillRect(0, 0, n, n);
+  drawRock(c, demoRock(0, 0.4, s + 2), 74, 44, st); drawRock(c, demoRock(2, 1, s + 5), 30, 82, st);
+  drawShip(c, { ang: -0.6, thrust: 0.6, hitT: 0, shielding: false }, 34, 46, 1, st.color, SAVE.char, 1.1);
+  if (!stageOpen(s)) { c.fillStyle = "rgba(2,4,10,0.65)"; c.fillRect(0, 0, n, n); c.font = "900 38px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 13); }
+}
+function titleMenu() {
+  const ch = CHARS.byId(SAVE.char);
+  openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Rocks</h1>
+    <p>Fly your saucer through drifting rock fields. <b>Blast</b> the rocks, dodge the <b>hunters</b>, and take down each stage's <b>mothership</b>.</p>
+    ${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
+      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}
+    <button class="big" data-act="chars">Your pilot: <b>${ch.name}</b> ›</button>
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    ${soundBtn()}
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim, "title");
+}
+const TITLE_ROCKS = [0, 1, 2, 1, 0].map((s, i) => Object.assign(demoRock(s, i, i + 3), { x: 0.15 + i * 0.18, y: [0.3, 0.7, 0.4, 0.25, 0.75][i], v: 0.03 + i * 0.01 }));
+function titleAnim(tt) {
+  const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs);
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#081a36"); g.addColorStop(1, "#01040b"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  for (let k = 0; k < 40; k++) { c.fillStyle = `rgba(255,255,255,${0.2 + (k % 5) * 0.12})`; c.fillRect((k * 97 + tt * (8 + k % 3 * 10)) % w, (k * 53) % h, 1.5, 1.5); }
+  const st = STAGES[0];
+  TITLE_ROCKS.forEach((r, i) => { r.ang = tt * (0.3 + i * 0.1); drawRock(c, r, ((r.x + tt * r.v) % 1.2 - 0.1) * w, r.y * h, st); });
+  const sx = w * 0.18 + Math.sin(tt * 0.8) * 20, sy = h * 0.55 + Math.cos(tt * 1.1) * 14;
+  drawShip(c, { ang: Math.sin(tt * 0.8) * 0.2, thrust: 0.7, hitT: 0, shielding: false }, sx, sy, tt, CHARS.byId(SAVE.char).color, SAVE.char, 1.3);
+  c.globalCompositeOperation = "lighter"; c.strokeStyle = "rgba(120,230,255,0.9)"; c.lineWidth = 2.4; c.lineCap = "round";
+  for (let k = 0; k < 3; k++) { const x = sx + 24 + ((tt * 420 + k * 90) % (w * 0.8)); c.beginPath(); c.moveTo(x, sy); c.lineTo(x - 12, sy); c.stroke(); }
+  c.globalCompositeOperation = "source-over";
+}
+function charMenu() {
+  openMenu(`<p class="kicker">Choose your pilot</p><h2>Who's flying?</h2>
+    <p>The First Contact crew from Alien Defense. Your pilot rides in the dome and sets your saucer's colour.</p>
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <button class="big main" data-act="title">Done</button>`,
+    tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
+      CHARS.draw(c, cvs.dataset.char, w / 2, h * 0.55, w * 0.24, tt + w, on ? Math.abs(Math.sin(tt * 5)) * 6 : 0); } }, "chars");
+}
+function stageMenu(s) {
+  const st = STAGES[s], trait = { ice: "Drifty ice", vortex: "Gravity storm", tough: "Tough rocks", hunters: "Extra hunters" }[st.trait];
+  openMenu(`<p class="kicker">Stage ${s + 1} of ${STAGES.length}</p><h2>${st.name}</h2>
+    <p>${st.intro}</p>
+    <div class="facts"><span>${trait}</span><span>Boss: ${CHARS.byId(st.boss).name}</span></div>
+    <p class="score"><span class="stars">${stageStars(s)}/24 ★</span></p>
+    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !SAVE.best[s][i] ? "main" : ""}" data-act="play" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? (i === LEVELS - 1 ? "☠" : i + 1) : "🔒"}<small>${starStr(SAVE.best[s][i])}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`, null, "stage");
+}
+function resultMenu() {
+  if (state === "won") {
+    const st = starsFor(ship.hp);
+    if (st > SAVE.best[si][li]) SAVE.best[si][li] = st; const newBest = score > SAVE.score[si][li]; if (newBest) SAVE.score[si][li] = score; save();
+    const next = li + 1 < LEVELS ? [si, li + 1] : si + 1 < STAGES.length && stageOpen(si + 1) ? [si + 1, 0] : null;
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>${L.boss ? "Mothership down!" : "Sector clear!"}</h2>
+      <div class="bigStars">${starStr(st)}</div>
+      <p>Hull <b>${ship.hp}/${MAX_HP}</b> · Score <b>${score.toLocaleString()}</b>${newBest ? " · <b>New best!</b>" : ""}<br>${st === 3 ? `${CHARS.byId(SAVE.char).name} didn't take a scratch!` : st === 2 ? "Finish with a full hull for three stars." : "Keep 3 hull or more for two stars."}</p>
+      <p class="score">${S.short}: <span class="stars">${stageStars(si)}/24 ★</span></p>
+      ${next ? `<button class="big main" data-act="play" data-arg="${next[0]}|${next[1]}">${next[0] !== si ? `Next stage: ${STAGES[next[0]].short} ▶` : `Level ${next[1] + 1} ▶`}</button>`
+        : si + 1 === STAGES.length && li + 1 === LEVELS ? `<p><b>Earth is safe!</b> Go back for any missing stars.</p>` : ""}
+      <button class="big" data-act="play" data-arg="${si}|${li}">Play again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
+  } else {
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>Saucer down!</h2>
+      <p>Score ${score.toLocaleString()}. Tip: hold <b>Shield</b> when rocks crowd in, and grab the <b style="color:#ff5d7a">♥</b> pickups to repair.</p>
+      <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
+  }
+}
+function pauseMenu() {
+  openMenu(`<p class="kicker">Paused</p><h2>${S.short} · Level ${li + 1}</h2>
+    <p>Hull <b>${ship.hp}/${MAX_HP}</b> · Score <b>${score.toLocaleString()}</b></p>
+    <button class="big main" data-act="resume">Resume ▶</button>
+    <button class="big" data-act="play" data-arg="${si}|${li}">Restart level</button>
+    <button class="big" data-act="help" data-arg="game|0">How to play</button>
+    <button class="big" data-act="stage" data-arg="${si}">All levels</button>
+    ${soundBtn()}
+    <button class="big" data-act="title">Main menu</button>`, null, "pause");
+}
+// How to play: short pages, each with a live demo
+const HOWTO = [
+  { title: "Fly", lines: ["<b>Left half</b>: drag your thumb like a joystick", "Point where to fly. Push further = <b>more thrust</b>", "Space has no brakes: you <b>drift</b>!"], demo: demoFly },
+  { title: "Fire", lines: ["<b>Right half</b>: hold to <b class='y'>fire</b> where you're pointing", "Big rocks <b>split</b> into smaller ones", "The screen <b>wraps</b>: fly off one edge, come back the other"], demo: demoFire },
+  { title: "Shield", lines: ["Hold <b class='c'>SHIELD</b> (bottom right) to bounce rocks and shots", "It <b>drains</b> while on, refills while off"], demo: demoShield },
+  { title: "Hull and pickups", lines: ["You have <b class='r'>5 hull ♥</b>. Big rocks hit for 2", "Pickups: <b class='r'>♥ repair</b> · <b class='c'>◈ shield</b> · <b class='y'>⋔ triple shot</b>", "<b class='p'>Hunters</b> shoot back. Every 8th level: a <b>mothership</b>!"], demo: demoPickups },
+  { title: "Stars", lines: ["Clear every rock, hunter and boss", "Full hull = <b class='y'>★★★</b> · 3 or more = <b class='y'>★★</b> · survive = <b class='y'>★</b>", "Each stage plays differently: ice, a gravity storm, tough rocks, hunters"], demo: demoStars },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first", done = first ? "start" : back === "game" ? "resume" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#081a36"); g.addColorStop(1, "#01040b"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+      for (let k = 0; k < 30; k++) { c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect((k * 97) % w, (k * 53) % h, 1.2, 1.2); } p.demo(c, tt, w, h); }, "help");
+}
+function finger(c, x, y, down, col = "#4fd1ff") { c.fillStyle = down ? "rgba(79,209,255,0.3)" : "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill(); c.fillStyle = down ? col : "#fff"; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
+function label(c, text, x, y, col) { c.fillStyle = col; c.font = "800 13px system-ui"; c.textAlign = "center"; c.fillText(text, x, y); }
+const DSHIP = { ang: 0, thrust: 0, hitT: 0, shielding: false };
+function demoFly(c, tt, w, h) {
+  const T = tt % 4, a = Math.sin(T * 1.4) * 1.2 - 0.3, bx = w * 0.18, by = h * 0.72;
+  c.strokeStyle = "rgba(160,200,255,0.35)"; c.lineWidth = 2; c.beginPath(); c.arc(bx, by, 32, 0, TAU); c.stroke();
+  c.fillStyle = "rgba(160,220,255,0.45)"; c.beginPath(); c.arc(bx + Math.cos(a) * 26, by + Math.sin(a) * 26, 13, 0, TAU); c.fill();
+  finger(c, bx + Math.cos(a) * 26, by + Math.sin(a) * 26, true);
+  const sx = w * 0.62 + Math.cos(tt * 0.9) * w * 0.18, sy = h * 0.45 + Math.sin(tt * 1.3) * h * 0.2;
+  drawShip(c, Object.assign(DSHIP, { ang: a, thrust: 0.8 }), sx, sy, tt, CHARS.byId(SAVE.char).color, SAVE.char, 1.4);
+  label(c, "point + push", bx, h - 10, "#d2def5");
+}
+function demoFire(c, tt, w, h) {
+  const T = tt % 3, sx = w * 0.18, sy = h * 0.5, rx = w * 0.7, hit = T > 1;
+  drawShip(c, Object.assign(DSHIP, { ang: 0, thrust: 0 }), sx, sy, tt, CHARS.byId(SAVE.char).color, SAVE.char, 1.4);
+  c.globalCompositeOperation = "lighter"; c.strokeStyle = "rgba(120,230,255,0.9)"; c.lineWidth = 2.4; c.lineCap = "round";
+  for (let k = 0; k < 4; k++) { const x = sx + 26 + ((tt * 380 + k * 60) % (rx - sx - 30)); c.beginPath(); c.moveTo(x, sy); c.lineTo(x - 12, sy); c.stroke(); }
+  c.globalCompositeOperation = "source-over";
+  if (!hit) drawRock(c, demoRock(0, tt * 0.4, 2), rx, sy, STAGES[0]);
+  else { const k = Math.min(1, (T - 1) * 1.2); drawRock(c, demoRock(1, tt, 3), rx + 10 * k, sy - 34 * k, STAGES[0]); drawRock(c, demoRock(1, -tt, 4), rx + 14 * k, sy + 34 * k, STAGES[0]); if (T < 1.4) label(c, "CRACK!", rx, sy - 50, "#ffd25d"); }
+  finger(c, w * 0.88, h * 0.82, true, "#ffd25d"); label(c, "hold to fire", w * 0.88, h - 6, "#ffd25d");
+}
+function demoShield(c, tt, w, h) {
+  const T = tt % 3, sx = w * 0.4, sy = h * 0.5, k = T < 1.2 ? T / 1.2 : 1 - (T - 1.2) / 1.8;
+  drawShip(c, Object.assign(DSHIP, { ang: 0, thrust: 0, shielding: true }), sx, sy, tt, CHARS.byId(SAVE.char).color, SAVE.char, 1.4); DSHIP.shielding = false;
+  drawRock(c, demoRock(1, tt, 5), sx + 34 + (1 - k) * w * 0.4, sy - 4, STAGES[0]);
+  c.fillStyle = "rgba(79,209,255,0.35)"; c.beginPath(); c.arc(w * 0.86, h * 0.7, 26, 0, TAU); c.fill(); c.strokeStyle = "#4fd1ff"; c.lineWidth = 3; c.beginPath(); c.arc(w * 0.86, h * 0.7, 26, -PI / 2, PI); c.stroke();
+  label(c, "SHIELD", w * 0.86, h * 0.7 + 4, "#e6f0ff"); finger(c, w * 0.86 + 6, h * 0.7 + 8, true);
+  if (T > 1.1 && T < 1.5) label(c, "BOING!", sx + 40, sy - 34, "#b8f3ff");
+}
+function demoPickups(c, tt, w, h) {
+  [["heal", "repair"], ["shield", "shield"], ["triple", "triple shot"]].forEach(([type, txt], i) => { const x = w * (0.2 + i * 0.3), y = h * 0.4 + Math.sin(tt * 2 + i) * 6; drawPickup(c, { type, life: 9 }, x, y, tt); label(c, txt, x, h * 0.62, PICK[type].col); });
+  drawSaucer(c, w * 0.5, h * 0.84, 14, "runner", tt, 0); label(c, "hunter", w * 0.68, h * 0.87, "#ff8bd0");
+}
+function demoStars(c, tt, w, h) {
+  [["♥♥♥♥♥", "★★★"], ["♥♥♥", "★★"], ["♥", "★"]].forEach(([a, b], i) => { const y = h * (0.28 + i * 0.25);
+    c.font = "800 18px system-ui"; c.textAlign = "left"; c.fillStyle = "#ff5d7a"; c.fillText(a, w * 0.16, y); c.fillStyle = "#ffd25d"; c.fillText(b, w * 0.62, y); });
+  label(c, "hull left at the end → stars", w / 2, h - 10, "#8fa3cc");
+}
+
+const ACT = {
+  title: () => titleMenu(),
+  stage: s => stageMenu(+s),
+  chars: () => charMenu(),
+  pick: id => { SAVE.char = id; save(); charMenu(); },
+  play: a => { const [s, l] = a.split("|").map(Number); loadLevel(s, l); closeMenu(); },
+  start: () => { SAVE.seenHelp = true; save(); loadLevel(0, 0); closeMenu(); },
+  resume: () => closeMenu(),
+  help: a => { const [back, page] = a.split("|"); helpMenu(back, +page || 0); },
+  sound: () => { SAVE.sound = !SAVE.sound; save(); if (!SAVE.sound && keepAlive) keepAlive.pause(); else audio();
+    for (const b of $("box").querySelectorAll("[data-act='sound']")) b.textContent = SAVE.sound ? "🔊 Sound: On" : "🔇 Sound: Off"; tone(520, 0.1, "triangle", 0.07); },
+};
+$("menuBtn").onclick = () => { audio(); if (state === "play" && !paused) pauseMenu(); else if (paused && menuName === "pause") closeMenu(); else titleMenu(); };
+$("helpBtn").onclick = () => { audio(); helpMenu(state === "play" && ship ? "game" : "title", 0); };
+
+// ---------- full screen (like Dr Alien). iPhones can't, so there the button explains Add to Home Screen. ----------
+(() => {
+  const btn = $("fsBtn"), root = document.documentElement, req = root.requestFullscreen || root.webkitRequestFullscreen;
+  const can = !!(req && (document.fullscreenEnabled || document.webkitFullscreenEnabled));
+  const ICON = on => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${on ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}"/></svg>`;
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (!can) {
+    if (standalone) { btn.hidden = true; return; } // already running full screen from the home screen
+    btn.innerHTML = ICON(false);
+    btn.onclick = () => {
+      const chrome = /CriOS/.test(navigator.userAgent), other = /FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent), el = document.createElement("div"); el.id = "fsSheet";
+      el.innerHTML = `<div class="sheet"><h3>Full screen on iPhone</h3><p>Apple doesn't let iPhone browsers fill the screen with a web page. This works:</p><ol>
+        ${other ? `<li>Open this page in <b>Safari</b>, tap <b>Share</b> (□↑), then <b>Add to Home Screen</b>.</li>` : `<li>Tap <b>Share</b> (□↑)${chrome ? " at the right of the address bar" : ""}, then <b>Add to Home Screen</b>.</li>`}
+        <li>Open <b>Alien Rocks</b> from its new icon: it fills the whole screen like an app.</li>
+        ${!chrome && !other ? `<li>Quick option: tap <b>aA</b> in the address bar, then <b>Hide Toolbar</b>.</li>` : ""}</ol>
+        <button class="big main" type="button">Got it</button></div>`;
+      el.addEventListener("click", e => { if (e.target === el || e.target.tagName === "BUTTON") el.remove(); }); document.body.appendChild(el);
+    };
+    return;
+  }
+  const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const sync = () => { const on = isFull(); btn.innerHTML = ICON(on); btn.setAttribute("aria-label", on ? "Exit full screen" : "Full screen"); btn.setAttribute("aria-pressed", String(on)); setTimeout(resize, 120); };
+  btn.onclick = () => { audio(); const r = isFull() ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : req.call(root); if (r && r.catch) r.catch(() => {}); };
+  document.addEventListener("fullscreenchange", sync); document.addEventListener("webkitfullscreenchange", sync); sync();
+})();
+
+// ============================================================
+//  MAIN LOOP: fixed 1/60 s steps
+// ============================================================
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1);
+  last = now;
+  acc += dt; let n = 0;
+  while (acc >= 1 / 60 && n < 6) { update(1 / 60); acc -= 1 / 60; n++; }
+  if (n === 6) acc = 0;
+  if (menuAnim) menuAnim(now / 1000);
+  draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+resize();
+loadLevel(0, 0); banner = null;
+if (SAVE.seenHelp) titleMenu(); else helpMenu("first", 0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
