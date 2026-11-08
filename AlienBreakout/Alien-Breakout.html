@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alien Breakout</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui,sans-serif; color: #eef4ff; background: #080b18; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; padding: 24px 12px; background: radial-gradient(ellipse at 50% 0%,#251b49,transparent 66%); }
+  main { max-width: 640px; margin: auto; }
+  .eyebrow, small { color: #a7b3d5; font-size: .68rem; letter-spacing: .15em; text-transform: uppercase; font-weight: 800; }
+  h1 { font-size: clamp(2rem, 8vw, 3.35rem); line-height: 1; margin: 6px 0; letter-spacing: -.05em; }
+  h1 span { color: #c8a4ff; }
+  p { margin: 8px 0 16px; color: #bdc7e5; }
+  .hud { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; margin-bottom: 7px; }
+  .hud div { background: #161c35; border: 1px solid #2c3758; border-radius: 10px; padding: 8px 10px; }
+  .hud small { display: block; letter-spacing: .06em; }
+  .hud strong { font-size: clamp(1rem,4vw,1.3rem); font-variant-numeric: tabular-nums; }
+  .arena { position: relative; border: 1px solid #4d4371; border-radius: 14px; overflow: hidden; box-shadow: 0 14px 46px #0008; }
+  canvas { display: block; width: 100%; height: auto; touch-action: none; background: #0d1228; }
+  .status { min-height: 1.5em; margin: 9px 0; color: #cbd7f8; font-size: .9rem; }
+  .actions { display: flex; gap: 8px; }
+  button { min-height: 44px; padding: 8px 16px; border: 1px solid #47557b; border-radius: 9px; font: inherit; font-weight: 800; background: #19223e; color: #edf4ff; cursor: pointer; }
+  button:first-child { background: #66f1c8; border-color: #66f1c8; color: #082820; }
+  button:disabled { opacity: .5; cursor: default; }
+  .controls { font-size: .82rem; }
+  [hidden] { display: none !important; }
+  .menu { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 10px; background: #080c20bb; }
+  .panel { width: min(100%, 390px); max-height: 100%; overflow: auto; padding: 14px; background: #151c35; border: 1px solid #554e7c; border-radius: 14px; }
+  .panel h2 { margin: 0 0 7px; font-size: 1.35rem; }
+  .panel p { margin: 0 0 10px; font-size: .9rem; line-height: 1.35; }
+  .menu-actions, .stage-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .menu-actions button, .stage-list button, .arcade { padding: 7px 9px; min-height: 42px; font-size: .85rem; text-align: center; }
+  .stage-list { margin-bottom: 8px; }
+  .stage-list button { background: #19223e; border-color: #47557b; color: #eef4ff; }
+  .stage-list span { display: block; margin-top: 2px; font-size: .72rem; color: #ffda81; }
+  .arcade { display: inline-grid; place-items: center; margin-top: 6px; color: #d9c6ff; font-weight: 750; }
+  .world-label { color: #c8a4ff; font-weight: 750; }
+  .stage-list small { display: block; margin-top: 3px; letter-spacing: .05em; }
+  .stars { color: #ffda81; letter-spacing: .1em; }
+  @media(max-width: 420px) { body { padding-top: 12px; } .hud div { padding-inline: 7px; } }
+
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Alien Arcade · Rescue Wing</div>
+  <h1>Alien <span>Breakout</span></h1>
+  <p>Crack the prison cells. Get the crew out.</p>
+  <div class="hud">
+    <div><small>Rescued</small><strong id="rescued">0 / 0</strong></div>
+    <div><small>Balls</small><strong id="balls">3</strong></div>
+    <div><small>Score</small><strong id="score">0</strong></div>
+    <div><small>Best</small><strong id="best">0</strong></div>
+  </div>
+  <div class="arena">
+    <canvas id="board" width="600" height="500" aria-label="Alien Breakout game board"></canvas>
+    <section id="menu" class="menu" aria-label="Game menu" hidden><div id="panel" class="panel"></div></section>
+  </div>
+  <div id="status" class="status" role="status"></div>
+  <div class="actions" id="actions" hidden><button id="serve">Launch ball</button><button id="pause">Pause</button></div>
+  <p class="controls"><b>Drag</b> to steer, or use mouse / ← →. <b>Tap</b> or press <b>Space</b> to launch. Catch the ball near the paddle’s edge for a sharper shot.</p>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const canvas = $("board"), c = canvas.getContext("2d");
+const W = 600, H = 500, PADDLE_Y = 452, R = 7;
+const WORLDS = [
+  { name: "The Oort Gate", crew: "Ice Blips", sky: ["#193555", "#0a142d"], color: "#76ebdf",
+    cell: "#1e4d56", planet: "#587aa5", levels: [
+      { name: "Prison Ship", rows: ["..RRRRRR..", "...R..R...", "..R.CC.R.."] },
+      { name: "Salvage Ring", rows: [".RR.CC.RR.", "RR..RR..RR", ".CC.RR.CC.", "..R....R.."] },
+      { name: "Security Wing", rows: ["..RRRRRR..", ".A.R..R.A.", ".R.ACCA.R.", "..R....R..", "....RR...."] },
+    ] },
+  { name: "Jupiter Storm", crew: "Storm Jellies", sky: ["#4a2d43", "#160e2a"], color: "#ffad79",
+    cell: "#573444", planet: "#af644f", levels: [
+      { name: "The Lockdown", rows: [".RRRRRRRR.", "R.AA..AA.R", ".R.RCCR.R.", "R.C.RR.C.R", "..R.AA.R.."] },
+      { name: "Pressure Deck", squeeze: 48, rows: ["..RRRRRR..", ".R.CCCC.R.", "R.AR..RA.R", "..R....R..", "...AAAA..."] },
+      { name: "Storm Vault", squeeze: 65, rows: ["R..RRRR..R", ".AR.RR.RA.", "R...AA...R", ".R.CCCC.R.", "....RR...."] },
+    ] },
+  { name: "Mars, the Red Wall", crew: "Dune Crawlers", sky: ["#4b242c", "#1a101d"], color: "#ff7e86",
+    cell: "#552c3b", planet: "#a94e48", levels: [
+      { name: "Red Quarters", rows: [".RR.RR.RR.", "R.CA..AC.R", ".RR....RR.", "A..RRRR..A", "...C..C..."] },
+      { name: "Buried Stockade", squeeze: 70, rows: ["R.R.RR.R.R", ".AA.RR.AA.", "RR.CCCC.RR", "...R..R...", "..A....A.."] },
+      { name: "Crush Chamber", squeeze: 85, rows: ["..RRRRRR..", ".ARARRARA.", "R...CC...R", ".RR.AA.RR.", "A...RR...A"] },
+    ] },
+  { name: "Earth, Final Stand", crew: "Relay Droids", sky: ["#163b4c", "#0b142b"], color: "#a8c5ff",
+    cell: "#233b60", planet: "#438ca1", levels: [
+      { name: "Relay Block", squeeze: 65, rows: ["R.RRRRRR.R", ".A.C..C.A.", "RRR.AA.RRR", "...R..R...", "A........A"] },
+      { name: "Last Stronghold", squeeze: 90, rows: [".RRRRRRRR.", "A.RRAARR.A", ".R.CCCC.R.", "R.R....R.R", "..AA..AA.."] },
+      { name: "Final Breakout", squeeze: 108, rows: ["R.RRRRRR.R", ".AARRRRAA.", "RR..AA..RR", ".RR.CC.RR.", "A..RRRR..A"] },
+    ] },
+];
+// Keep the first four layouts in their original order so existing scores still match.
+const STAGES = WORLDS.flatMap((world, wi) => world.levels.map((level, li) => ({
+  ...level, world, wi, li, paddleWidth: 112 - wi * 5 - li * 3,
+  launchSpeed: 320 + wi * 14 + li * 8, maxSpeed: 490 + wi * 12 + li * 7,
+})));
+const SQUEEZE_START = 11;
+const SAVE_KEY = "alienRicochet.campaign.v1";
+const ARCADE_LINK = '<a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
+const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
+const STAR_FIELD = Array.from({length: 55}, (_, i) => [((i * 139 + 17) % W), ((i * 73 + 31) % H)]);
+const keys = new Set();
+let cells, total, rescued, balls, score, chain, paddle, ball, phase, pointer = null;
+let stageIndex = 0, arenaTime = 0, inset = 0, paused = true, helpBack = "title", menuName = "title";
+let records = {}, sound = true, audioContext;
+try {
+  const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+  records = saved?.records ?? {};
+  sound = saved?.sound ?? true;
+} catch {}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const stageInfo = () => STAGES[stageIndex];
+const fieldScale = () => (W - inset * 2) / W;
+const paddleLimit = x => {
+  const margin = inset + stageInfo().paddleWidth / 2;
+  return clamp(x, margin, W - margin);
+};
+const stageBest = i => records[i] ?? { stars: 0, score: 0 };
+const unlocked = i => i === 0 || stageBest(i - 1).stars > 0;
+function save() {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({records, sound})); } catch {}
+}
+function unlockAudio() {
+  if (!sound) return;
+  try {
+    audioContext ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  } catch {}
+}
+function tone(frequency) {
+  if (!sound || audioContext?.state !== "running") return;
+  const oscillator = audioContext.createOscillator(), gain = audioContext.createGain();
+  const now = audioContext.currentTime;
+  oscillator.type = "triangle";
+  oscillator.frequency.value = frequency;
+  gain.gain.setValueAtTime(0.06, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  oscillator.connect(gain).connect(audioContext.destination);
+  oscillator.start(now);
+  oscillator.stop(now + 0.12);
+}
+function reset(index = stageIndex) {
+  stageIndex = index;
+  cells = STAGES[index].rows.flatMap((row, y) => [...row].flatMap((type, x) =>
+    type === "." ? [] : [{x: 39 + x * 53, y: 61 + y * 37, type, hits: type === "A" ? 2 : 1, live: true}]));
+  total = cells.filter(cell => cell.type === "R").length;
+  rescued = score = chain = 0;
+  balls = 3; paddle = W / 2; arenaTime = inset = 0;
+  ready("Aim the shuttle, then launch.");
+}
+function ready(message) {
+  phase = "ready";
+  ball = {x: paddle, y: PADDLE_Y - R - 2, vx: 0, vy: 0};
+  $("status").textContent = message;
+  hud();
+}
+function hud() {
+  $("rescued").textContent = rescued + " / " + total;
+  $("balls").textContent = balls;
+  $("score").textContent = score.toLocaleString();
+  $("best").textContent = stageBest(stageIndex).score.toLocaleString();
+  $("serve").disabled = phase !== "ready";
+}
+function serve() {
+  if (paused || phase !== "ready") return;
+  unlockAudio();
+  phase = "play";
+  ball.x = paddle;
+  ball.vx = 94 * (paddle > W / 2 ? -1 : 1);
+  ball.vy = -stageInfo().launchSpeed;
+  $("status").textContent = stageInfo().squeeze ? "Free the crew before the walls close in." : "Free every alien. Keep the ball in play.";
+  hud();
+}
+function openMenu(name, html) {
+  paused = true; menuName = name; keys.clear();
+  if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
+  pointer = null;
+  $("panel").innerHTML = html;
+  $("menu").hidden = false;
+  $("actions").hidden = true;
+  $("panel").scrollTop = 0;
+}
+function closeMenu() {
+  paused = false;
+  $("menu").hidden = true;
+  $("actions").hidden = false;
+  last = performance.now();
+}
+function titleMenu() {
+  openMenu("title", `<h2>Rescue Mission</h2><p>Four worlds. Twelve levels. Bring every alien home.</p>
+    <div class="menu-actions"><button data-action="worlds">Play</button><button data-action="help">How to play</button>
+    <button data-action="sound">Sound: ${sound ? "On" : "Off"}</button></div>${ARCADE_LINK}`);
+}
+function worldMenu() {
+  openMenu("worlds", `<h2>Choose a world</h2><div class="stage-list">${WORLDS.map((world, i) => {
+    const first = i * 3;
+    const stars = world.levels.reduce((sum, _, j) => sum + stageBest(first + j).stars, 0);
+    return `<button data-action="world" data-world="${i}" ${unlocked(first) ? "" : "disabled"}>${world.name}
+      <span>${unlocked(first) ? stars + " / 9 stars" : "Locked"}</span></button>`;
+  }).join("")}</div><div class="menu-actions"><button data-action="title">Back</button></div>${ARCADE_LINK}`);
+}
+function stageMenu(wi) {
+  const world = WORLDS[wi];
+  openMenu("stages", `<h2>${world.name}</h2><p class="world-label">${world.crew}</p><div class="stage-list">${world.levels.map((level, li) => {
+    const i = wi * 3 + li, best = stageBest(i);
+    return `<button data-action="start" data-stage="${i}" ${unlocked(i) ? "" : "disabled"}>${li + 1}. ${level.name}
+      <span>${unlocked(i) ? starText(best.stars) + " · " + best.score.toLocaleString() : "Locked"}</span>
+      ${level.squeeze ? "<small>Closing walls</small>" : ""}</button>`;
+  }).join("")}</div><div class="menu-actions"><button data-action="worlds">Back</button></div>${ARCADE_LINK}`);
+}
+function helpMenu() {
+  openMenu("help", `<h2>How to play</h2>
+    <p><b>Drag</b> to steer. On desktop, use the mouse or arrow keys.</p>
+    <p><b>Tap</b> or press <b>Space</b> to launch. Hit the paddle’s edge to aim wider.</p>
+    <p><b>Free every alien.</b> <b>Gold armor</b> takes two hits. <b>Closing walls</b> narrow later levels.</p>
+    <p class="stars">★★★ 0 balls lost · ★★☆ 1 lost · ★☆☆ 2 lost</p>
+    <div class="menu-actions"><button data-action="helpBack">Back</button></div>${ARCADE_LINK}`);
+}
+function pauseMenu() {
+  if (paused || (phase !== "ready" && phase !== "play")) return;
+  openMenu("pause", `<h2>Paused</h2><p>${stageInfo().world.name} · ${stageInfo().name}</p><div class="menu-actions">
+    <button data-action="resume">Resume</button><button data-action="retry">Restart stage</button>
+    <button data-action="help">How to play</button><button data-action="stages">Stages</button></div>${ARCADE_LINK}`);
+}
+function finish(won) {
+  phase = won ? "won" : "lost";
+  const stars = won ? balls : 0;
+  const best = stageBest(stageIndex);
+  const newBest = won && score > best.score;
+  if (won) {
+    records[stageIndex] = { score: Math.max(best.score, score), stars: Math.max(best.stars, stars) };
+    save();
+  }
+  tone(won ? 820 : 140);
+  $("status").textContent = won ? "Crew rescued!" : "Out of balls.";
+  hud();
+  const next = won && stageIndex + 1 < STAGES.length;
+  openMenu("results", `<h2>${won ? (next ? "Crew rescued!" : "Rescue complete!") : "Out of balls"}</h2>
+    <p class="world-label">${stageInfo().world.name} · Level ${stageInfo().li + 1}</p>
+    <p><b class="stars" aria-label="${stars} of 3 stars">${starText(stars)}</b> · Score ${score.toLocaleString()}${newBest ? " · New best!" : ""}<br>
+    Rescued ${rescued}/${total} · Best ${stageBest(stageIndex).score.toLocaleString()}</p>
+    <div class="menu-actions">${next ? `<button data-action="next">${stageInfo().li === 2 ? "Next world" : "Next level"}</button>` : ""}
+    <button data-action="retry">Play again</button><button data-action="stages">Stages</button></div>${ARCADE_LINK}`);
+}
+function start(index) {
+  if (!STAGES[index] || !unlocked(index)) return;
+  reset(index); closeMenu();
+}
+$("panel").addEventListener("click", e => {
+  const button = e.target.closest("button[data-action]");
+  if (!button || button.disabled) return;
+  unlockAudio();
+  switch (button.dataset.action) {
+    case "title": titleMenu(); break;
+    case "worlds": worldMenu(); break;
+    case "world": stageMenu(Number(button.dataset.world)); break;
+    case "stages": stageMenu(stageInfo().wi); break;
+    case "start": start(Number(button.dataset.stage)); break;
+    case "retry": start(stageIndex); break;
+    case "next": start(stageIndex + 1); break;
+    case "resume": closeMenu(); break;
+    case "help": helpBack = menuName; helpMenu(); break;
+    case "helpBack":
+      if (helpBack === "pause") { paused = false; pauseMenu(); }
+      else titleMenu();
+      break;
+    case "sound": sound = !sound; save(); unlockAudio(); titleMenu(); break;
+  }
+});
+function step(dt) {
+  const level = stageInfo(), halfPaddle = level.paddleWidth / 2;
+  if (phase === "play" && level.squeeze) {
+    arenaTime += dt;
+    if (arenaTime > SQUEEZE_START - 3 && arenaTime - dt <= SQUEEZE_START - 3) {
+      $("status").textContent = "Warning: side walls are about to close.";
+      tone(180);
+    }
+    if (arenaTime > SQUEEZE_START && arenaTime - dt <= SQUEEZE_START) {
+      $("status").textContent = "Walls closing in!";
+    }
+    inset = Math.min(level.squeeze, Math.max(0, arenaTime - SQUEEZE_START) * (3 + level.wi * 0.8));
+  }
+  const dir = Number(keys.has("ArrowRight")) - Number(keys.has("ArrowLeft"));
+  paddle = paddleLimit(paddle + dir * 480 * dt);
+  if (phase === "ready") ball.x = paddle;
+  if (phase !== "play") return;
+  const oldX = ball.x, oldY = ball.y;
+  ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+  const left = inset + R, right = W - left;
+  if (ball.x < left) { ball.x = left; ball.vx = Math.abs(ball.vx); }
+  if (ball.x > right) { ball.x = right; ball.vx = -Math.abs(ball.vx); }
+  if (ball.y < R) { ball.y = R; ball.vy = Math.abs(ball.vy); }
+  if (ball.vy > 0 && oldY + R <= PADDLE_Y && ball.y + R >= PADDLE_Y &&
+      Math.abs(ball.x - paddle) <= halfPaddle + R) {
+    const aim = clamp((ball.x - paddle) / (halfPaddle), -1, 1);
+    const angle = (Math.sign(aim) || Math.sign(ball.vx) || 1) * Math.max(Math.abs(aim) * 1.08, 0.14);
+    const speed = Math.min(level.maxSpeed, Math.hypot(ball.vx, ball.vy) + 9);
+    ball.vx = Math.sin(angle) * speed;
+    ball.vy = -Math.cos(angle) * speed;
+    ball.y = PADDLE_Y - R;
+    chain = 0;
+    tone(240);
+  }
+  const scale = fieldScale(), cellWidth = 45 * scale;
+  for (const cell of cells) {
+    if (!cell.live) continue;
+    const x = inset + cell.x * scale, y = cell.y;
+    if (ball.x + R <= x || ball.x - R >= x + cellWidth ||
+        ball.y + R <= y || ball.y - R >= y + 29) continue;
+    if (oldY + R <= y) { ball.y = y - R; ball.vy = -Math.abs(ball.vy); }
+    else if (oldY - R >= y + 29) { ball.y = y + 29 + R; ball.vy = Math.abs(ball.vy); }
+    else if (oldX + R <= x) { ball.x = x - R; ball.vx = -Math.abs(ball.vx); }
+    else if (oldX - R >= x + cellWidth) { ball.x = x + cellWidth + R; ball.vx = Math.abs(ball.vx); }
+    else { ball.y = oldY; ball.vy *= -1; }
+    cell.hits--;
+    if (cell.hits) { tone(190); break; }
+    cell.live = false;
+    chain++;
+    tone(420 + 70 * Math.min(chain, 4));
+    if (cell.type === "R") rescued++;
+    score += (cell.type === "R" ? 100 : 40) * Math.min(chain, 4);
+    if (rescued === total) finish(true);
+    else {
+      if (chain > 1) $("status").textContent = "Ricochet ×" + Math.min(chain, 4);
+      hud();
+    }
+    break;
+  }
+  if (phase === "play" && ball.y > H + R) {
+    balls--; chain = 0;
+    if (balls) ready("Ball lost. Aim and launch again.");
+    else finish(false);
+  }
+}
+function circle(x,y,r) { c.beginPath(); c.arc(x,y,r,0,Math.PI * 2); }
+function drawCrew(x, y, level) {
+  c.fillStyle = level.world.color;
+  if (level.wi === 0) { circle(x, y, 8); c.fill(); }
+  else if (level.wi === 1) {
+    c.beginPath(); c.arc(x, y + 1, 8, Math.PI, 0);
+    c.lineTo(x + 6, y + 8); c.lineTo(x + 2, y + 5);
+    c.lineTo(x - 2, y + 8); c.lineTo(x - 6, y + 5); c.closePath(); c.fill();
+  } else if (level.wi === 2) {
+    c.beginPath(); c.ellipse(x, y, 9, 6, 0, 0, Math.PI * 2); c.fill();
+    c.lineWidth = 1.5; c.strokeStyle = level.world.color;
+    c.beginPath(); c.moveTo(x - 8, y + 5); c.lineTo(x - 11, y + 8);
+    c.moveTo(x + 8, y + 5); c.lineTo(x + 11, y + 8); c.stroke();
+  } else {
+    c.beginPath(); c.roundRect(x - 9, y - 6, 18, 13, 3); c.fill();
+    c.fillRect(x - 1, y - 10, 2, 4);
+  }
+  c.fillStyle = "#f7fbff"; circle(x, y - 1, 4); c.fill();
+  c.fillStyle = "#162b3c"; circle(x + 1, y - 1, 2); c.fill();
+}
+function draw() {
+  const level = stageInfo(), world = level.world, scale = fieldScale(), cellWidth = 45 * scale;
+  const bg = c.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,world.sky[0]); bg.addColorStop(1,world.sky[1]);
+  c.fillStyle = bg; c.fillRect(0,0,W,H);
+  c.fillStyle = "#6879a8";
+  for (const [x,y] of STAR_FIELD) c.fillRect(x,y,1.5,1.5);
+  c.save();
+  c.globalAlpha = 0.32; c.fillStyle = world.planet;
+  circle(W * .73, H * .59, 84); c.fill();
+  c.strokeStyle = world.color; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(W * .73, H * .59, 116, 27, -.25, 0, Math.PI * 2); c.stroke();
+  c.restore();
+  c.fillStyle = world.color; c.font = "800 14px system-ui";
+  c.fillText(`${world.name.toUpperCase()}  /  LEVEL ${level.li + 1}`, inset + 16, 25);
+  c.font = "700 12px system-ui";
+  c.fillText(level.name + " · " + world.crew, inset + 16, 45);
+  for (const cell of cells) {
+    if (!cell.live) continue;
+    const x = inset + cell.x * scale, {y,type,hits} = cell;
+    const crew = type === "R", armored = type === "A" && hits === 2;
+    c.fillStyle = crew ? world.cell : armored ? "#504126" : "#33284e";
+    c.strokeStyle = crew ? world.color : armored ? "#ffd25d" : "#a887e1";
+    c.lineWidth = 1.5; c.beginPath(); c.roundRect(x,y,cellWidth,29,7); c.fill(); c.stroke();
+    if (crew) drawCrew(x + cellWidth / 2, y + 15, level);
+    else {
+      c.fillStyle = armored ? "#ffd25d" : "#c8a4ff";
+      c.fillRect(x + cellWidth * .2, y + 13, cellWidth * .6, 3);
+    }
+  }
+  if (level.squeeze) {
+    const warning = arenaTime > SQUEEZE_START - 3;
+    c.fillStyle = "#131a33";
+    c.fillRect(0, 0, inset, H); c.fillRect(W - inset, 0, inset, H);
+    c.strokeStyle = warning ? "#ffb66a" : "#74618b";
+    c.lineWidth = warning ? 3 : 1;
+    c.beginPath(); c.moveTo(inset, 0); c.lineTo(inset, H);
+    c.moveTo(W - inset, 0); c.lineTo(W - inset, H); c.stroke();
+    if (warning && arenaTime <= SQUEEZE_START) {
+      c.fillStyle = "#ffb66a"; c.font = "800 20px system-ui";
+      c.fillText(`WALLS CLOSE IN ${Math.ceil(SQUEEZE_START - arenaTime)}`, 150, H * .73);
+    }
+  }
+  c.fillStyle = "#fa6c8e28"; c.fillRect(0,H-12,W,12);
+  c.save(); c.shadowColor = "#4fd1ff"; c.shadowBlur = 13;
+  const hull = c.createLinearGradient(0,PADDLE_Y,0,PADDLE_Y+15);
+  hull.addColorStop(0,"#d6f7ff"); hull.addColorStop(1,"#477ba3");
+  c.fillStyle = hull; c.beginPath(); c.roundRect(paddle-level.paddleWidth/2,PADDLE_Y,level.paddleWidth,15,7); c.fill();
+  c.fillStyle = "#65f6cd"; c.fillRect(paddle-21,PADDLE_Y+5,42,3);
+  if (phase !== "lost") { c.shadowColor = "#ffd25d"; c.fillStyle = "#fff1ad"; circle(ball.x,ball.y,R); c.fill(); }
+  c.restore();
+}
+function steer(e) {
+  const rect = canvas.getBoundingClientRect();
+  paddle = paddleLimit((e.clientX-rect.left) * W / rect.width);
+}
+canvas.addEventListener("pointerdown", e => {
+  if (paused || e.button !== 0 || pointer !== null) return;
+  pointer = e.pointerId;
+  canvas.setPointerCapture(pointer);
+  steer(e); serve();
+});
+canvas.addEventListener("pointermove", e => { if (!paused && (e.pointerId === pointer || (pointer === null && e.pointerType === "mouse"))) steer(e); });
+canvas.addEventListener("lostpointercapture", e => { if (e.pointerId === pointer) pointer = null; });
+document.addEventListener("keydown", e => {
+  if (e.code === "Escape" && !e.repeat) {
+    if (menuName === "pause" && paused) closeMenu();
+    else pauseMenu();
+    return;
+  }
+  if (paused || (e.target instanceof HTMLButtonElement && e.target.closest("#actions") && e.code === "Space")) return;
+  if (!["ArrowLeft", "ArrowRight", "Space"].includes(e.code)) return;
+  e.preventDefault();
+  if (e.code === "Space" && !e.repeat) serve();
+  else keys.add(e.code);
+});
+document.addEventListener("keyup", e => keys.delete(e.code));
+window.addEventListener("blur", pauseMenu);
+document.addEventListener("visibilitychange", () => { if (document.hidden) pauseMenu(); });
+$("serve").onclick = serve;
+$("pause").onclick = pauseMenu;
+reset();
+let last = performance.now();
+titleMenu();
+function frame(now) {
+  let remaining = clamp((now - last)/1000, 0, .05);
+  last = now;
+  while (!paused && remaining > 0) {
+    const dt = Math.min(remaining, 1/180);
+    step(dt); remaining -= dt;
+  }
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
