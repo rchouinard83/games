@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Six games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Seven games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -90,6 +90,8 @@ const GAMES = [
     desc: "Fly the rescue saucer, pick up stranded aliens and tow them home. Don't hit your own pods." },
   { name: "Dr Alien", tag: "Puzzle", color: "#ff8bd0", href: "DrAlien/Dr-Alien.html", art: artDrAlien,
     desc: "Drop capsules with Dr. Hive Queen and match colours to clear every spore before the lab jams." },
+  { name: "Alien Herd", tag: "Puzzle", color: "#5dff9b", href: "AlienHerd/Alien-Herd.html", art: artHerd,
+    desc: "A crowd of little aliens walks blindly forward. Give them jobs (dig, bash, build, block) to guide them home." },
   { name: "Alien Breakout", tag: "Brick breaker", color: "#65f6cd", href: "AlienBreakout/Alien-Breakout.html", art: artBreakout,
     desc: "Bounce an energy ball through prison cells to rescue the crew. Chain hits and earn three stars." },
 ];
@@ -437,6 +439,68 @@ function artDrAlien(c, w, h, t) {
     piece(3, row, 1, "top");
   }
   c.save(); c.translate(w * 0.8, h * 0.53); drawQueen(c, t, Math.min(w * 0.105, h * 0.23), cycle > 2.45 ? 1 : 0); c.restore();
+}
+
+// ---------- Alien Herd: the Mars cliffs, with the herd at work ----------
+function herdAlien(c, x, y, s, dir, state, t, jet = false) { // the game's little alien, foot at (x, y), s = size unit
+  const bob = state === "walk" ? Math.abs(Math.sin(t * 8)) * s * 0.4 : 0;
+  c.save(); c.translate(x, y - bob);
+  if (jet) { c.fillStyle = "#4fd1ff"; c.beginPath(); c.ellipse(0, -9 * s, 5 * s, 2 * s, 0, Math.PI, 0); c.fill(); }
+  const col = state === "block" ? "#ff8bd0" : state === "bash" || state === "dig" ? "#ffd25d" : state === "build" ? "#4fd1ff" : "#5dff9b";
+  const step = state === "walk" ? Math.sin(t * 8) * s : 0;
+  c.strokeStyle = "#1a3a24"; c.lineWidth = s * 0.7; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-s, -2 * s); c.lineTo(-1.2 * s + step, 0); c.moveTo(s, -2 * s); c.lineTo(1.2 * s - step, 0); c.stroke();
+  c.fillStyle = col; c.beginPath(); c.ellipse(0, -4.4 * s, 2.8 * s, 3.2 * s, 0, 0, TAU); c.fill();
+  if (state === "block") { c.strokeStyle = col; c.lineWidth = s; c.beginPath(); c.moveTo(-4.5 * s, -5 * s); c.lineTo(4.5 * s, -5 * s); c.stroke(); }
+  c.strokeStyle = col; c.lineWidth = s * 0.5; c.beginPath(); c.moveTo(0, -7.4 * s); c.lineTo(0, -9.2 * s); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(0, -9.4 * s, s * 0.6, 0, TAU); c.fill();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(dir * 0.4 * s, -5 * s, 1.5 * s, 0, TAU); c.fill();
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(dir * 0.9 * s, -5 * s, 0.7 * s, 0, TAU); c.fill();
+  if (state === "bash") { const a = Math.sin(t * 12) * 0.8; c.strokeStyle = "#c9d3e6"; c.lineWidth = s * 0.6; c.beginPath(); c.moveTo(dir * 2 * s, -4 * s); c.lineTo(dir * (2 + Math.cos(a) * 3) * s, (-4 - Math.sin(a) * 3) * s); c.stroke(); }
+  if (state === "build") { c.fillStyle = "#c8744e"; c.fillRect(dir * 2 * s, -3 * s, 2.4 * s, 1.4 * s); }
+  c.restore();
+}
+function herdRock(c, x0, y0, x1, y1, seed) { // Mars rock: shaded, speckled, with a lighter top crust
+  const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, "#b8603e"); g.addColorStop(1, "#7a3420");
+  c.fillStyle = g; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+  let r = seed; const R = () => (r = (r * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < (x1 - x0) * (y1 - y0) / 40; i++) { c.fillStyle = R() < 0.5 ? "rgba(255,180,130,0.18)" : "rgba(40,10,6,0.25)"; c.fillRect(x0 + R() * (x1 - x0), y0 + R() * (y1 - y0), 2, 2); }
+  c.fillStyle = "#e0905e"; c.fillRect(x0, y0, x1 - x0, 2.5);
+}
+function artHerd(c, w, h, t) {
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#1a0a08"); g.addColorStop(0.7, "#4a1c14"); g.addColorStop(1, "#2a0e0a"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  c.fillStyle = "rgba(240,160,112,0.85)"; c.beginPath(); c.arc(w * 0.9, h * 0.16, h * 0.09, 0, TAU); c.fill();
+  const s = h / 52, floor = h * 0.8, ledge = h * 0.42, gapL = w * 0.46, gapR = w * 0.58;
+  // lava in the gap, floor either side, the upper ledge with a rock wall being bashed through
+  const lg = c.createLinearGradient(0, floor + 4, 0, h); lg.addColorStop(0, "#ffb84d"); lg.addColorStop(1, "#c0301a"); c.fillStyle = lg; c.fillRect(gapL, floor + 6 + Math.sin(t * 2), gapR - gapL, h);
+  herdRock(c, 0, floor, gapL, h, 3); herdRock(c, gapR, floor, w, h, 5);
+  herdRock(c, 0, ledge, w * 0.36, ledge + h * 0.1, 7);
+  const bashed = Math.min(1, (t * 0.25) % 1.4), wx = w * 0.3, ww = w * 0.05;
+  herdRock(c, wx, h * 0.12, wx + ww, ledge, 9);
+  c.fillStyle = "#2a0e0a"; c.fillRect(wx, ledge - 10 * s, ww * bashed, 10 * s); // the tunnel
+  herdAlien(c, wx + ww * bashed - 1, ledge, s, 1, bashed < 1 ? "bash" : "walk", t);
+  if (bashed < 1 && Math.sin(t * 20) > 0) { c.fillStyle = "#e0905e"; c.fillRect(wx + ww * bashed + 2, ledge - 6 * s, 2, 2); }
+  herdAlien(c, w * 0.12 + ((t * 9) % (w * 0.14)), ledge, s, 1, "walk", t + 1);
+  // the builder's staircase over the lava gap, growing brick by brick
+  const bricks = 12, built = Math.min(bricks, Math.floor((t * 2.4) % 18)), bw = (gapR - gapL + 12) / bricks;
+  c.fillStyle = "#d27a52"; for (let i = 0; i < built; i++) c.fillRect(gapL - 6 + i * bw, floor - i * 0.9 - 1, bw + 4, 3);
+  if (built < bricks) herdAlien(c, gapL - 6 + built * bw, floor - built * 0.9 - 1, s, 1, "build", t);
+  // the saucer and its beam
+  const sx = w * 0.84, sy = h * 0.3;
+  const bg = c.createLinearGradient(0, sy, 0, floor); bg.addColorStop(0, "rgba(93,255,155,0.45)"); bg.addColorStop(1, "rgba(93,255,155,0.06)");
+  c.fillStyle = bg; c.beginPath(); c.moveTo(sx - 6, sy + 4); c.lineTo(sx + 6, sy + 4); c.lineTo(sx + 16, floor); c.lineTo(sx - 16, floor); c.closePath(); c.fill();
+  c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(sx, sy, 22, 6, 0, 0, TAU); c.fill();
+  c.fillStyle = "rgba(190,235,255,0.6)"; c.beginPath(); c.ellipse(sx, sy - 3, 9, 7, 0, Math.PI, 0); c.fill();
+  for (let i = -3; i <= 3; i++) { c.fillStyle = (Math.floor(t * 8) + i) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(sx + i * 5.5, sy + 1.5, 1.4, 0, TAU); c.fill(); }
+  // the herd walking home along the floor (over the finished stairs) and up the beam; a Blocker guards the left edge
+  herdAlien(c, w * 0.05, floor, s, 1, "block", t);
+  for (let k = 0; k < 4; k++) {
+    const x = w * 0.1 + ((t * 14 + k * 26) % (w * 0.76));
+    if (x > sx - 4) { const up = (x - sx + 4) * 1.6; c.globalAlpha = Math.max(0, 1 - up / (floor - sy)); herdAlien(c, sx, floor - up, s, 1, "fall", t + k); c.globalAlpha = 1; continue; }
+    const onStairs = x > gapL - 6 && x < gapR + 6, y = onStairs && built >= bricks ? floor - (x - gapL + 6) / bw * 0.9 - 1 : floor;
+    if (onStairs && built < bricks) continue; // waiting for the bridge
+    herdAlien(c, x, y, s, 1, "walk", t + k);
+  }
 }
 
 function artBreakout(c, w, h, t) {
