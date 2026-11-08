@@ -13,14 +13,22 @@
   h1 { font-size: clamp(2rem, 8vw, 3.35rem); line-height: 1; margin: 6px 0; letter-spacing: -.05em; }
   h1 span { color: #c8a4ff; }
   p { margin: 8px 0 16px; color: #bdc7e5; }
-  .hud { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 6px; margin-bottom: 7px; }
+  .hud { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)) auto; gap: 6px; margin-bottom: 7px; }
+  .hud #pause { min-height: 0; padding: 0 12px; border-radius: 10px; background: #161c35; border-color: #2c3758; color: #edf4ff; font-size: 1.05rem; }
   .hud div { background: #161c35; border: 1px solid #2c3758; border-radius: 10px; padding: 8px 10px; }
   .hud small { display: block; letter-spacing: .06em; }
   .hud strong { font-size: clamp(1rem,4vw,1.3rem); font-variant-numeric: tabular-nums; }
   .arena { position: relative; border: 1px solid #4d4371; border-radius: 14px; overflow: hidden; box-shadow: 0 14px 46px #0008; }
   canvas { display: block; width: 100%; height: auto; touch-action: none; background: #0d1228; }
   .status { min-height: 1.5em; margin: 9px 0; color: #cbd7f8; font-size: .9rem; }
-  .actions { display: flex; gap: 8px; }
+  /* the steering bar under the board: slide here so your finger never covers the game */
+  .pad { position: relative; margin-top: 10px; height: 68px; border-radius: 14px; background: #11172e; border: 1px dashed #3d4a72; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ew-resize; }
+  .pad.on { border-style: solid; border-color: #4fd1ff; background: #142040; }
+  .padTrack { position: absolute; left: 10px; right: 10px; top: 26px; height: 4px; background: #2c3758; border-radius: 2px; }
+  .padKnob { position: absolute; top: 20px; height: 16px; transform: translateX(-50%); border-radius: 8px; background: linear-gradient(#d6f7ff, #477ba3); box-shadow: 0 0 12px #4fd1ff88; pointer-events: none; }
+  .padHint { position: absolute; left: 0; right: 0; bottom: 7px; text-align: center; font-size: .68rem; color: #8f9cc4; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; } /* breathing room between the board and the Launch button */
+  .actions #serve { flex: 1; }
   button { min-height: 44px; padding: 8px 16px; border: 1px solid #47557b; border-radius: 9px; font: inherit; font-weight: 800; background: #19223e; color: #edf4ff; cursor: pointer; }
   button:first-child { background: #66f1c8; border-color: #66f1c8; color: #082820; }
   button:disabled { opacity: .5; cursor: default; }
@@ -53,20 +61,22 @@
     <div><small>Balls</small><strong id="balls">3</strong></div>
     <div><small>Score</small><strong id="score">0</strong></div>
     <div><small>Best</small><strong id="best">0</strong></div>
+    <button id="pause" aria-label="Pause" hidden>❚❚</button>
   </div>
   <div class="arena">
-    <canvas id="board" width="600" height="500" aria-label="Alien Breakout game board"></canvas>
+    <canvas id="board" width="600" height="600" aria-label="Alien Breakout game board"></canvas>
     <section id="menu" class="menu" aria-label="Game menu" hidden><div id="panel" class="panel"></div></section>
   </div>
+  <div id="pad" class="pad" aria-label="Steering bar: slide to move the paddle, tap to launch"><div class="padTrack"></div><div id="padKnob" class="padKnob"></div><span class="padHint">◀ slide here to steer · tap to launch ▶</span></div>
   <div id="status" class="status" role="status"></div>
-  <div class="actions" id="actions" hidden><button id="serve">Launch ball</button><button id="pause">Pause</button></div>
-  <p class="controls"><b>Drag</b> to steer, or use mouse / ← →. <b>Tap</b> or press <b>Space</b> to launch. Catch the ball near the paddle’s edge for a sharper shot.</p>
+  <div class="actions" id="actions" hidden><button id="serve">Launch ball</button></div>
+  <p class="controls"><b>Slide</b> on the bar under the board to steer (or drag on the board, or use mouse / ← →). <b>Tap</b> or press <b>Space</b> to launch. Catch the ball near the paddle’s edge for a sharper shot.</p>
 </main>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
 const canvas = $("board"), c = canvas.getContext("2d");
-const W = 600, H = 500, PADDLE_Y = 452, R = 7;
+const W = 600, H = 600, PADDLE_Y = H - 48, R = 7; // a taller board: more room between the cells and the paddle
 const WORLDS = [
   { name: "The Oort Gate", crew: "Ice Blips", sky: ["#193555", "#0a142d"], color: "#76ebdf",
     cell: "#1e4d56", planet: "#587aa5", levels: [
@@ -181,13 +191,13 @@ function openMenu(name, html) {
   pointer = null;
   $("panel").innerHTML = html;
   $("menu").hidden = false;
-  $("actions").hidden = true;
+  $("actions").hidden = true; $("pause").hidden = true;
   $("panel").scrollTop = 0;
 }
 function closeMenu() {
   paused = false;
   $("menu").hidden = true;
-  $("actions").hidden = false;
+  $("actions").hidden = false; $("pause").hidden = false;
   last = performance.now();
 }
 function titleMenu() {
@@ -214,7 +224,7 @@ function stageMenu(wi) {
 }
 function helpMenu() {
   openMenu("help", `<h2>How to play</h2>
-    <p><b>Drag</b> to steer. On desktop, use the mouse or arrow keys.</p>
+    <p><b>Slide</b> along the bar under the board to steer, so your finger stays off the game. You can also drag on the board. On desktop, use the mouse or arrow keys.</p>
     <p><b>Tap</b> or press <b>Space</b> to launch. Hit the paddle’s edge to aim wider.</p>
     <p><b>Free every alien.</b> <b>Gold armor</b> takes two hits. <b>Closing walls</b> narrow later levels.</p>
     <p class="stars">★★★ 0 balls lost · ★★☆ 1 lost · ★☆☆ 2 lost</p>
@@ -418,6 +428,24 @@ canvas.addEventListener("pointerdown", e => {
   canvas.setPointerCapture(pointer);
   steer(e); serve();
 });
+// the steering bar: where your finger is across the bar = where the paddle goes across the board; a quick tap launches
+const pad = $("pad");
+let padPointer = null, padDown = null;
+function steerPad(e) { const r = pad.getBoundingClientRect(); paddle = paddleLimit(clamp((e.clientX - r.left) / r.width, 0, 1) * W); }
+pad.addEventListener("pointerdown", e => {
+  if (paused || padPointer !== null || e.button !== 0) return;
+  unlockAudio(); padPointer = e.pointerId; pad.setPointerCapture(padPointer); pad.classList.add("on");
+  padDown = { x: e.clientX, t: performance.now() }; steerPad(e);
+});
+pad.addEventListener("pointermove", e => { if (!paused && e.pointerId === padPointer) steerPad(e); });
+pad.addEventListener("pointerup", e => {
+  if (e.pointerId !== padPointer) return;
+  padPointer = null; pad.classList.remove("on");
+  if (padDown && Math.abs(e.clientX - padDown.x) < 8 && performance.now() - padDown.t < 260) serve();
+  padDown = null;
+});
+pad.addEventListener("pointercancel", () => { padPointer = null; padDown = null; pad.classList.remove("on"); });
+function showPadKnob() { const k = $("padKnob"); k.style.left = (paddle / W * 100) + "%"; k.style.width = (stageInfo().paddleWidth / W * 100) + "%"; }
 canvas.addEventListener("pointermove", e => { if (!paused && (e.pointerId === pointer || (pointer === null && e.pointerType === "mouse"))) steer(e); });
 canvas.addEventListener("lostpointercapture", e => { if (e.pointerId === pointer) pointer = null; });
 document.addEventListener("keydown", e => {
@@ -447,7 +475,7 @@ function frame(now) {
     const dt = Math.min(remaining, 1/180);
     step(dt); remaining -= dt;
   }
-  draw();
+  draw(); showPadKnob();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
