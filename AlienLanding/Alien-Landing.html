@@ -60,6 +60,12 @@
   .ships canvas { width: 56px; height: 56px; display: block; }
   #box .ships p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; }
   .fam { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  .big-ships article { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding: 10px; }
+  .big-ships canvas { width: 96px; height: 96px; border-radius: 12px; }
+  #box .big-ships h3 { font-size: 20px; margin: 2px 0 0; }
+  #box .big-ships p { font-size: 14px; margin-top: 3px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .pills span { font-size: 11px; font-weight: 800; color: #c9d3f0; background: #1b2546; border: 1px solid #2c3760; border-radius: 999px; padding: 2px 8px; }
   .guideStage { text-align: left; margin: 14px 0 4px; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 800; }
   #howCv { width: 100%; height: 220px; display: block; border-radius: 12px; background: #0a1024; border: 1px solid #22305a; }
   .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
@@ -133,44 +139,44 @@ const SHIPS = {
 // ============================================================
 //  STAGES (the same four worlds as Alien Defense)
 //  Spot positions are fractions of the screen; sizes are fractions of S. Runway ang = landing direction.
-//  Carriers slide between (x1,y1) and (x2,y2) and back every `period` seconds.
+//  Carriers loop clockwise inside the airfield.
 // ============================================================
 const STAGES = [
   { name: "The Oort Gate", where: "Oort Cloud · edge of the solar system", theme: "ice", ships: ["saucer", "hauler", "dart"],
     brief: "A quiet outpost on the ice. Learn the three landing spots here.",
     zones: [{ kind: "runway", fam: "runway", x: 0.72, y: 0.53, len: 0.58, wid: 0.12, ang: PI / 2 }, // Haulers come in from the top, clear of the carrier
             { kind: "pad", fam: "pad", x: 0.27, y: 0.27, r: 0.08 },
-            { kind: "carrier", fam: "carrier", x1: 0.3, y1: 0.73, x2: 0.52, y2: 0.73, period: 18, len: 0.32, wid: 0.1, ang: PI }] },
-  { name: "Jupiter Storm", where: "Jupiter's orbit", theme: "jupiter", ships: ["hopper", "manta", "keyhole"], hazard: "storm",
+            { kind: "carrier", fam: "carrier", len: 0.25, wid: 0.085 }] },
+  { name: "Jupiter Storm", where: "Jupiter's orbit", theme: "jupiter", ships: ["hopper", "manta", "keyhole"], hazard: "storm", mixFrom: 6,
     brief: "A storm cell drifts across the field. Ships inside it slow to a crawl, so traffic bunches up.",
     zones: [{ kind: "runway", fam: "runway", x: 0.46, y: 0.76, len: 0.52, wid: 0.12, ang: PI },
             { kind: "pad", fam: "pad", x: 0.25, y: 0.25, r: 0.075 },
             { kind: "pad", fam: "pad", x: 0.77, y: 0.36, r: 0.075 },
-            { kind: "carrier", fam: "carrier", x1: 0.2, y1: 0.38, x2: 0.2, y2: 0.56, period: 15, len: 0.3, wid: 0.1, ang: -PI / 2 }] },
-  { name: "Mars, the Red Wall", where: "Mars", theme: "mars", ships: ["twinlift", "needle", "gyro"],
+            { kind: "carrier", fam: "carrier", len: 0.25, wid: 0.085 }] },
+  { name: "Mars, the Red Wall", where: "Mars", theme: "mars", ships: ["twinlift", "needle", "gyro"], mixFrom: 6,
     brief: "Two runways cross in the middle. Ships rolling through the crossing at the same time collide.",
     zones: [{ kind: "runway", fam: "runway", x: 0.5, y: 0.5, len: 0.66, wid: 0.12, ang: -PI / 4 },
             { kind: "runway", fam: "runway", x: 0.5, y: 0.5, len: 0.58, wid: 0.11, ang: -PI * 3 / 4 },
-            { kind: "pad", fam: "pad", x: 0.2, y: 0.22, r: 0.072 },
+            { kind: "pad", fam: "pad", x: 0.17, y: 0.18, r: 0.072 },
             { kind: "pad", fam: "pad", x: 0.82, y: 0.79, r: 0.072 },
-            { kind: "carrier", fam: "carrier", x1: 0.52, y1: 0.15, x2: 0.74, y2: 0.15, period: 13, len: 0.3, wid: 0.1, ang: 0 }],
+            { kind: "carrier", fam: "carrier", len: 0.25, wid: 0.085 }],
     deco: [{ kind: "dome", x: 0.86, y: 0.4, r: 0.05 }, { kind: "tanks", x: 0.1, y: 0.5, r: 0.026 }, { kind: "hangar", x: 0.42, y: 0.86, w: 0.18 }] },
-  { name: "Earth, Final Stand", where: "Earth", theme: "earth", ships: ["skycrane", "starlifter", "ferry"], mix: true,
+  { name: "Earth, Final Stand", where: "Earth", theme: "earth", ships: ["skycrane", "starlifter", "ferry"], mixFrom: 4,
     brief: "The busiest spaceport of all. From wave 4, ships from every stage join the traffic.",
     zones: [{ kind: "runway", fam: "runway", x: 0.16, y: 0.55, len: 0.52, wid: 0.11, ang: -PI / 2 },
             { kind: "runway", fam: "runway", x: 0.42, y: 0.16, len: 0.5, wid: 0.11, ang: PI },
             { kind: "pad", fam: "pad", x: 0.52, y: 0.4, r: 0.068 },
             { kind: "pad", fam: "pad", x: 0.84, y: 0.55, r: 0.068 },
-            { kind: "carrier", fam: "carrier", x1: 0.46, y1: 0.75, x2: 0.7, y2: 0.75, period: 12, len: 0.3, wid: 0.1, ang: PI }],
+            { kind: "carrier", fam: "carrier", len: 0.25, wid: 0.085 }],
     roofs: true },
 ];
 const WAVES = 10;
 
 // Easy / Normal / Hard. Hard also pulls every landing spot in toward the middle.
 const DIFFS = [
-  { name: "Easy",   lives: 4, base: 2, gap: 5.6, minGap: 1.9, speed: 0.95, squeeze: 1,    note: "Calm traffic, spots spread out, 4 lives." },
-  { name: "Normal", lives: 3, base: 3, gap: 4.8, minGap: 1.5, speed: 1.05, squeeze: 1,    note: "Busier skies, a little faster, 3 lives." },
-  { name: "Hard",   lives: 2, base: 3, gap: 4.1, minGap: 1.2, speed: 1.15, squeeze: 0.86, note: "Fast and crowded, spots packed close, 2 lives." },
+  { name: "Easy",   lives: 4, mayday: 22, base: 2, gap: 5.6, minGap: 1.9, speed: 0.95, squeeze: 1,    note: "Calm traffic, spots spread out, 4 lives." },
+  { name: "Normal", lives: 3, mayday: 18, base: 3, gap: 4.8, minGap: 1.5, speed: 1.05, squeeze: 1,    note: "Busier skies, a little faster, 3 lives." },
+  { name: "Hard",   lives: 2, mayday: 15, base: 3, gap: 4.1, minGap: 1.2, speed: 1.15, squeeze: 0.86, note: "Fast and crowded, spots packed close, 2 lives." },
 ];
 // landings needed to clear wave n (1..10)
 const NEED = n => 3 + Math.ceil(n * 0.6); // 4, 5, 5, 6, 6, 7, 8, 8, 9, 9
@@ -223,14 +229,14 @@ const SFX = {
 // ============================================================
 let G = null;          // current run
 let paused = true;     // menus pause the sim
-let fast = false;      // fast-forward: the sim runs twice per frame
+let fast = 1;          // game speed: 1×, 2× or 3× (the sim runs that many steps per frame)
 let bgKey = "";
 const bgCv = document.createElement("canvas"), bgc = bgCv.getContext("2d");
 
 function stageZones(i, d) { // Hard pulls every spot in toward the middle of the screen
   const k = DIFFS[d].squeeze, sq = (v, c) => c + (v - c) * k;
   return STAGES[i].zones.map(z => z.kind === "carrier"
-    ? { ...z, x1: sq(z.x1, 0.5), x2: sq(z.x2, 0.5), y1: sq(z.y1, 0.5), y2: sq(z.y2, 0.5) }
+    ? z
     : { ...z, x: sq(z.x, 0.5), y: sq(z.y, 0.5) });
 }
 
@@ -240,29 +246,48 @@ function newRun(stage, wave = 1, quiet = false) {
         wave: 0, waveLanded: 0, need: 0, lives: D.lives, landed: 0, crashes: 0, time: 0, nextSpawn: 2, breather: 0,
         over: false, cleared: false, seen: {}, warnCd: 0, nextId: 1, banner: null, storm: null, startWave: wave };
   if (G.ST.hazard === "storm") G.storm = { x: W * 0.5, y: H * 0.45, vx: S * 0.03, vy: S * 0.02, r: S * TUNE.stormR };
-  bgKey = ""; setFast(false);
+  G.carrierPhase = stage / 8;
+  updateLandingPaths();
+  bgKey = ""; setFast(1);
   startWave(wave, quiet);
 }
 function startWave(n, quiet = false) {
-  G.wave = n; G.waveLanded = 0; G.need = NEED(n); G.waveDone = false;
+  G.wave = n;
+  if (n >= 7 && G.padStartedAt == null) G.padStartedAt = G.time;
+  G.waveLanded = 0; G.need = NEED(n); G.waveDone = false;
   if (!quiet) {
     banner(`Wave ${n}`, n === WAVES ? "Final wave!" : `Land ${G.need} ships`);
     SFX.wave();
     SAVE.run = { stage: G.stage, diff: G.diff, wave: n }; save();
     if (n === 1) say(`Welcome to <b>${G.ST.name}</b>. ${G.ST.brief}`, 5);
     if (n === 2 && G.ST.hazard === "storm") say("Watch the <b>storm cell</b>. Ships inside it slow to a crawl.", 4);
-    if (n === 4 && G.ST.mix) say("Traffic from <b>every stage</b> is coming in now. Same colours, same spots.", 4.5);
+    if (n === 7) say("Traffic is picking up! The <b>blue pad</b> is moving along its taxiway.", 5);
+    if (n === G.ST.mixFrom) {
+      const arrivals = ["", "the Oort Gate", "the Oort Gate and Jupiter Storm", "every stage"];
+      say(`Traffic from <b>${arrivals[G.stage]}</b> is joining us! Same colours, same landing spots.`, 4.5);
+    }
   }
   hud();
 }
 function banner(text, sub, dur = 2.4) { G.banner = { text, sub, t: 0, dur }; }
 
 // ---------- what flies in each wave ----------
-function rosterFor(n) {
-  const [pad, run, car] = G.ST.ships;
-  const list = n === 1 ? [pad, pad, run] : [pad, run, car];
-  if (G.ST.mix && n >= 4) for (const k of Object.keys(SHIPS)) if (SHIPS[k].stage < 3) list.push(k); // every older ship can show up
-  return list;
+const earlierShips = STAGES.map((_, stage) => STAGES.slice(0, stage).flatMap(st => st.ships));
+function shipForWave(stage, wave, roll = Math.random()) {
+  const st = STAGES[stage];
+  const [pad, runway] = st.ships;
+  const local = wave === 1 ? [pad, pad, runway] : st.ships;
+  if (!st.mixFrom || wave < st.mixFrom) return local[Math.floor(roll * local.length)];
+
+  const returning = earlierShips[stage];
+  // Earth keeps its existing equal chance per ship. Jupiter and Mars
+  // grow returning traffic from one third at wave 6 to one half at wave 10.
+  const returningShare = st.mixFrom === 4
+    ? returning.length / (local.length + returning.length)
+    : 1 / 3 + (wave - st.mixFrom) / (WAVES - st.mixFrom) / 6;
+  if (roll < 1 - returningShare) return local[Math.floor(roll / (1 - returningShare) * local.length)];
+  const returningRoll = (roll - (1 - returningShare)) / returningShare;
+  return returning[Math.min(returning.length - 1, Math.floor(returningRoll * returning.length))];
 }
 // Pressure grows with every wave and every stage (tuned with the test bot)
 const TUNE = {
@@ -275,23 +300,89 @@ const TUNE = {
   stormSlow: 0.62, stormR: 0.12,     // Jupiter's storm cell: speed inside it, and its size
 };
 const waveSpeed = () => G.D.speed * (1 + TUNE.waveSpeed * (G.wave - 1) + TUNE.stageSpeed[G.stage]);
-const maxShips = () => Math.min(9, Math.max(2, G.D.base + Math.floor((G.wave - 1) / TUNE.wavePer) + TUNE.stageShips[G.stage]));
-const spawnGap = () => Math.max(G.D.minGap, G.D.gap - TUNE.gapWave * (G.wave - 1) - TUNE.gapStage[G.stage]);
+const lateTraffic = () => G.wave >= 9 ? 2 : G.wave >= 7 ? 1 : 0;
+const maxShips = () => Math.min(10, Math.max(2, G.D.base + Math.floor((G.wave - 1) / TUNE.wavePer) + TUNE.stageShips[G.stage] + lateTraffic()));
+const spawnGap = () => Math.max(G.D.minGap, G.D.gap - TUNE.gapWave * (G.wave - 1) - TUNE.gapStage[G.stage] - lateTraffic() * 0.45);
 
 // ============================================================
 //  GEOMETRY
 // ============================================================
-// Screen geometry of a landing spot at time t (carriers move)
-function zoneGeo(z, t = G ? G.time : 0) {
-  if (z.kind === "pad") return { x: z.x * W, y: z.y * H, r: z.r * S };
-  let x = z.x, y = z.y, vx = 0, vy = 0;
-  if (z.kind === "carrier") {
-    const ph = 0.5 - 0.5 * Math.cos(TAU * t / z.period), dph = 0.5 * Math.sin(TAU * t / z.period) * TAU / z.period;
-    x = z.x1 + (z.x2 - z.x1) * ph; y = z.y1 + (z.y2 - z.y1) * ph;
-    vx = (z.x2 - z.x1) * W * dph; vy = (z.y2 - z.y1) * H * dph;
+function perimeterLoop() {
+  const inset = S * 0.125, radius = S * 0.135;
+  const top = Math.max(inset, Math.min(54 + S * 0.1, H * 0.32));
+  const corners = [[W - inset - radius, top + radius], [W - inset - radius, H - inset - radius],
+    [inset + radius, H - inset - radius], [inset + radius, top + radius]];
+  const points = corners.flatMap(([x, y], corner) => Array.from({ length: 17 }, (_, step) => {
+    const angle = (corner - 1 + step / 16) * PI / 2;
+    return { x: x + radius * Math.cos(angle), y: y + radius * Math.sin(angle) };
+  }));
+  points.push(points[0]);
+  let length = 0;
+  const segments = points.slice(1).map((to, i) => {
+    const from = points[i], dx = to.x - from.x, dy = to.y - from.y;
+    const size = Math.hypot(dx, dy), start = length;
+    length += size;
+    return { from, dx, dy, size, start };
+  });
+  return { points, segments, length };
+}
+function loopPoint(loop, progress) {
+  const distance = ((progress % 1 + 1) % 1) * loop.length;
+  const segment = loop.segments.find(part => distance < part.start + part.size);
+  const fraction = (distance - segment.start) / segment.size;
+  return { x: segment.from.x + segment.dx * fraction, y: segment.from.y + segment.dy * fraction };
+}
+function padHome(z) { return { x: z.x * W, y: z.y * H, r: z.r * S }; }
+
+function taxiway(pad, zones) {
+  const home = padHome(pad), runways = zones.filter(z => z.kind === "runway").map(z => zoneGeo(z));
+  const nearest = runways.reduce((a,b) => Math.hypot(a.x-home.x,a.y-home.y) < Math.hypot(b.x-home.x,b.y-home.y) ? a : b);
+  const road = [home, {x: home.x, y: nearest.y}, nearest];
+  const path = [home];
+  for (let i = 1; i < road.length; i++) {
+    const a = road[i-1], b = road[i], count = Math.max(1, Math.ceil(Math.hypot(b.x-a.x,b.y-a.y) / 2));
+    for (let k = 1; k <= count; k++) {
+      const x = a.x + (b.x-a.x)*k/count, y = a.y + (b.y-a.y)*k/count;
+      if (runways.some(r => {
+        const u = (x-r.x)*r.dx + (y-r.y)*r.dy, v = (y-r.y)*r.dx - (x-r.x)*r.dy;
+        return Math.hypot(Math.max(0,Math.abs(u)-r.len/2), Math.max(0,Math.abs(v)-r.wid/2)) <= home.r + 6;
+      })) return {road, path};
+      path.push({x,y});
+    }
   }
-  const g = { x: x * W, y: y * H, vx, vy, len: z.len * S, wid: z.wid * S, ang: z.ang, dx: Math.cos(z.ang), dy: Math.sin(z.ang) };
-  g.ex = g.x - g.dx * g.len / 2; g.ey = g.y - g.dy * g.len / 2;
+  return {road, path};
+}
+
+function updateLandingPaths() {
+  G.carrierLoop = perimeterLoop();
+  G.movingPad = G.zones.find(z => z.kind === "pad");
+  G.padPath = taxiway(G.movingPad, G.zones).path;
+}
+
+function carrierRate() {
+  return S * (0.018 + 0.002 * Math.max(0, G.wave - 2)) / G.carrierLoop.length;
+}
+function zoneGeo(z, t = G ? G.time : 0) {
+  if (z.kind === "pad") {
+    const home = padHome(z);
+    if (z !== G?.movingPad || G.wave < 7) return home;
+    const elapsed = Math.max(0, t - G.padStartedAt);
+    const last = G.padPath.length - 1;
+    const period = Math.max(12, last * 2 * PI / (S * 0.035));
+    const at = last * (1 - Math.cos(TAU * elapsed / period)) / 2;
+    const a = G.padPath[Math.floor(at)], b = G.padPath[Math.ceil(at)];
+    return { x: a.x + (b.x-a.x)*(at%1), y: a.y + (b.y-a.y)*(at%1), r: home.r };
+  }
+  let x = z.x * W, y = z.y * H, ang = z.ang, vx = 0, vy = 0;
+  if (z.kind === "carrier") {
+    const phase = G.carrierPhase + (t - G.time) * carrierRate();
+    const point = loopPoint(G.carrierLoop, phase);
+    const ahead = loopPoint(G.carrierLoop, phase + 0.001), behind = loopPoint(G.carrierLoop, phase - 0.001);
+    x = point.x; y = point.y; vx = ahead.x - behind.x; vy = ahead.y - behind.y;
+    ang = Math.atan2(vy, vx);
+  }
+  const g = { x, y, vx, vy, len: z.len * S, wid: z.wid * S, ang, dx: Math.cos(ang), dy: Math.sin(ang) };
+  g.ex = x - g.dx * g.len / 2; g.ey = y - g.dy * g.len / 2;
   return g;
 }
 const fits = (z, s) => z.fam === s.T.fam;
@@ -316,7 +407,7 @@ function zoneAccepts(z, px, py, mx, my) {
 //  SPAWNING
 // ============================================================
 function spawnShip() {
-  const type = pick(rosterFor(G.wave)), T = SHIPS[type], r = T.r * S;
+  const type = shipForWave(G.stage, G.wave), T = SHIPS[type], r = T.r * S;
   for (let tries = 0; tries < 10; tries++) {
     const side = Math.floor(Math.random() * 4), f = 0.12 + Math.random() * 0.76, top = 64;
     const x = side === 0 ? -r * 2 : side === 1 ? W + r * 2 : f * W;
@@ -326,14 +417,21 @@ function spawnShip() {
     const tx = W * (0.3 + Math.random() * 0.4), ty = H * (0.3 + Math.random() * 0.4);
     const dmg = G.wave >= 4 && Math.random() < 0.08 + 0.01 * G.stage;
     const speed = T.speed * S * waveSpeed() * (dmg ? 1.15 : 1);
+    // Budget for a cross-map approach, lineup, and movement of the target.
+    const slow = type === "hopper" ? 0.75 : 1;
+    const stormAllowance = G.storm ? 2 * G.storm.r * (1 / TUNE.stormSlow - 1) : 0;
+    const moving = T.fam === "carrier" ? carrierRate() * G.carrierLoop.length
+      : T.fam === "pad" && G.wave >= 7 ? S * 0.018 : 0;
+    const fuelMax = dmg ? Math.max(G.D.mayday, Math.ceil(
+      (Math.hypot(W, H) + S * 0.25 + stormAllowance) / Math.max(speed * slow - moving, speed * 0.25) + 4)) : G.D.mayday;
     G.ships.push({ id: G.nextId++, type, T, r, x, y, h: Math.atan2(ty - y, tx - x), speed, base: speed, path: [], lock: null, state: "incoming",
-                   t: 1.7, entered: false, dmg, warn: 0, spin: Math.random() * TAU, scale: 1, alpha: 1, age: 0 });
+                   t: 1.7, entered: false, dmg, fuel: fuelMax, fuelMax, warn: 0, spin: Math.random() * TAU, scale: 1, alpha: 1, age: 0 });
     SFX.arrive();
     if (!G.seen[type]) {
       G.seen[type] = true;
       if (G.time > 3) say(`New ship: <b>${T.name}</b>. ${T.note} It lands on the ${FAM[T.fam].spot}.`, 4.5);
     }
-    if (dmg) { setTimeout(() => SFX.mayday(), 300); say("Mayday! A damaged ship is coming in fast. Land it for <b>double points</b>!", 3.5); }
+    if (dmg) { setTimeout(() => SFX.mayday(), 300); say(`Mayday! A damaged ship is coming in with <b>${fuelMax} seconds</b> of power. Land it before the clock runs out for <b>double points</b>!`, 4); }
     return true;
   }
   return false;
@@ -344,6 +442,7 @@ function spawnShip() {
 // ============================================================
 function update(dt) {
   G.time += dt;
+  G.carrierPhase = (G.carrierPhase + carrierRate() * dt) % 1;
   if (G.banner) { G.banner.t += dt; if (G.banner.t > G.banner.dur) G.banner = null; }
   updateFx(dt);
   if (G.over || G.cleared) { if (!G.menuShown && G.time - G.endAt > 1.8) { G.menuShown = true; G.cleared ? stageClearMenu() : gameOverMenu(); } return; }
@@ -366,6 +465,12 @@ function update(dt) {
     if (s.state === "incoming") { s.t -= dt; if (s.t <= 0) s.state = "fly"; continue; }
     if (s.state === "land") { landStep(s, dt, i); continue; }
     s.age += dt;
+    if (s.dmg && s.entered) {
+      const before = Math.ceil(s.fuel);
+      s.fuel -= dt;
+      if (s.fuel <= 5 && Math.ceil(s.fuel) !== before && s.fuel > 0) tone(1200, 0.07, "square", 0.05); // beep each second near the end
+      if (s.fuel <= 0) { lostMayday(s); return; }
+    }
     // quirks
     let speed = s.base;
     if (s.type === "hopper") speed *= 0.5 + 1.0 * Math.max(0, Math.sin(s.age * 3.4 + s.id));
@@ -381,12 +486,18 @@ function update(dt) {
     }
     if (s.lock && s.lock.zone.kind === "carrier" && dragging?.ship !== s && overDeck(s, zoneGeo(s.lock.zone))) { beginLanding(s); continue; }
     if (!s.path.length && s.lock && dragging?.ship !== s) {
-      if (s.lock.zone.kind !== "carrier") { beginLanding(s); continue; }
-      // chase the moving carrier's entry point
-      const g = zoneGeo(s.lock.zone), dx = g.ex - s.x, dy = g.ey - s.y, d = Math.hypot(dx, dy);
-      if (d < Math.max(6, s.r * 0.7)) { beginLanding(s); continue; }
-      if (d > S * 0.6) { s.lock = null; } // lost it: fly on and re-route
-      else { s.h += angDiff(s.h, Math.atan2(dy, dx)) * Math.min(1, dt * 10); const m = Math.min(d, step); s.x += Math.cos(s.h) * m; s.y += Math.sin(s.h) * m; step -= m; }
+      const zone = s.lock.zone;
+      if (zone.kind === "runway") { beginLanding(s); continue; }
+      const g = zoneGeo(zone);
+      const dx = (zone.kind === "carrier" ? g.ex : g.x) - s.x;
+      const dy = (zone.kind === "carrier" ? g.ey : g.y) - s.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < Math.max(6, s.r * 0.7)) { beginLanding(s); continue; }
+      s.h += angDiff(s.h, Math.atan2(dy, dx)) * Math.min(1, dt * 10);
+      const move = Math.min(distance, step);
+      s.x += dx / distance * move;
+      s.y += dy / distance * move;
+      step = 0;
     }
     if (step > 0) { s.x += Math.cos(s.h) * step; s.y += Math.sin(s.h) * step; }
     if (s.type === "gyro") { const w = 2.2, k = S * 0.03 * w * Math.cos(G.time * w + s.id) * dt; s.x -= Math.sin(s.h) * k; s.y += Math.cos(s.h) * k; s.spin += dt * 2.5; }
@@ -489,6 +600,20 @@ function crash(A, B) {
     G.nextSpawn = Math.max(G.nextSpawn, 1.5);
     say(pick(["Ouch! The pilots are okay, but that cost us.", "Mid-air bump! Keep them apart.", "Oh no. Somebody call the repair drones."]) + ` <b>${G.lives} ${G.lives === 1 ? "life" : "lives"} left.</b>`, 3);
   }
+  hud();
+}
+
+// A Mayday ship whose clock ran out goes down: costs a life like a crash
+function lostMayday(s) {
+  G.crashes++; G.lives--;
+  G.ships = G.ships.filter(o => o !== s);
+  for (let k = 0; k < 30; k++) { const a = Math.random() * TAU, v = 20 + Math.random() * 110;
+    G.fx.push({ x: s.x, y: s.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1.1, max: 1.1, size: 2 + Math.random() * 4, color: k % 2 ? "#ff5d7a" : "#ffd25d" }); }
+  G.ring = { x: s.x, y: s.y, t: G.time };
+  G.shake = 0.4; SFX.crash(); navigator.vibrate?.(200);
+  if (dragging?.ship === s) dragging = null;
+  if (G.lives <= 0) { G.over = true; G.endAt = G.time; SFX.over(); say("That Mayday ship ran out of power, and we're out of lives. Let's run that wave again.", 3); }
+  else { G.nextSpawn = Math.max(G.nextSpawn, 1.5); say(`The Mayday ship ran out of power before it could land. <b>${G.lives} ${G.lives === 1 ? "life" : "lives"} left.</b>`, 3); }
   hud();
 }
 
@@ -608,7 +733,7 @@ function paintGround(c, w, h, ST, zones, seed, full) {
   }
   if (full) {
     if (th === "earth") drawCity(c, R, zones);
-    else drawTaxiways(c, zones);
+    drawTaxiways(c, zones);
     for (const d of ST.deco || []) drawDeco(c, d);
   }
   const v = c.createRadialGradient(w / 2, h / 2, s * 0.3, w / 2, h / 2, Math.max(w, h) * 0.75);
@@ -617,31 +742,29 @@ function paintGround(c, w, h, ST, zones, seed, full) {
 }
 // Taxiways from every pad to the nearest runway
 function drawTaxiways(c, zones) {
-  const runs = zones.filter(z => z.kind === "runway").map(z => zoneGeo(z, 0));
-  if (!runs.length) return;
   for (const z of zones) {
     if (z.kind !== "pad") continue;
-    const g = zoneGeo(z, 0), hub = runs.reduce((a, b) => Math.hypot(a.x - g.x, a.y - g.y) < Math.hypot(b.x - g.x, b.y - g.y) ? a : b);
-    c.strokeStyle = "rgba(20,12,10,0.4)"; c.lineWidth = S * 0.055; c.lineCap = "round";
-    c.beginPath(); c.moveTo(g.x, g.y); c.lineTo(g.x, hub.y); c.lineTo(hub.x, hub.y); c.stroke();
-    c.strokeStyle = "rgba(255,210,93,0.4)"; c.lineWidth = 2; c.setLineDash([8, 7]);
-    c.beginPath(); c.moveTo(g.x, g.y); c.lineTo(g.x, hub.y); c.lineTo(hub.x, hub.y); c.stroke(); c.setLineDash([]);
+    const [home, bend, hub] = taxiway(z, zones).road;
+    c.lineCap = "round";
+    c.beginPath(); c.moveTo(home.x, home.y); c.lineTo(bend.x, bend.y); c.lineTo(hub.x, hub.y);
+    c.strokeStyle = "rgba(20,12,10,0.4)"; c.lineWidth = S * 0.055; c.stroke();
+    c.strokeStyle = "rgba(255,210,93,0.4)"; c.lineWidth = 2;
+    c.setLineDash([8, 7]); c.stroke(); c.setLineDash([]);
   }
 }
-// Earth: a street grid, a road under the carrier, and rooftops under the pads
+// Earth: a street grid and rooftops under the pads
 function drawCity(c, R, zones) {
   const road = S * 0.07;
   c.fillStyle = "rgba(20,28,32,0.55)";
   for (const fx of [0.34, 0.68]) c.fillRect(fx * W - road / 2, 0, road, H);
   for (const fy of [0.3, 0.56]) c.fillRect(0, fy * H - road / 2, W, road);
-  for (const z of zones) if (z.kind === "carrier") c.fillRect(0, z.y1 * H - S * 0.09, W, S * 0.18);
   c.strokeStyle = "rgba(255,210,93,0.35)"; c.lineWidth = 1.5; c.setLineDash([10, 10]);
   for (const fx of [0.34, 0.68]) { c.beginPath(); c.moveTo(fx * W, 0); c.lineTo(fx * W, H); c.stroke(); }
   for (const fy of [0.3, 0.56]) { c.beginPath(); c.moveTo(0, fy * H); c.lineTo(W, fy * H); c.stroke(); }
   c.setLineDash([]);
   for (const z of zones) {
     if (z.kind !== "pad") continue;
-    const g = zoneGeo(z, 0), half = g.r * 1.35, lift = S * 0.018;
+    const g = padHome(z), half = g.r * 1.35, lift = S * 0.018;
     c.fillStyle = "rgba(0,0,0,0.45)"; c.fillRect(g.x - half + lift * 1.4, g.y - half + lift * 1.8, half * 2, half * 2);
     c.fillStyle = "#3d5560"; c.fillRect(g.x - half, g.y - half + lift, half * 2, half * 2);
     const top = c.createLinearGradient(0, g.y - half, 0, g.y + half); top.addColorStop(0, "#9fb4bc"); top.addColorStop(1, "#6f8790");
@@ -729,7 +852,7 @@ function drawZone(c, z, g, t, pass, glow) {
       const wg = c.createLinearGradient(-g.len * 1.1, 0, 0, 0); wg.addColorStop(0, hexA(col, 0)); wg.addColorStop(1, hexA(col, 0.16));
       c.fillStyle = wg; c.beginPath(); c.ellipse(-g.len * 0.55, 0, g.len * 0.55, g.wid * 0.9, 0, 0, TAU); c.fill(); c.restore(); }
     c.rotate(g.ang);
-    const hl = g.len * 0.62, hw = g.wid * 1.25;
+    const hl = g.len * 0.56, hw = g.wid * 1.1; // hull a little tighter around the deck
     c.fillStyle = "rgba(0,0,0,0.4)"; c.beginPath(); c.ellipse(6, 8, hl, hw, 0, 0, TAU); c.fill();
     const hg = c.createLinearGradient(0, -hw, 0, hw); hg.addColorStop(0, "#8a5cc9"); hg.addColorStop(0.5, "#4b2a7a"); hg.addColorStop(1, "#2a1450");
     c.fillStyle = hg; c.beginPath(); c.ellipse(0, 0, hl, hw, 0, 0, TAU); c.fill();
@@ -842,13 +965,13 @@ function drawShip(c, type, r, h, spin, t) {
 }
 
 function drawRoute(s) {
-  const chasing = s.lock && s.lock.zone.kind === "carrier" && dragging?.ship !== s;
+  const chasing = s.lock && (s.lock.zone.kind === "carrier" || s.lock.zone === G.movingPad && G.wave >= 7) && dragging?.ship !== s;
   if (!s.path.length && !chasing) return;
   ctx.save();
   ctx.strokeStyle = hexA(s.lock ? "#5dff9b" : FAM[s.T.fam].color, 0.75); ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.setLineDash([2, 9]);
   ctx.beginPath(); ctx.moveTo(s.x, s.y); for (const p of s.path) ctx.lineTo(p.x, p.y);
   let e = s.path[s.path.length - 1];
-  if (chasing) { const g = zoneGeo(s.lock.zone); ctx.lineTo(g.ex, g.ey); e = { x: g.ex, y: g.ey }; } // the chase line follows the moving deck
+  if (chasing) { const g = zoneGeo(s.lock.zone); e = s.lock.zone.kind === "carrier" ? { x: g.ex, y: g.ey } : g; ctx.lineTo(e.x, e.y); }
   ctx.stroke(); ctx.setLineDash([]);
   if (s.lock) { ctx.fillStyle = "#5dff9b"; ctx.beginPath(); ctx.arc(e.x, e.y, 7, 0, TAU); ctx.fill();
     ctx.strokeStyle = "#0b2a1a"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(e.x - 3.5, e.y); ctx.lineTo(e.x - 1, e.y + 3); ctx.lineTo(e.x + 4, e.y - 3); ctx.stroke(); }
@@ -865,6 +988,23 @@ function drawIncoming(s, t) { // edge marker: where the next ship will appear
   ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(26, 0); ctx.lineTo(19, -6); ctx.lineTo(19, 6); ctx.closePath(); ctx.fill();
   ctx.restore();
   ctx.save(); ctx.translate(x, y); ctx.scale(0.45, 0.45); drawShip(ctx, s.type, s.r * 1.4, s.h, s.spin, t); ctx.restore();
+}
+
+// Mayday countdown: a ring that drains around the ship, and the seconds left above it
+function drawMaydayClock(s, t) {
+  const k = clamp(s.fuel / s.fuelMax, 0, 1), low = s.fuel <= 5, flash = low && Math.sin(t * 14) > 0;
+  const col = k > 0.5 ? "#ffd25d" : k > 0.25 ? "#ff9b5d" : "#ff5d7a", R = s.r * 1.75;
+  ctx.save(); ctx.translate(s.x, s.y);
+  ctx.strokeStyle = "rgba(10,14,30,0.6)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.stroke();
+  ctx.strokeStyle = flash ? "#ffffff" : col; ctx.lineWidth = 4; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.arc(0, 0, R, -PI / 2, -PI / 2 + TAU * k); ctx.stroke();
+  const y = -R - 11, label = s.entered ? Math.ceil(s.fuel) + "s" : "MAYDAY";
+  ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(label).width + 12;
+  ctx.fillStyle = flash ? "#ff5d7a" : "rgba(10,14,30,0.85)"; ctx.beginPath(); ctx.roundRect(-w / 2, y - 9, w, 18, 9); ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = flash ? "#fff" : col; ctx.fillText(label, 0, y + 1);
+  ctx.restore();
 }
 
 function drawStorm(t) {
@@ -922,6 +1062,11 @@ function draw(t) {
   ctx.save();
   if (G.shake) ctx.translate((Math.random() - 0.5) * G.shake * 16, (Math.random() - 0.5) * G.shake * 16);
   ctx.drawImage(bgCv, 0, 0, W, H);
+  ctx.strokeStyle = hexA(FAM.carrier.color, 0.4);
+  ctx.lineWidth = 2; ctx.setLineDash([5, 8]);
+  ctx.beginPath();
+  G.carrierLoop.points.forEach(({x,y},i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+  ctx.stroke(); ctx.setLineDash([]);
   const dragFam = dragging && !dragging.ship.lock ? dragging.ship.T.fam : null;
   for (const pass of [0, 1]) for (const z of G.zones) drawZone(ctx, z, zoneGeo(z), t, pass, z.fam === dragFam ? 0.55 + 0.35 * Math.sin(t * 8) : 0.25);
   drawStorm(t);
@@ -937,7 +1082,7 @@ function draw(t) {
     if (dragging?.ship === s) { ctx.strokeStyle = "rgba(255,255,255,0.7)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, s.r * 1.35, 0, TAU); ctx.stroke(); }
     drawShip(ctx, s.type, s.r, s.h, s.spin, t + s.id);
     ctx.restore();
-    if (s.dmg && s.state === "fly") { ctx.fillStyle = "#ff5d7a"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.fillText("MAYDAY", s.x, s.y - s.r * 1.6); }
+    if (s.dmg && s.state === "fly") drawMaydayClock(s, t);
   }
   for (const p of G.fx) {
     const a = Math.max(0, p.life / p.max);
@@ -1027,15 +1172,50 @@ function resetAsk() {
   openMenu(`<h2>Reset progress?</h2><p>This clears every secured stage and best wave on this device.</p>
     <button class="big" data-act="settings">Cancel</button><button class="big warn" data-act="resetDo">Reset</button>`);
 }
-function guideMenu(back) {
-  const rows = STAGES.map((st, i) => `<div class="guideStage">Stage ${i + 1} · ${st.name}</div>
-    <div class="ships">${st.ships.map(k => { const T = SHIPS[k], F = FAM[T.fam];
-      return `<article><canvas data-ship="${k}"></canvas><div><span class="fam" style="color:${F.color}">${F.name} · ${F.spot}</span><h3>${T.name}</h3><p>${T.note}</p></div></article>`; }).join("")}</div>`).join("");
-  openMenu(`<h2>Ship Guide</h2>
-    <p>Every ship belongs to a colour family and lands on the spot of the same colour.</p>
-    <div class="ships">${Object.values(FAM).map(F => `<article style="grid-template-columns:1fr"><div><span class="fam" style="color:${F.color}">${F.name} → ${F.spot}</span><p>${F.how}</p></div></article>`).join("")}</div>
-    ${rows}
-    <button class="big" data-act="${back}">Back</button>`);
+// Ship Guide: page 0 = the three ways to land, then one page per stage with its three ships drawn large
+const sizeLabel = r => r < 0.04 ? "Small" : r < 0.05 ? "Medium" : "Large";
+const speedLabel = v => v < 0.08 ? "Slow" : v < 0.11 ? "Medium" : v < 0.14 ? "Fast" : "Very fast";
+function guideMenu(back, page = 0) {
+  const pages = STAGES.length + 1, nav = `<div class="dots">${Array.from({ length: pages }, (_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="guide" data-arg="${back}|${page - 1}">◀ ${page === 1 ? "Landing" : STAGES[page - 2].name.replace(/^The /, "").split(",")[0]}</button>` : ""}
+      ${page < pages - 1 ? `<button class="big main" data-act="guide" data-arg="${back}|${page + 1}">${STAGES[page].name.replace(/^The /, "").split(",")[0]} ▶</button>` : ""}</div>
+    <button class="big" data-act="${back}">Close</button>`;
+  if (page === 0) {
+    openMenu(`<p class="kicker">Ship Guide · 1 of ${pages}</p><h2>Three ways to land</h2>
+      <p>Every ship belongs to a colour family and lands on the spot of the same colour.</p>
+      <div class="ships big-ships">${Object.entries(FAM).map(([k, F]) => `<article><canvas data-gzone="${k}"></canvas><div>
+        <span class="fam" style="color:${F.color}">${F.name}</span><h3>${F.spot[0].toUpperCase() + F.spot.slice(1)}</h3><p>${F.how}</p></div></article>`).join("")}</div>
+      ${nav}`, guideAnim);
+    return;
+  }
+  const st = STAGES[page - 1];
+  openMenu(`<p class="kicker">Ship Guide · ${page + 1} of ${pages}</p><h2>Stage ${page} · ${st.name}</h2>
+    <p>${st.brief}</p>
+    <div class="ships big-ships">${st.ships.map(k => { const T = SHIPS[k], F = FAM[T.fam];
+      return `<article><canvas data-gship="${k}"></canvas><div><span class="fam" style="color:${F.color}">${F.name} · ${F.spot}</span>
+        <h3>${T.name}</h3><p>${T.note}</p>
+        <div class="pills"><span>Size: ${sizeLabel(T.r)}</span><span>Speed: ${speedLabel(T.speed)}</span></div></div></article>`; }).join("")}</div>
+    ${nav}`, guideAnim);
+}
+function guideAnim(t) { // ships turn gently and landing spots animate on the guide pages
+  for (const cvs of $("box").querySelectorAll("canvas[data-gship], canvas[data-gzone]")) {
+    const n = 192; if (cvs.width !== n) { cvs.width = cvs.height = n; }
+    const c = cvs.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, n, n);
+    const g0 = c.createRadialGradient(n / 2, n / 2, 4, n / 2, n / 2, n / 2); g0.addColorStop(0, "#18244a"); g0.addColorStop(1, "#0b1228");
+    c.fillStyle = g0; c.fillRect(0, 0, n, n);
+    if (cvs.dataset.gship) {
+      const type = cvs.dataset.gship, k = Object.keys(SHIPS).indexOf(type);
+      c.translate(n / 2, n / 2 + Math.sin(t * 2 + k) * 3);
+      drawShip(c, type, n * 0.26, -PI / 2 + Math.sin(t * 0.8 + k) * 0.5, t * 1.5, t + k);
+    } else {
+      const fam = cvs.dataset.gzone, z = { kind: fam === "pad" ? "pad" : fam === "runway" ? "runway" : "carrier", fam };
+      const g = z.kind === "pad" ? { x: n / 2, y: n / 2, r: n * 0.3 }
+        : { x: n / 2 + (z.kind === "carrier" ? Math.sin(t * 0.8) * n * 0.08 : 0), y: n / 2, vx: z.kind === "carrier" ? Math.cos(t * 0.8) * 30 : 0, vy: 0,
+            len: n * (z.kind === "carrier" ? 0.5 : 0.62), wid: n * 0.17, ang: -PI / 2, dx: 0, dy: -1 };
+      if (z.kind === "runway") drawZone(c, z, g, t, 0, 0.3);
+      drawZone(c, z, g, t, 1, 0.3 + 0.2 * Math.sin(t * 3));
+    }
+  }
 }
 function pauseMenu() {
   openMenu(`<p class="kicker">${G.ST.name} · ${G.D.name}</p><h2>Paused</h2><p>Wave ${G.wave} of ${WAVES} · ${G.waveLanded}/${G.need} landed this wave</p>
@@ -1064,13 +1244,14 @@ function stageClearMenu() {
     <button class="big" data-act="stages">Stages</button>`);
 }
 
-// ---------- How to play: five short pages with live demos ----------
+// ---------- How to play: six short pages with live demos ----------
 const HOWTO = [
   { title: "Draw a route", text: "Touch a ship and drag to draw its route. It follows your line. Lead it to the spot that matches its <b>colour</b>.", demo: demoRoute },
   { title: "Runways", text: "<b style='color:var(--runway)'>Orange</b> runway ships must fly in <b>over the arrows</b>, heading the way they point. The line turns <b style='color:var(--good)'>green ✓</b> when the landing is set.", demo: demoRunway },
-  { title: "Pads and carriers", text: "<b style='color:var(--pad)'>Blue</b> hovercraft land on pads from any side. <b style='color:var(--carrier)'>Purple</b> ships land on a <b>moving carrier</b>: draw onto its deck over the arrows and the ship chases it in.", demo: demoCarrier },
+  { title: "Pads and carriers", text: "<b style='color:var(--pad)'>Blue</b> hovercraft land from any side. One pad starts moving in <b>wave 7</b>. <b style='color:var(--carrier)'>Purple</b> ships follow the carrier around the field once you draw over its deck arrows.", demo: demoCarrier },
   { title: "Keep them apart", text: "A <b style='color:var(--bad)'>red ring</b> means two ships are too close. If they touch they crash and you lose a <b style='color:var(--bad)'>♥ life</b>. Lose them all and you replay the wave.", demo: demoCrash },
-  { title: "Waves and stages", text: "Land the number of ships shown to clear each wave. Clear <b>10 waves</b> to secure a stage and unlock the next, with new ships. Tap <b>▶▶</b> to speed up.", demo: demoWaves },
+  { title: "Mayday ships", text: "From wave 4, <b style='color:var(--bad)'>damaged ships</b> trail smoke and carry a <b>countdown clock</b>. Land one before its clock hits zero for <b style='color:var(--gold)'>double points</b>. If time runs out, it goes down and you lose a ♥ life.", demo: demoMayday },
+  { title: "Waves and stages", text: "Land the number of ships shown to clear each wave. Clear <b>10 waves</b> to secure a stage and unlock the next, with new ships. Tap <b>▶▶</b> to speed up to 2× or 3×.", demo: demoWaves },
 ];
 function howtoMenu(page, back) {
   const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "deployNow";
@@ -1151,6 +1332,23 @@ function demoCrash(c, t, w, h) {
   c.font = "900 22px system-ui"; c.textAlign = "center"; c.fillStyle = "#ff5d7a";
   c.fillText(T < 2.4 ? "♥ ♥ ♥" : "♥ ♥ ♡", w / 2, h * 0.2);
 }
+function demoMayday(c, t, w, h) {
+  const T = t % 7, total = 18, g = { x: w * 0.78, y: h * 0.55, r: 30 };
+  drawZone(c, { kind: "pad", fam: "pad" }, g, t, 1, 0.3);
+  const pts = [[w * 0.1, h * 0.38], [w * 0.4, h * 0.36], [w * 0.55, h * 0.66], [g.x, g.y]];
+  const fly = clamp(T / 4.5, 0, 1), p = along(pts, fly), left = Math.max(0, total - T * 2.6);
+  if (fly < 1) dotted(c, pts, 1, "rgba(93,255,155,0.8)");
+  for (let k = 0; k < 6; k++) { const q = along(pts, Math.max(0, fly - k * 0.03)); c.fillStyle = `rgba(150,150,160,${0.35 - k * 0.05})`; c.beginPath(); c.arc(q.x - 6, q.y + 2, 4 + k, 0, TAU); c.fill(); }
+  const sc = T > 4.5 ? Math.max(0.5, 1 - (T - 4.5) * 0.6) : 1;
+  c.save(); c.translate(p.x, p.y); c.scale(sc, sc); c.globalAlpha = T > 5.6 ? Math.max(0, 1 - (T - 5.6) * 2) : 1;
+  drawShip(c, "hopper", 16, p.h, t * (T > 4.5 ? 6 : 1), t);
+  if (T < 4.5) { const k = left / total, col = k > 0.5 ? "#ffd25d" : k > 0.25 ? "#ff9b5d" : "#ff5d7a";
+    c.strokeStyle = col; c.lineWidth = 3.5; c.lineCap = "round"; c.beginPath(); c.arc(0, 0, 28, -PI / 2, -PI / 2 + TAU * k); c.stroke();
+    c.font = "900 12px system-ui"; c.textAlign = "center"; c.fillStyle = "rgba(10,14,30,0.85)"; c.beginPath(); c.roundRect(-16, -48, 32, 17, 8); c.fill();
+    c.fillStyle = col; c.fillText(Math.ceil(left) + "s", 0, -36); }
+  c.restore();
+  if (T > 4.6 && T < 6.2) { c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("+2 Mayday!", g.x, g.y - 40 - (T - 4.6) * 10); }
+}
 function demoWaves(c, t, w, h) {
   const T = t % 6, n = Math.min(6, Math.floor(T * 1.6)), x0 = w * 0.12, bw = w * 0.76;
   c.fillStyle = "#e6ecff"; c.font = "900 20px system-ui"; c.textAlign = "center";
@@ -1177,7 +1375,7 @@ const ACT = {
   deployNow: () => { newRun(pendingStage); closeMenu(); },
   cont: () => { const r = SAVE.run; SAVE.diff = r.diff; newRun(r.stage, r.wave); closeMenu(); },
   howto: arg => { const [back, page] = String(arg).split("|"); howtoMenu(+(page || 0), back); },
-  guide: back => guideMenu(back === "pause" ? "pause" : "title"),
+  guide: arg => { const [back, page] = String(arg).split("|"); guideMenu(back === "pause" ? "pause" : "title", +(page || 0)); },
   sound: () => { SAVE.sound = !SAVE.sound; save(); settingsMenu(); },
   sound2: () => { SAVE.sound = !SAVE.sound; save(); pauseMenu(); },
   pause: () => pauseMenu(),
@@ -1191,8 +1389,8 @@ function wireMenu() {
   for (const c of $("box").querySelectorAll("[data-ship]")) shipIcon(c, c.dataset.ship);
 }
 $("pauseBtn").onclick = () => { if (G && !G.over && !G.cleared) pauseMenu(); };
-function setFast(on) { fast = on; $("speedBtn").classList.toggle("on", on); $("speedBtn").textContent = on ? "2×" : "▶▶"; }
-$("speedBtn").onclick = () => { audio(); setFast(!fast); };
+function setFast(n) { fast = +n || 1; $("speedBtn").classList.toggle("on", fast > 1); $("speedBtn").textContent = fast > 1 ? fast + "×" : "▶▶"; }
+$("speedBtn").onclick = () => { audio(); setFast(fast >= 3 ? 1 : fast + 1); }; // ▶▶ → 2× → 3× → back to normal
 document.addEventListener("visibilitychange", () => { if (document.hidden && G && !G.over && !G.cleared && !paused) pauseMenu(); });
 
 // ============================================================
@@ -1203,6 +1401,7 @@ function resize() {
   W = window.innerWidth; H = window.innerHeight; S = Math.min(W, H, 560); DPR = Math.min(2.5, window.devicePixelRatio || 1);
   cv.width = W * DPR; cv.height = H * DPR;
   if (G && oW && oH) {
+    updateLandingPaths();
     for (const s of G.ships) { s.x *= W / oW; s.y *= H / oH; s.path.forEach(p => { p.x *= W / oW; p.y *= H / oH; }); }
     if (G.storm) { G.storm.x *= W / oW; G.storm.y *= H / oH; G.storm.r = S * TUNE.stormR; }
   }
@@ -1213,7 +1412,7 @@ resize();
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (G && !paused) { update(dt); if (fast && !G.over && !G.cleared) update(dt); }
+  if (G && !paused) for (let k = 0; k < fast && !(k && (G.over || G.cleared)); k++) update(dt);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
   if (G && G.talk > 0) G.talk -= dt;
   draw(now / 1000);
