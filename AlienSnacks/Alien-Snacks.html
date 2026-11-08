@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0c0612">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Alien Snacks</title>
+<style>
+  :root { --bg: #0c0612; --panel: #1a0e26; --line: #3e2858; --ink: #f3eaff; --dim: #b39cc9; --good: #5dff9b; --bad: #ff5d7a; --accent: #ff8bd0; --gold: #ffd25d; --cyan: #4fd1ff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 6px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+  #hud { width: 100%; max-width: 480px; display: flex; gap: 6px; align-items: stretch; }
+  .chip { background: rgba(26,14,38,0.9); border: 1px solid var(--line); border-radius: 12px; padding: 4px 10px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hStars { color: var(--gold); letter-spacing: 0.08em; }
+  #hStars i { color: #4a3a60; font-style: normal; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(26,14,38,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 12px; }
+  #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  #cv { display: block; border-radius: 16px; border: 1px solid var(--line); touch-action: none; }
+  #bubble { position: fixed; left: 50%; top: calc(60px + env(safe-area-inset-top)); transform: translate(-50%, -8px); max-width: min(92vw, 380px); background: #fff4fb; color: #2a0f2a;
+    border-radius: 14px; padding: 8px 12px; font-size: 15px; font-weight: 700; line-height: 1.3; box-shadow: 0 4px 16px rgba(0,0,0,0.45); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 4; }
+  #bubble.on { opacity: 1; transform: translate(-50%, 0); }
+  #bubble b { color: #c41f6d; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(8,3,14,0.8); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 400px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 40px; line-height: 1.05; background: linear-gradient(90deg, #ff8bd0, #ffd25d 60%, #5dff9b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 24px; margin-bottom: 6px; }
+  #box p { color: #e6d6f5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  #titleArt { width: 100%; height: 150px; display: block; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #2a1840; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #4a1a3e; border-color: #a03a7e; color: #ffd0ec; }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .stageCard { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .stageCard canvas { width: 64px; height: 64px; flex: none; border-radius: 12px; }
+  .stageCard span { flex: 1; min-width: 0; }
+  .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .levels .big { margin: 0; padding: 10px 2px; font-size: 22px; }
+  .levels .big small, .stars { color: var(--gold); font-size: 14px; letter-spacing: 0.06em; }
+  .levels .big small i, .stars i { color: #4a3a60; font-style: normal; }
+  .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; }
+  .bigStars i { color: #3e2858; font-style: normal; }
+  #howCv { width: 100%; height: 200px; display: block; border-radius: 12px; background: #120818; border: 1px solid #3e2858; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 18px; font-weight: 650; line-height: 1.3; padding: 7px 12px; background: #120818; border: 1px solid #3e2858; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; } .how b.p { color: var(--accent); } .how b.y { color: var(--gold); } .how b.c { color: var(--cyan); } .how b.r { color: var(--bad); } .how b.g { color: var(--good); }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #3e2858; }
+  .dots i.on { background: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small id="hStage">Oort Gate</small><span id="hLevel">Level 1</span></div>
+    <div class="chip"><small>Stars</small><span id="hStars">☆☆☆</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="retryBtn" aria-label="Restart level">↻</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="bubble"></div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN SNACKS — swipe to cut the ropes and drop each snack into a hungry alien's mouth.
+//  Four stages (the same worlds as the other Alien Arcade games), each with its own alien, snack and trick.
+//  The world is 360 x 640 units, scaled to fit the screen. Ropes use simple Verlet physics.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const LW = 360, LH = 640, GRAV = 820, SNACK_R = 20, LINK = 13, EAT_R = 34, ALIEN_S = 54; // lower gravity = slower, easier-to-read swings
+const PUFF_RANGE = 200, PUFF_SPEED = 420; // puffers: how far they reach and how hard they blow (units per second)
+
+// ---------- small drawing helpers ----------
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+  r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+function poly(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); }
+
+// ============================================================
+//  THE HUNGRY ALIENS. All drawn centred at (0,0), size s, with the mouth at (0, s*0.38).
+//  look = where the eye looks (-1..1), open = extra mouth opening (0..1)
+// ============================================================
+function mouthAndEye(c, s, t, open, look, eyeY, eyeR, pupil = "#10162c", iris = null) {
+  const lx = clamp(look.x, -1, 1) * eyeR * 0.45, ly = clamp(look.y, -1, 1) * eyeR * 0.35;
+  const blink = (t % 3.6) < 0.12;
+  c.fillStyle = "#fff"; oval(c, 0, eyeY, eyeR, blink ? eyeR * 0.12 : eyeR); c.fill();
+  if (!blink) { if (iris) { c.fillStyle = iris; circle(c, lx, eyeY + ly, eyeR * 0.55); c.fill(); } c.fillStyle = pupil; circle(c, lx, eyeY + ly, eyeR * (iris ? 0.25 : 0.45)); c.fill(); }
+  const m = 0.07 + 0.05 * Math.max(0, Math.sin(t * 2)) + 0.16 * open;
+  c.fillStyle = "#1a0408"; oval(c, 0, s * 0.38, s * 0.3, s * m * 2.2); c.fill();
+  c.save(); c.clip(); c.fillStyle = "#ff6f9a"; oval(c, 0, s * 0.38 + s * m * 1.6, s * 0.16, s * m); c.fill(); c.restore(); // tongue
+}
+function drawBlip(c, t, s, open, look) { // green one-eyed blob with an antenna
+  const sq = 1 + Math.sin(t * 3) * 0.03 + open * 0.05;
+  c.save(); c.scale(1 / sq, sq);
+  c.fillStyle = "rgba(0,0,0,0.3)"; oval(c, 0, s * 0.72, s * 0.6, s * 0.12); c.fill();
+  const g = c.createRadialGradient(-s * 0.2, -s * 0.25, s * 0.1, 0, 0, s * 0.75); g.addColorStop(0, "#b8ffcf"); g.addColorStop(1, "#1f9a54");
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, s * 0.62, PI, 0); c.lineTo(s * 0.62, s * 0.45); c.quadraticCurveTo(0, s * 0.8, -s * 0.62, s * 0.45); c.closePath(); c.fill();
+  c.strokeStyle = "#1f9a54"; c.lineWidth = s * 0.07; c.lineCap = "round"; c.beginPath(); c.moveTo(0, -s * 0.6); c.quadraticCurveTo(Math.sin(t * 2) * s * 0.1, -s * 0.8, 0, -s * 0.95); c.stroke();
+  c.fillStyle = "#ffd25d"; circle(c, 0, -s * 0.98, s * 0.09); c.fill();
+  c.restore();
+  mouthAndEye(c, s, t, open, look, -s * 0.12, s * 0.27);
+}
+function drawJelly(c, t, s, open, look) { // floating jellyfish with a single eye
+  c.strokeStyle = "#7ab8ff"; c.lineWidth = s * 0.08; c.lineCap = "round";
+  for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(k * s * 0.2, s * 0.5);
+    c.quadraticCurveTo(k * s * 0.2 + Math.sin(t * 3 + k) * s * 0.2, s * 0.8, k * s * 0.18 + Math.sin(t * 2.4 + k) * s * 0.12, s * 1.05); c.stroke(); }
+  const g = c.createRadialGradient(-s * 0.2, -s * 0.3, s * 0.1, 0, 0, s * 0.75); g.addColorStop(0, "#e0f0ff"); g.addColorStop(1, "#3a78d0");
+  c.fillStyle = g; c.beginPath(); c.arc(0, s * 0.05, s * 0.66, PI, 0); c.quadraticCurveTo(s * 0.6, s * 0.6, 0, s * 0.62); c.quadraticCurveTo(-s * 0.6, s * 0.6, -s * 0.66, s * 0.05); c.fill();
+  c.fillStyle = "rgba(255,255,255,0.25)"; for (const [x, y] of [[-0.35, -0.2], [0.35, -0.25], [0, -0.45]]) { circle(c, x * s, y * s, s * 0.07); c.fill(); }
+  mouthAndEye(c, s, t, open, look, -s * 0.12, s * 0.26);
+}
+function drawSwarm(c, t, s, open, look) { // pink fuzzy ball with little horns
+  c.fillStyle = "#c2407a";
+  for (const d of [-1, 1]) { poly(c, [[d * s * 0.32, -s * 0.48], [d * s * 0.5, -s * 0.95], [d * s * 0.14, -s * 0.58]]); c.fill(); }
+  c.fillStyle = "#ff8bd0";
+  c.beginPath(); for (let k = 0; k < 28; k++) { const a = k / 28 * TAU, rr = s * (0.66 + (k % 2) * 0.06 + Math.sin(t * 4 + k) * 0.01); c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + s * 0.05); } c.closePath(); c.fill();
+  const g = c.createRadialGradient(-s * 0.2, -s * 0.2, s * 0.05, 0, 0, s * 0.62); g.addColorStop(0, "rgba(255,255,255,0.35)"); g.addColorStop(1, "rgba(150,30,90,0.25)");
+  c.fillStyle = g; circle(c, 0, s * 0.05, s * 0.62); c.fill();
+  mouthAndEye(c, s, t, open, look, -s * 0.12, s * 0.26, "#10162c", "#ffd25d");
+}
+function drawQueen(c, t, s, open, look) { // Dr. Hive Queen from Dr Alien, without her doctor's outfit
+  const R = "#ff5d7a", excitement = open;
+  c.lineCap = "round";
+  for (let k = 0; k < 8; k++) {
+    const a = k * TAU / 8 + 0.2, x = Math.cos(a) * s * 0.6, y = Math.sin(a) * s * 0.6, L = s * 0.95, w = Math.sin(t * 3 + k) * (0.6 + 0.25 * excitement);
+    c.strokeStyle = shade(R, -0.45 - 0.1 * (k % 2)); c.lineWidth = s * 0.16;
+    const ex = x + Math.cos(a + w) * L, ey = y + Math.sin(a + w) * L;
+    c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a + w * 0.5) * L * 0.5, y + Math.sin(a + w * 0.5) * L * 0.5, ex, ey); c.stroke();
+    c.fillStyle = "#ffd0d8"; poly(c, [[ex - s * 0.04, ey], [ex + Math.cos(a + w) * s * 0.14, ey + Math.sin(a + w) * s * 0.14], [ex + s * 0.04, ey]]); c.fill();
+  }
+  const g = c.createRadialGradient(-s * 0.15, -s * 0.2, s * 0.1, 0, 0, s * 0.78); g.addColorStop(0, shade(R, 0.1)); g.addColorStop(1, shade(R, -0.55));
+  c.fillStyle = g; circle(c, 0, 0, s * 0.75); c.fill();
+  c.fillStyle = "#fff1f3"; circle(c, 0, -s * 0.18, s * 0.34); c.fill();
+  const lx = clamp(look.x, -1, 1) * s * 0.13, ly = clamp(look.y, -1, 1) * s * 0.1 - s * 0.18;
+  c.fillStyle = "#c41f3d"; circle(c, lx, ly, s * 0.18); c.fill(); c.fillStyle = "#120206"; oval(c, lx, ly, s * 0.05, s * 0.13); c.fill();
+  const m = 0.08 + 0.07 * Math.max(0, Math.sin(t * 2)) + 0.045 * excitement + 0.12 * open;
+  c.fillStyle = "#1a0408"; oval(c, 0, s * 0.38, s * 0.36, s * m * 2.2); c.fill();
+  c.save(); c.clip(); c.fillStyle = "#ffffff";
+  for (let k = 0; k < 6; k++) { const x = -s * 0.28 + k * s * 0.112; poly(c, [[x, s * 0.38 - s * m * 2], [x + s * 0.05, s * 0.38 - s * m * 0.6], [x + s * 0.1, s * 0.38 - s * m * 2]]); c.fill(); }
+  c.restore();
+}
+const ALIENS = { blip: drawBlip, jelly: drawJelly, swarm: drawSwarm, queen: drawQueen };
+
+// ============================================================
+//  THE SNACKS
+// ============================================================
+function drawSnack(c, kind, x, y, r, t) {
+  c.save(); c.translate(x, y); c.rotate(Math.sin(t * 2) * 0.08);
+  const glow = { comet: "rgba(79,209,255,0.2)", swirl: "rgba(255,184,77,0.2)", donut: "rgba(255,93,122,0.2)", cake: "rgba(255,210,93,0.25)" }[kind];
+  c.fillStyle = glow; circle(c, 0, 0, r * 1.6); c.fill();
+  if (kind === "comet") { // icy star candy with a little tail
+    c.fillStyle = "rgba(160,230,255,0.4)"; poly(c, [[-r * 0.3, -r * 0.4], [-r * 1.5, -r * 1.3], [-r * 0.6, -r * 0.1]]); c.fill();
+    const g = c.createRadialGradient(-r * 0.3, -r * 0.3, 1, 0, 0, r); g.addColorStop(0, "#ffffff"); g.addColorStop(0.5, "#9fe8ff"); g.addColorStop(1, "#2a8ad0");
+    c.fillStyle = g; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * TAU - PI / 2, rr = k % 2 ? r * 0.5 : r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } c.closePath(); c.fill();
+    c.strokeStyle = "#1a5a90"; c.lineWidth = 2; c.stroke();
+  } else if (kind === "swirl") { // orange and cream spiral lollipop
+    c.fillStyle = "#ffe6c8"; circle(c, 0, 0, r); c.fill(); c.strokeStyle = "#ff8a3d"; c.lineWidth = r * 0.28; c.beginPath();
+    for (let a = 0; a < TAU * 2.2; a += 0.2) { const rr = r * 0.88 * a / (TAU * 2.2); c.lineTo(Math.cos(a + t) * rr, Math.sin(a + t) * rr); } c.stroke();
+    c.strokeStyle = "#8a3a10"; c.lineWidth = 2; circle(c, 0, 0, r); c.stroke();
+  } else if (kind === "donut") { // red-rock donut with sprinkles
+    c.fillStyle = "#c06a48"; circle(c, 0, 0, r); c.fill(); c.fillStyle = "#ff8bd0"; circle(c, 0, -r * 0.05, r * 0.82); c.fill();
+    c.fillStyle = "#2a0e0a"; circle(c, 0, 0, r * 0.3); c.fill();
+    const sp = ["#5dff9b", "#4fd1ff", "#ffd25d", "#fff"]; for (let k = 0; k < 9; k++) { const a = k * 0.7, rr = r * 0.58; c.fillStyle = sp[k % 4]; c.save(); c.translate(Math.cos(a) * rr, Math.sin(a) * rr); c.rotate(a); c.fillRect(-3, -1, 6, 2); c.restore(); }
+    c.strokeStyle = "#6a2a14"; c.lineWidth = 2; circle(c, 0, 0, r); c.stroke();
+  } else { // golden hexagon honey cake
+    const g = c.createLinearGradient(0, -r, 0, r); g.addColorStop(0, "#fff0a0"); g.addColorStop(1, "#d08a10");
+    c.fillStyle = g; c.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * TAU + PI / 6; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); c.fill();
+    c.strokeStyle = "#8a5a08"; c.lineWidth = 2; c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.7)"; c.beginPath(); c.moveTo(-r * 0.6, -r * 0.2); c.quadraticCurveTo(0, -r * 0.55, r * 0.6, -r * 0.2); c.lineTo(r * 0.5, 0); c.quadraticCurveTo(0, -r * 0.25, -r * 0.5, 0); c.fill();
+    c.fillStyle = "#ff5d7a"; circle(c, 0, -r * 0.45, r * 0.16); c.fill();
+  }
+  c.restore();
+}
+function drawStar(c, x, y, r, t) {
+  c.save(); c.translate(x, y); c.rotate(Math.sin(t * 2 + x) * 0.2);
+  c.fillStyle = "rgba(255,210,93,0.25)"; circle(c, 0, 0, r * 1.5 + Math.sin(t * 4) * 2); c.fill();
+  c.fillStyle = "#ffd25d"; c.beginPath(); for (let k = 0; k < 10; k++) { const a = k / 10 * TAU - PI / 2, rr = k % 2 ? r * 0.45 : r; c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } c.closePath(); c.fill();
+  c.strokeStyle = "#fff6c8"; c.lineWidth = 1.5; c.stroke(); c.restore();
+}
+function drawPin(c, x, y) { c.fillStyle = "#3a2a50"; circle(c, x, y, 9); c.fill(); c.strokeStyle = "#ff8bd0"; c.lineWidth = 2.5; c.stroke(); c.fillStyle = "#ffd0ec"; circle(c, x, y, 3.5); c.fill(); }
+function drawHook(c, h, t) { // a grab ring: a pin with a dotted circle showing how close the snack must pass
+  if (!h.used) { c.save(); c.setLineDash([6, 7]); c.lineDashOffset = -t * 12; c.strokeStyle = "rgba(255,208,236,0.55)"; c.lineWidth = 2; circle(c, h.x, h.y, h.r); c.stroke(); c.restore();
+    c.fillStyle = "rgba(255,139,208,0.06)"; circle(c, h.x, h.y, h.r); c.fill(); }
+  drawPin(c, h.x, h.y);
+}
+function drawPuffer(c, p, t) { // a little green spore pod with a nozzle: tap it to blow
+  const sq = 1 + p.t * 0.8;
+  c.save(); c.translate(p.x, p.y); c.rotate(p.a);
+  c.fillStyle = "#2a8a54"; c.fillRect(8, -7 / sq, 18, 14 / sq);
+  c.fillStyle = "#5dff9b"; oval(c, 0, 0, 20 * sq, 18 / sq); c.fill();
+  c.strokeStyle = "#1f6a3e"; c.lineWidth = 2; c.stroke();
+  c.fillStyle = "#fff"; circle(c, -4, -5, 5); c.fill(); c.fillStyle = "#10162c"; circle(c, -3, -5, 2.4); c.fill();
+  c.restore();
+  if (!p.t) { c.fillStyle = `rgba(93,255,155,${0.25 + 0.2 * Math.sin(t * 5)})`; circle(c, p.x, p.y, 28); c.fill(); }
+}
+function drawCrystals(c, x0, y0, x1, y1, t) { // sharp Mars crystals: touching them shatters the snack
+  c.fillStyle = "#3a1018"; c.fillRect(x0, y0 + (y1 - y0) * 0.5, x1 - x0, (y1 - y0) * 0.5);
+  const n = Math.max(2, Math.round((x1 - x0) / 14));
+  for (let k = 0; k < n; k++) { const cx = x0 + (k + 0.5) * (x1 - x0) / n, hh = (y1 - y0) * (0.9 + 0.3 * Math.sin(k * 2.7)), w = (x1 - x0) / n * 0.55;
+    const g = c.createLinearGradient(cx - w, 0, cx + w, 0); g.addColorStop(0, "#ff5d7a"); g.addColorStop(0.5, "#ffd0d8"); g.addColorStop(1, "#a01a3a");
+    c.fillStyle = g; poly(c, [[cx - w, y1], [cx, y1 - hh - 6], [cx + w, y1]]); c.fill(); }
+  c.fillStyle = `rgba(255,93,122,${0.15 + 0.1 * Math.sin(t * 4)})`; c.fillRect(x0, y0 - 4, x1 - x0, y1 - y0 + 4);
+}
+
+// ============================================================
+//  STAGES & LEVELS
+//  pins: rope anchors (each one ties a rope to the snack); stars: 3 per level; eater: where the alien waits
+//  bubbles: [x, y] spore bubbles that float the snack up; spikes: [x0, y0, x1, y1] crystals to avoid
+// ============================================================
+const STAGES = [
+  { name: "The Oort Gate", short: "Oort Gate", alien: "blip", alienName: "Blip", snack: "comet", snackName: "Comet Candy", sky: ["#14284a", "#060c1c"], tile: "rgba(79,209,255,0.06)",
+    intro: "<b>Blip</b> is starving! Cut the ropes to drop the <b>Comet Candy</b> in its mouth.",
+    levels: [
+      { name: "First bite", tip: "<b>Swipe</b> across the rope to cut it!", snack: [180, 250], pins: [[180, 90]], stars: [[180, 340], [180, 410], [180, 470]], eater: [180, 548] },
+      { name: "Two ropes", tip: "Cut <b>both</b> ropes to drop it straight down.", snack: [180, 260], pins: [[80, 120], [280, 120]], stars: [[180, 330], [180, 400], [180, 470]], eater: [180, 548] },
+      { name: "Swing time", tip: "Cut <b>one rope</b>, let it swing, then cut the other!", snack: [180, 250], pins: [[50, 110], [310, 150]], stars: [[262, 300], [300, 380], [292, 452]], eater: [290, 548] },
+      { name: "Pick a side", tip: "Which rope first? The <b>stars</b> are on one side.", snack: [180, 230], pins: [[60, 100], [300, 100]], stars: [[70, 276], [140, 400], [180, 500]], eater: [180, 548] },
+      { name: "Grab ring", tip: "Fly through a <b>dotted ring</b>: it ties on a new rope!", snack: [220, 170], pins: [[100, 90]], hooks: [[180, 330, 90]], stars: [[130, 240], [180, 420], [180, 490]], eater: [180, 548] },
+      { name: "Ring ladder", tip: "Hop from <b>ring to ring</b> down to Blip.", snack: [180, 160], pins: [[180, 60]], hooks: [[100, 300, 95], [260, 420, 95]], stars: [[180, 240], [100, 395], [255, 515]], eater: [250, 556] },
+      { name: "Three ropes", tip: "Cut in the <b>right order</b> to swing toward Blip.", snack: [180, 240], pins: [[60, 110], [180, 70], [300, 110]], stars: [[120, 330], [90, 420], [80, 480]], eater: [80, 556] },
+      { name: "Long way round", tip: "Swing into the ring, then <b>let go</b> on the far side.", snack: [300, 200], pins: [[300, 80], [200, 80]], hooks: [[160, 320, 100]], stars: [[200, 236], [110, 380], [70, 480]], eater: [60, 556] },
+    ] },
+  { name: "Jupiter Storm", short: "Jupiter", alien: "jelly", alienName: "Jelly", snack: "swirl", snackName: "Storm Swirl", sky: ["#4a2a18", "#1a0c06"], tile: "rgba(255,184,77,0.06)",
+    intro: "<b>Jelly</b> loves <b>Storm Swirls</b>. Storm <b>bubbles</b> float snacks upward!",
+    levels: [
+      { name: "Float up", tip: "Drop it in the <b>bubble</b>. It floats up to Jelly!", snack: [180, 470], pins: [[60, 370], [300, 370]], stars: [[180, 540], [180, 330], [180, 236]], eater: [180, 110], bubbles: [[180, 572]] },
+      { name: "Pop it", tip: "<b>Tap the bubble</b> to pop it at the right moment.", snack: [180, 200], pins: [[180, 80]], stars: [[180, 280], [180, 130], [180, 460]], eater: [180, 548], bubbles: [[180, 330]] },
+      { name: "Swing and float", tip: "Swing the snack <b>into the bubble</b>.", snack: [20, 200], pins: [[110, 90]], stars: [[150, 228], [240, 300], [240, 190]], eater: [240, 96], bubbles: [[240, 400]] },
+      { name: "Ring in the clouds", tip: "Float into the <b>ring</b>, then swing over to Jelly.", snack: [180, 500], pins: [[180, 400]], bubbles: [[180, 590]], hooks: [[100, 220, 90]], stars: [[180, 330], [100, 310], [220, 460]], eater: [240, 556] },
+      { name: "Up and over", tip: "Up in the bubble, <b>grab the ring</b>, swing right.", snack: [70, 300], pins: [[70, 200]], bubbles: [[70, 450]], hooks: [[160, 180, 100]], stars: [[70, 380], [70, 240], [250, 330]], eater: [300, 548] },
+      { name: "Sky high", tip: "Float to the <b>top star</b>, then pop just in time!", snack: [180, 420], pins: [[180, 300]], bubbles: [[180, 520]], stars: [[180, 470], [180, 80], [180, 330]], eater: [180, 560] },
+      { name: "Two bubbles", tip: "Only <b>one bubble</b> leads to Jelly. Choose!", snack: [180, 200], pins: [[60, 90], [300, 90]], bubbles: [[90, 400], [280, 400]], stars: [[240, 280], [280, 200], [280, 330]], eater: [280, 96] },
+      { name: "Storm loop", tip: "Swing, float, <b>grab</b>, and let go.", snack: [200, 120], pins: [[60, 80]], bubbles: [[60, 330]], hooks: [[250, 250, 90]], stars: [[60, 200], [60, 260], [250, 160]], eater: [300, 556] },
+    ] },
+  { name: "Mars, the Red Wall", short: "Mars", alien: "swarm", alienName: "Swarm", snack: "donut", snackName: "Red Rock Donut", sky: ["#4a1c14", "#1a0806"], tile: "rgba(255,122,93,0.06)",
+    intro: "<b>Swarm</b> wants a <b>Red Rock Donut</b>. Keep it off the sharp <b>crystals</b>, and tap <b>puffers</b> to blow it around!",
+    levels: [
+      { name: "The gap", tip: "Drop it <b>through the gap</b> in the crystals.", snack: [180, 230], pins: [[180, 80]], stars: [[180, 320], [180, 470], [180, 520]], eater: [180, 560], spikes: [[40, 396, 148, 420], [212, 396, 320, 420]] },
+      { name: "Around the rocks", tip: "Swing it <b>around</b> the crystals.", snack: [180, 240], pins: [[60, 110], [300, 110]], stars: [[250, 330], [290, 420], [300, 480]], eater: [290, 556], spikes: [[110, 380, 230, 404]] },
+      { name: "Long swing", tip: "Let it swing <b>high</b> before you cut.", snack: [280, 140], pins: [[60, 150]], stars: [[150, 330], [240, 300], [290, 420]], eater: [292, 556], spikes: [[0, 600, 220, 640]] },
+      { name: "Puff!", tip: "<b>Tap the green puffer</b> to blow the snack sideways.", snack: [100, 220], pins: [[100, 90]], puffers: [[40, 420, 0]], stars: [[100, 300], [100, 400], [170, 520]], eater: [200, 556], spikes: [[40, 590, 150, 615]] },
+      { name: "Puff and swing", tip: "Puff it <b>high</b>, then cut over the gap.", snack: [60, 240], pins: [[60, 100]], puffers: [[20, 240, 0]], stars: [[150, 250], [220, 300], [290, 470]], eater: [290, 556], spikes: [[0, 450, 220, 475]] },
+      { name: "Ping pong", tip: "Puff it <b>right</b>, then puff it <b>back</b>.", snack: [180, 200], pins: [[180, 80]], puffers: [[30, 330, 0], [330, 520, 180]], stars: [[180, 300], [250, 420], [210, 520]], eater: [200, 556], spikes: [[130, 450, 230, 474]] },
+      { name: "Crystal cave", tip: "Drop through the gap, then <b>puff</b> around the rock.", snack: [180, 200], pins: [[60, 90], [300, 90]], puffers: [[330, 420, 180]], stars: [[180, 280], [180, 400], [70, 520]], eater: [70, 556], spikes: [[0, 330, 120, 354], [240, 330, 360, 354], [120, 480, 240, 504]] },
+      { name: "Swarm's maze", tip: "Ring, puff, cut. <b>Watch the crystals!</b>", snack: [300, 200], pins: [[300, 80]], hooks: [[120, 280, 90]], puffers: [[340, 300, 180]], stars: [[220, 290], [120, 380], [230, 400]], eater: [260, 456], spikes: [[0, 420, 140, 444], [200, 520, 360, 544]] },
+    ] },
+  { name: "Earth, Final Stand", short: "Earth", alien: "queen", alienName: "Hive Queen", snack: "cake", snackName: "Golden Hive Cake", sky: ["#123a32", "#081a16"], tile: "rgba(93,255,155,0.05)",
+    intro: "The <b>Hive Queen</b> herself is hungry. Everything you've learned, all at once!",
+    levels: [
+      { name: "Royal swing", tip: "Swing past the crystals to the Queen.", snack: [140, 230], pins: [[60, 100], [200, 70]], stars: [[200, 330], [260, 420], [290, 470]], eater: [290, 548], spikes: [[0, 430, 200, 452]] },
+      { name: "Bubble guard", tip: "Float it up, then <b>pop</b> it over the gap.", snack: [180, 420], pins: [[180, 320]], stars: [[180, 470], [180, 250], [180, 470 + 40]], eater: [180, 560], bubbles: [[180, 500]], spikes: [[30, 380, 140, 400], [220, 380, 330, 400]] },
+      { name: "Three ropes", tip: "Choose <b>which rope</b> to cut first.", snack: [180, 240], pins: [[60, 110], [180, 70], [300, 110]], stars: [[120, 330], [90, 420], [80, 480]], eater: [80, 556], spikes: [[140, 450, 330, 472]] },
+      { name: "Drift left", tip: "Float up, then <b>puff</b> the bubble toward the Queen.", snack: [180, 200], pins: [[180, 100]], bubbles: [[180, 360]], puffers: [[330, 200, 180]], stars: [[180, 300], [180, 180], [110, 130]], eater: [70, 96] },
+      { name: "Puff into bubble", tip: "Puff the falling snack <b>into the bubble</b>.", snack: [80, 220], pins: [[80, 90]], puffers: [[20, 330, 0]], bubbles: [[230, 420]], stars: [[80, 300], [160, 360], [230, 250]], eater: [230, 96], spikes: [[0, 600, 360, 640]] },
+      { name: "The gauntlet", tip: "Ring, gap, puff. <b>One step at a time.</b>", snack: [180, 180], pins: [[60, 80], [300, 80]], hooks: [[180, 340, 80]], puffers: [[340, 540, 180]], stars: [[180, 260], [180, 420], [120, 540]], eater: [100, 556], spikes: [[0, 470, 130, 494], [230, 470, 360, 494]] },
+      { name: "Crown jewels", tip: "Puff the bubble into a <b>ring</b> to swing past the crystals.", snack: [180, 160], pins: [[180, 60]], bubbles: [[180, 300]], hooks: [[60, 200, 90], [300, 200, 90]], puffers: [[20, 300, 0]], stars: [[180, 240], [270, 230], [320, 420]], eater: [300, 556], spikes: [[100, 430, 260, 454]] },
+      { name: "The Queen's feast", tip: "<b>Everything at once.</b> Take your time!", snack: [180, 220], pins: [[60, 100], [180, 60], [300, 100]], bubbles: [[60, 420]], hooks: [[300, 330, 80]], puffers: [[340, 520, 180]], stars: [[120, 300], [60, 380], [240, 520]], eater: [180, 556], spikes: [[110, 470, 250, 494]] },
+    ] },
+];
+
+// ---------- save ----------
+let SAVE = { stars: STAGES.map(st => st.levels.map(() => 0)), seenHelp: false };
+try { const s = JSON.parse(localStorage.getItem("alienSnacks.v1")); // keep old stars even when levels are added later
+  if (s && Array.isArray(s.stars)) { SAVE.seenHelp = !!s.seenHelp; SAVE.stars = STAGES.map((st, i) => st.levels.map((_, l) => +((s.stars[i] || [])[l]) || 0)); } } catch (e) {}
+const save = () => { try { localStorage.setItem("alienSnacks.v1", JSON.stringify(SAVE)); } catch (e) {} };
+const levelOpen = (s, l) => (s === 0 && l === 0) || (l > 0 ? SAVE.stars[s][l - 1] > 0 : SAVE.stars[s - 1].every(x => x > 0));
+const stageOpen = s => levelOpen(s, 0);
+const stageStars = s => SAVE.stars[s].reduce((a, b) => a + b, 0);
+
+// ============================================================
+//  PHYSICS: Verlet points joined by rope links
+// ============================================================
+let ST = STAGES[0], LV = ST.levels[0], si = 0, li = 0;
+let pts = [], ropes = [], snack = null, stars = [], bubbles = [], spikes = [], hooks = [], puffers = [], eater = null, state = "play", got = 0, t = 0, fx = [], eatT = 0, cutTrail = [], heldBy = null;
+function newLevel(s, l) {
+  si = s; li = l; ST = STAGES[s]; LV = ST.levels[l];
+  pts = []; ropes = []; fx = []; got = 0; state = "play"; eatT = 0; t = 0; cutTrail = []; heldBy = null; winShown = false;
+  snack = addPt(LV.snack[0], LV.snack[1], false);
+  for (const [px, py] of LV.pins) makeRope(px, py);
+  hooks = (LV.hooks || []).map(([x, y, r]) => ({ x, y, r, used: false }));
+  puffers = (LV.puffers || []).map(([x, y, deg]) => ({ x, y, a: deg * PI / 180, t: 0 }));
+  stars = LV.stars.map(([x, y]) => ({ x, y, got: false }));
+  bubbles = (LV.bubbles || []).map(([x, y]) => ({ x, y, r: 30, held: false, popped: false }));
+  spikes = (LV.spikes || []).map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 }));
+  eater = { x: LV.eater[0], y: LV.eater[1], s: ALIEN_S };
+  $("hStage").textContent = ST.short; $("hLevel").textContent = `Level ${l + 1}`; hudStars();
+  say(LV.tip, 4);
+}
+function addPt(x, y, pinned) { const p = { x, y, px: x, py: y, pinned }; pts.push(p); return p; }
+function makeRope(px, py, len = 0) { // a chain of points from the pin to the snack (len = rope length; 0 = exactly as far as the snack)
+  const pin = addPt(px, py, true), dist = Math.hypot(snack.x - px, snack.y - py), L = Math.max(len, dist), n = Math.max(3, Math.ceil(L / LINK)), links = [];
+  let prev = pin;
+  for (let k = 1; k < n; k++) { const p = addPt(px + (snack.x - px) * k / n, py + (snack.y - py) * k / n, false); links.push({ a: prev, b: p, len: L / n, alive: true }); prev = p; }
+  links.push({ a: prev, b: snack, len: L / n, alive: true });
+  ropes.push({ links, cut: false });
+}
+const attached = () => ropes.some(r => !r.cut);
+function cutRope(r, at) { // cutting a rope frees the snack from it completely; the loose end falls away
+  if (r.cut) return; r.cut = true;
+  r.links[at].alive = false; r.links[r.links.length - 1].alive = false;
+}
+function physics(dt) {
+  for (const p of pts) {
+    if (p.pinned) continue;
+    let g = GRAV;
+    if (p === snack && heldBy) g = -GRAV * 0.3; // floating up inside a bubble
+    const vx = (p.x - p.px) * 0.995, vy = (p.y - p.py) * 0.995;
+    p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + g * dt * dt;
+  }
+  for (let it = 0; it < 14; it++) for (const r of ropes) for (const l of r.links) {
+    if (!l.alive) continue;
+    const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy) || 0.001;
+    if (d <= l.len) continue; // ropes pull but don't push
+    const diff = (d - l.len) / d, wa = l.a.pinned ? 0 : (l.a === snack ? 0.15 : 1), wb = l.b.pinned ? 0 : (l.b === snack ? 0.15 : 1), sum = wa + wb || 1;
+    l.a.x += dx * diff * wa / sum; l.a.y += dy * diff * wa / sum; l.b.x -= dx * diff * wb / sum; l.b.y -= dy * diff * wb / sum;
+  }
+  if (heldBy) { // in a bubble: drift up gently, damp sideways motion
+    const vx = clamp((snack.x - snack.px) * 0.9, -1.5, 1.5), vy = clamp(snack.y - snack.py, -3, 3);
+    snack.px = snack.x - vx; snack.py = snack.y - vy; heldBy.x = snack.x; heldBy.y = snack.y;
+  }
+}
+function update(dt) {
+  t += dt;
+  for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 600 * dt; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); }
+  if (state === "eaten") { eatT += dt; if (eatT > 1.4 && !winShown) { winShown = true; winMenu(); } return; }
+  if (state !== "play") return;
+  physics(dt); grabCheck();
+  for (const p of puffers) p.t = Math.max(0, p.t - dt);
+  for (const s of stars) if (!s.got && Math.hypot(s.x - snack.x, s.y - snack.y) < SNACK_R + 14) { s.got = true; got++; hudStars(); tone(660 + got * 220, 0.15, "triangle", 0.08); burst(s.x, s.y, "#ffd25d", 12); }
+  if (!heldBy && !attached()) for (const b of bubbles) if (!b.popped && Math.hypot(b.x - snack.x, b.y - snack.y) < b.r) {
+    b.held = true; heldBy = b; snack.py = snack.y; tone(520, 0.3, "sine", 0.06, 1.8); say("Floating! <b>Tap the bubble</b> to pop it.", 2.2); break;
+  }
+  for (const k of spikes) if (snack.x + SNACK_R * 0.7 > k.x0 && snack.x - SNACK_R * 0.7 < k.x1 && snack.y + SNACK_R * 0.7 > k.y0 && snack.y - SNACK_R * 0.7 < k.y1) {
+    state = "lost"; burst(snack.x, snack.y, "#ff8bd0", 22); tone(140, 0.4, "sawtooth", 0.07, 0.5); say("Crunch! The crystals shattered the snack.", 2.5); setTimeout(loseMenu, 900); return;
+  }
+  const mx = eater.x, my = eater.y + eater.s * 0.38;
+  if (Math.hypot(snack.x - mx, snack.y - my) < EAT_R) { // into the mouth!
+    state = "eaten"; eatT = 0; heldBy = null; burst(mx, my, "#ff8bd0", 18); [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.09, 0, i * 0.08));
+    SAVE.stars[si][li] = Math.max(SAVE.stars[si][li], got); save();
+    say(got === 3 ? `<b>Delicious!</b> ${ST.alienName} loved it!` : "<b>Yum!</b> Can you get every star?", 2.5); return;
+  }
+  // a snack still on a rope may swing off the edge and come back, so only a free snack can be lost
+  if (!attached() && (snack.y > LH + 60 || snack.y < -60 || snack.x < -60 || snack.x > LW + 60)) {
+    state = "lost"; tone(180, 0.4, "sawtooth", 0.06, 0.5); setTimeout(loseMenu, 600);
+  }
+}
+function grabCheck() { // grab rings: when the snack passes inside one, it ties on a fresh rope
+  for (const h of hooks) if (!h.used && Math.hypot(snack.x - h.x, snack.y - h.y) < h.r) {
+    h.used = true; makeRope(h.x, h.y, h.r); tone(440, 0.12, "triangle", 0.07, 1.5); burst(snack.x, snack.y, "#ffd0ec", 8);
+    if (heldBy) popBubble(heldBy);
+  }
+}
+function puff(p) { // a puffer blows the snack away from it, stronger when close
+  p.t = 0.35; tone(220, 0.18, "sawtooth", 0.04, 0.5);
+  const dx = snack.x - p.x, dy = snack.y - p.y, d = Math.hypot(dx, dy), ax = Math.cos(p.a), ay = Math.sin(p.a);
+  for (let k = 0; k < 10; k++) fx.push({ x: p.x + ax * 20, y: p.y + ay * 20, vx: ax * (220 + Math.random() * 120) + (Math.random() - 0.5) * 80, vy: ay * (220 + Math.random() * 120) + (Math.random() - 0.5) * 80 - 40, life: 0.5, col: "rgba(220,255,230,0.9)" });
+  if (d > PUFF_RANGE || (dx * ax + dy * ay) / (d || 1) < 0.55) return; // out of reach, or not in front of it
+  const v = PUFF_SPEED * (1 - 0.5 * d / PUFF_RANGE) / 60; snack.px -= ax * v; snack.py -= ay * v;
+}
+let winShown = false;
+function burst(x, y, col, n) { for (let k = 0; k < n; k++) { const a = Math.random() * TAU, v = 80 + Math.random() * 160; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, life: 0.7, col }); } }
+function popBubble(b) { b.held = false; b.popped = true; if (heldBy === b) heldBy = null; burst(b.x, b.y, "#4fd1ff", 14); tone(900, 0.08, "square", 0.05); }
+
+// ---------- cutting: swipe across a rope; tap a bubble to pop it ----------
+function segHit(ax, ay, bx, by, cx, cy, dx, dy) {
+  const d = (bx - ax) * (dy - cy) - (by - ay) * (dx - cx); if (Math.abs(d) < 1e-9) return false;
+  const u = ((cx - ax) * (dy - cy) - (cy - ay) * (dx - cx)) / d, v = ((cx - ax) * (by - ay) - (cy - ay) * (bx - ax)) / d;
+  return u >= 0 && u <= 1 && v >= 0 && v <= 1;
+}
+let K = 1, lastP = null;
+const toWorld = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / K, y: (e.clientY - r.top) / K }; };
+cv.addEventListener("pointerdown", e => {
+  audio(); if (state !== "play" || paused) return; cv.setPointerCapture(e.pointerId);
+  const p = toWorld(e); lastP = p; cutTrail = [{ ...p, life: 0.25 }];
+  for (const b of bubbles) if (!b.popped && Math.hypot(p.x - b.x, p.y - b.y) < b.r + 14) { popBubble(b); return; }
+  for (const f of puffers) if (Math.hypot(p.x - f.x, p.y - f.y) < 34) { puff(f); return; }
+});
+cv.addEventListener("pointermove", e => {
+  if (!lastP || state !== "play" || paused) return;
+  const p = toWorld(e);
+  for (const r of ropes) { if (r.cut) continue; r.links.forEach((l, i) => { if (!r.cut && l.alive && segHit(lastP.x, lastP.y, p.x, p.y, l.a.x, l.a.y, l.b.x, l.b.y)) {
+    cutRope(r, i); tone(1400, 0.06, "square", 0.04); burst((l.a.x + l.b.x) / 2, (l.a.y + l.b.y) / 2, "#ffd0ec", 6); } }); }
+  cutTrail.push({ ...p, life: 0.25 }); lastP = p;
+});
+addEventListener("pointerup", () => { lastP = null; });
+
+// ============================================================
+//  DRAWING
+// ============================================================
+function drawBackdrop(c, k, st) {
+  const g = c.createLinearGradient(0, 0, 0, LH * k); g.addColorStop(0, st.sky[0]); g.addColorStop(1, st.sky[1]); c.fillStyle = g; c.fillRect(0, 0, LW * k, LH * k);
+  c.strokeStyle = st.tile; c.lineWidth = 1;
+  for (let y = 0; y < LH; y += 40) { c.beginPath(); c.moveTo(0, y * k); c.lineTo(LW * k, y * k); c.stroke(); }
+  for (let x = 0; x < LW; x += 40) { c.beginPath(); c.moveTo(x * k, 0); c.lineTo(x * k, LH * k); c.stroke(); }
+  let s = 7 + STAGES.indexOf(st) * 31; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 50; i++) { c.fillStyle = `rgba(255,255,255,${0.15 + R() * 0.4})`; c.fillRect(R() * LW * k, R() * LH * k, 1.5, 1.5); }
+}
+function drawScene(c, k, tt) {
+  drawBackdrop(c, k, ST);
+  c.save(); c.scale(k, k);
+  for (const sp of spikes) drawCrystals(c, sp.x0, sp.y0, sp.x1, sp.y1, tt);
+  for (const h of hooks) drawHook(c, h, tt);
+  for (const p of puffers) drawPuffer(c, p, tt);
+  // the hungry alien: its eye follows the snack, and its mouth opens as the snack gets close
+  const dx = snack.x - eater.x, dy = snack.y - eater.y, near = clamp(1 - Math.hypot(dx, dy) / 260, 0, 1);
+  c.save(); c.translate(eater.x, eater.y + (state === "eaten" ? Math.sin(eatT * 18) * 3 : 0));
+  ALIENS[ST.alien](c, tt, eater.s, state === "eaten" ? Math.max(0, 1 - eatT * 2) : near, { x: dx / 120, y: dy / 120 }); c.restore();
+  // ropes (still tied ones, and loose ends falling away)
+  c.lineCap = "round";
+  for (const r of ropes) for (const l of r.links) { if (!l.alive) continue; c.strokeStyle = "#8a5a2a"; c.lineWidth = 5; c.beginPath(); c.moveTo(l.a.x, l.a.y); c.lineTo(l.b.x, l.b.y); c.stroke();
+    c.strokeStyle = "#d9a060"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(l.a.x, l.a.y); c.lineTo(l.b.x, l.b.y); c.stroke(); }
+  for (const p of pts) if (p.pinned) drawPin(c, p.x, p.y);
+  for (const s of stars) if (!s.got) drawStar(c, s.x, s.y, 14, tt);
+  for (const b of bubbles) if (!b.popped) { c.fillStyle = "rgba(79,209,255,0.14)"; circle(c, b.x, b.y, b.r); c.fill(); c.strokeStyle = "rgba(180,240,255,0.8)"; c.lineWidth = 2.5; c.stroke();
+    c.fillStyle = "rgba(255,255,255,0.6)"; oval(c, b.x - b.r * 0.35, b.y - b.r * 0.45, b.r * 0.25, b.r * 0.12, -0.6); c.fill(); }
+  if (state === "play") drawSnack(c, ST.snack, snack.x, snack.y, SNACK_R, tt);
+  else if (state === "eaten" && eatT < 0.25) drawSnack(c, ST.snack, lerp(snack.x, eater.x, eatT * 4), lerp(snack.y, eater.y + eater.s * 0.38, eatT * 4), SNACK_R * (1 - eatT * 3), tt);
+  for (const p of fx) { c.globalAlpha = Math.max(0, p.life / 0.7); c.fillStyle = p.col; c.fillRect(p.x - 2.5, p.y - 2.5, 5, 5); } c.globalAlpha = 1;
+  if (cutTrail.length > 1) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 3; c.beginPath(); cutTrail.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke(); }
+  c.restore();
+}
+function draw(tt) {
+  const d = Math.min(3, devicePixelRatio || 1); ctx.setTransform(d, 0, 0, d, 0, 0);
+  for (let i = cutTrail.length - 1; i >= 0; i--) { cutTrail[i].life -= 1 / 60; if (cutTrail[i].life <= 0) cutTrail.splice(i, 1); }
+  drawScene(ctx, K, tt);
+}
+const starStr = n => "★".repeat(n) + `<i>${"★".repeat(3 - n)}</i>`;
+function hudStars() { $("hStars").innerHTML = starStr(got); }
+
+// ---------- speech bubble & sound ----------
+let bubbleT = 0;
+function say(html, secs = 3) { $("bubble").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
+let AC = null;
+function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
+function tone(f, dur, type = "sine", vol = 0.08, slideTo = 0, delay = 0) { if (!AC) return; const s = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, s); if (slideTo) o.frequency.exponentialRampToValueAtTime(f * slideTo, s + dur);
+  g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); o.connect(g).connect(AC.destination); o.start(s); o.stop(s + dur + 0.05); }
+
+// ============================================================
+//  MENUS
+// ============================================================
+let menuAnim = null, paused = true;
+function openMenu(html, anim = null) { paused = true; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-stage]")) stageIcon(c, +c.dataset.stage); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); last = performance.now(); }
+function stageIcon(cvs, s) { // the stage's alien with its snack
+  const c = cvs.getContext("2d"), n = 128; cvs.width = cvs.height = n; const st = STAGES[s];
+  const g = c.createLinearGradient(0, 0, 0, n); g.addColorStop(0, st.sky[0]); g.addColorStop(1, st.sky[1]); c.fillStyle = g; c.fillRect(0, 0, n, n);
+  c.save(); c.translate(n * 0.46, n * 0.58); ALIENS[st.alien](c, 1, n * 0.3, 0.6, { x: 0.6, y: -0.6 }); c.restore();
+  drawSnack(c, st.snack, n * 0.8, n * 0.22, n * 0.11, 1);
+  if (!stageOpen(s)) { c.fillStyle = "rgba(8,3,14,0.65)"; c.fillRect(0, 0, n, n); c.fillStyle = "#e6d6f5"; c.font = "900 40px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 14); }
+}
+function titleMenu() {
+  openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Snacks</h1>
+    <p>Hungry aliens on every world. <b>Cut the ropes</b> and drop each snack into their mouths.</p>
+    ${STAGES.map((st, s) => `<button class="big stageCard" data-act="stage" data-arg="${s}" ${stageOpen(s) ? "" : "disabled"}><canvas data-stage="${s}"></canvas>
+      <span>${s + 1} · ${st.name}<small>${stageOpen(s) ? `Feed <b>${st.alienName}</b> · ${st.snackName} · <span class="stars">${stageStars(s)}/${st.levels.length * 3} ★</span>` : `Finish ${STAGES[s - 1].short} to unlock`}</small></span></button>`).join("")}
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim);
+}
+function titleAnim(tt) { // all four hungry aliens, bobbing
+  const cvs = $("titleArt"); if (!cvs) return; const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+  const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
+  STAGES.forEach((st, i) => { const x = w * (0.14 + i * 0.24), y = h * 0.6 + Math.sin(tt * 2 + i) * 4;
+    c.save(); c.translate(x, y); ALIENS[st.alien](c, tt + i, h * 0.2, 0.4 + 0.4 * Math.sin(tt * 2 + i), { x: Math.sin(tt + i), y: -0.4 }); c.restore();
+    drawSnack(c, st.snack, x, h * 0.16 + Math.sin(tt * 3 + i) * 3, h * 0.07, tt); });
+}
+function stageMenu(s) {
+  const st = STAGES[s];
+  openMenu(`<p class="kicker">Stage ${s + 1} of ${STAGES.length}</p><h2>${st.name}</h2>
+    <canvas data-stage="${s}" style="width:110px;height:110px;border-radius:16px"></canvas>
+    <p>${st.intro}</p>
+    <div class="levels">${st.levels.map((L, l) => `<button class="big ${levelOpen(s, l) && !SAVE.stars[s][l] ? "main" : ""}" data-act="play" data-arg="${s}|${l}" ${levelOpen(s, l) ? "" : "disabled"}>${levelOpen(s, l) ? l + 1 : "🔒"}<small>${starStr(SAVE.stars[s][l])}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`);
+}
+function winMenu() {
+  const nextL = li + 1 < ST.levels.length ? [si, li + 1] : si + 1 < STAGES.length && SAVE.stars[si].every(x => x > 0) ? [si + 1, 0] : null;
+  openMenu(`<p class="kicker">${ST.name} · Level ${li + 1}</p><h2>Yum!</h2>
+    <div class="bigStars">${starStr(got)}</div>
+    <p>${got === 3 ? `A perfect snack for <b>${ST.alienName}</b>!` : `${ST.alienName} is fed. Try again for all three stars.`}</p>
+    ${nextL ? `<button class="big main" data-act="play" data-arg="${nextL[0]}|${nextL[1]}">${nextL[0] !== si ? `Next stage: ${STAGES[nextL[0]].short} ▶` : "Next level ▶"}</button>`
+      : si + 1 === STAGES.length && li + 1 === ST.levels.length ? `<p><b>Every alien is fed!</b> Go back for any missing stars.</p>` : ""}
+    <button class="big" data-act="play" data-arg="${si}|${li}">Play again</button>
+    <button class="big" data-act="stage" data-arg="${si}">Levels</button>`);
+}
+function loseMenu() {
+  if (state !== "lost") return;
+  openMenu(`<p class="kicker">${ST.name} · Level ${li + 1}</p><h2>Missed!</h2>
+    <p>${LV.tip}</p>
+    <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
+    <button class="big" data-act="stage" data-arg="${si}">Levels</button>`);
+}
+
+// ---------- How to play: four short pages with demos ----------
+const HOWTO = [
+  { title: "Cut the rope", lines: ["<b>Swipe</b> across a rope to <b>cut it</b>", "The snack <b>swings and falls</b>"], demo: demoCut },
+  { title: "Feed the alien", lines: ["Drop the snack in its <b class='p'>mouth</b>", "Catch <b class='y'>stars</b> on the way: up to <b class='y'>3</b>"], demo: demoFeed },
+  { title: "Grab rings", lines: ["Pass through a <b class='p'>dotted ring</b>", "It ties on a <b>new rope</b>"], demo: demoRing },
+  { title: "Bubbles", lines: ["A <b class='c'>bubble</b> floats the snack <b>up</b>", "<b>Tap</b> it to <b>pop</b> it"], demo: demoBubble },
+  { title: "Puffers", lines: ["<b>Tap</b> a <b class='g'>green puffer</b>", "It <b>blows</b> the snack away from it"], demo: demoPuffer },
+  { title: "Crystals", lines: ["<b class='r'>Sharp crystals</b> shatter snacks", "<b>Swing around</b> them"], demo: demoCrystal },
+];
+function demoRing(c, tt, w, h) { // the snack falls past a ring, gets tied on, and swings
+  const T = tt % 4, hx = w * 0.6, hy = 50, r = 70, x0 = w * 0.28;
+  let sx, sy, tied = false;
+  if (T < 0.9) { sx = x0; sy = 20 + 160 * T * T; } // falling
+  else { tied = true; const a = -0.8 * Math.cos((T - 0.9) * 2.6) * Math.exp(-(T - 0.9) * 0.4); sx = hx + Math.sin(a) * r * 1.2; sy = hy + Math.cos(a) * r * 1.2; }
+  drawHook(c, { x: hx, y: hy, r: tied ? 0 : r, used: tied }, tt);
+  if (tied) rope(c, hx, hy, sx, sy);
+  drawSnack(c, "comet", sx, sy, 15, tt);
+  label(c, tied ? "tied on! now it swings" : "fall through the ring", w * 0.5, h - 12, "#ff8bd0");
+}
+function demoPuffer(c, tt, w, h) { // a falling snack gets blown sideways into the alien
+  const T = tt % 4, px = 40, py = h * 0.5, puffAt = 0.75;
+  const sx = T < puffAt ? w * 0.3 : w * 0.3 + (T - puffAt) * 110, sy = Math.min(h - 50, 20 + 120 * T * T * 0.6);
+  c.save(); c.translate(w * 0.8, h - 50); drawSwarm(c, tt, 30, T > 2 ? 0.8 : 0.3, { x: -0.6, y: -0.4 }); c.restore();
+  drawPuffer(c, { x: px, y: py, a: 0, t: T > puffAt && T < puffAt + 0.35 ? puffAt + 0.35 - T : 0 }, tt);
+  if (T > puffAt && T < puffAt + 0.5) for (let k = 0; k < 6; k++) { c.fillStyle = "rgba(220,255,230,0.8)"; circle(c, px + 30 + (T - puffAt) * 220 + k * 9, py + Math.sin(k * 2) * 8, 3); c.fill(); }
+  if (T > puffAt - 0.3 && T < puffAt + 0.1) finger(c, px + 4, py + 4, T > puffAt - 0.05);
+  if (sx < w * 0.8 - 6) drawSnack(c, "donut", sx, sy, 15, tt);
+  label(c, T < puffAt ? "tap the puffer..." : "whoosh!", w * 0.5, 20, "#5dff9b");
+}
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
+  const done = first ? "start" : back === "game" ? "resume" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+      if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+      const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.fillStyle = "#1a0c24"; c.fillRect(0, 0, w, h); p.demo(c, tt, w, h); });
+}
+function rope(c, x0, y0, x1, y1) { c.lineCap = "round"; c.strokeStyle = "#8a5a2a"; c.lineWidth = 5; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); c.strokeStyle = "#d9a060"; c.lineWidth = 2.5; c.stroke(); }
+function finger(c, x, y, down) { c.fillStyle = down ? "rgba(255,139,208,0.35)" : "rgba(255,255,255,0.22)"; circle(c, x, y, 16); c.fill(); c.fillStyle = down ? "#ff8bd0" : "#fff"; circle(c, x, y, 7); c.fill(); }
+function label(c, text, x, y, col) { c.fillStyle = col; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText(text, x, y); }
+function demoCut(c, tt, w, h) {
+  const T = tt % 4, px = w * 0.5, py = 20, cutAt = 1.4, k = Math.max(0, T - cutAt), sy = T < cutAt ? 110 + Math.sin(tt * 2) * 3 : 110 + 300 * k * k;
+  drawPin(c, px, py);
+  if (T < cutAt) rope(c, px, py, px, sy); else rope(c, px, py, px, 60);
+  drawSnack(c, "comet", px, sy, 18, tt);
+  const fx = T < cutAt ? w * 0.2 + (T / cutAt) * w * 0.6 : w * 0.8, fy = 70; finger(c, fx, fy, T > 0.4 && T < cutAt + 0.1);
+  if (T > 0.4 && T < cutAt + 0.2) { c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 3; c.beginPath(); c.moveTo(w * 0.2 + 0.4 / cutAt * w * 0.6, fy); c.lineTo(Math.min(fx, w * 0.8), fy); c.stroke(); }
+  label(c, T < cutAt ? "swipe across the rope" : "snip!", w * 0.5, h - 12, "#ffd25d");
+}
+function demoFeed(c, tt, w, h) {
+  const T = tt % 4.5, k = Math.min(1, T / 2.2), sx = w * 0.22 + k * w * 0.48, sy = 30 + k * k * (h - 90);
+  c.save(); c.translate(w * 0.72, h - 62); drawBlip(c, tt, 34, T > 2.2 ? Math.max(0, 1 - (T - 2.2) * 2) : k, { x: -0.6 + k * 0.6, y: -0.6 + k }); c.restore();
+  [[0.33, 0.26], [0.47, 0.5], [0.58, 0.72]].forEach(([fx, fy]) => { if (k < fx + 0.12) drawStar(c, w * 0.22 + fx * w * 0.48 + 6, 30 + fy * fy * (h - 90) + 6, 10, tt); });
+  if (T < 2.25) drawSnack(c, "comet", sx, sy, 15, tt); else if (T < 3.6) label(c, "Yum! ★★★", w * 0.4, 50, "#ff8bd0");
+}
+function demoBubble(c, tt, w, h) {
+  const T = tt % 6, bx = w * 0.4, rise = Math.max(0, T - 0.8), by = Math.max(70, h - 40 - rise * 40), popped = T > 3.2, fall = Math.max(0, T - 3.2);
+  c.save(); c.translate(w * 0.78, h - 58); drawJelly(c, tt, 30, popped ? 0.8 : 0.3, { x: -0.8, y: -0.5 }); c.restore();
+  const sx = popped ? bx + fall * 70 : bx, sy = popped ? by + fall * fall * 140 : by;
+  if (!popped) { c.fillStyle = "rgba(79,209,255,0.14)"; circle(c, bx, by, 26); c.fill(); c.strokeStyle = "rgba(180,240,255,0.8)"; c.lineWidth = 2.5; c.stroke(); }
+  if (sy < h + 20 && !(popped && fall > 1.6)) drawSnack(c, "swirl", sx, sy, 15, tt);
+  if (T > 2.6 && T < 3.3) finger(c, bx + 4, by + 4, T > 2.95);
+  label(c, popped ? "pop! down it goes" : "floating up...", w * 0.4, 22, "#4fd1ff");
+}
+function demoCrystal(c, tt, w, h) {
+  const T = tt % 5; drawCrystals(c, w * 0.12, h - 60, w * 0.5, h - 36, tt);
+  c.save(); c.translate(w * 0.8, h - 62); drawSwarm(c, tt, 32, T > 2.6 ? 0.8 : 0.3, { x: -0.6, y: -0.6 }); c.restore();
+  const swing = Math.min(1, T / 2.4), ang = -0.9 + swing * 1.8, px = w * 0.3, py = 16, L = 90;
+  const sx = T < 1.5 ? px + Math.sin(ang) * L : px + Math.sin(-0.9 + 1.5 / 2.4 * 1.8) * L + (T - 1.5) * 120, sy = T < 1.5 ? py + Math.cos(ang) * L : py + Math.cos(-0.9 + 1.5 / 2.4 * 1.8) * L + (T - 1.5) ** 2 * 120;
+  drawPin(c, px, py); if (T < 1.5) rope(c, px, py, sx, sy);
+  if (sy < h - 50 || sx > w * 0.6) drawSnack(c, "donut", Math.min(sx, w * 0.8), Math.min(sy, h - 40), 15, tt);
+  label(c, "swing past the crystals", w * 0.45, h - 8, "#ff5d7a");
+}
+
+const ACT = {
+  stage: s => stageMenu(+s),
+  play: arg => { const [s, l] = String(arg).split("|").map(Number); pending = [s, l]; if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("first", 0); } else ACT.start(); },
+  start: () => { newLevel(pending[0], pending[1]); closeMenu(); },
+  title: () => titleMenu(),
+  help: arg => { const [back, page] = String(arg).split("|"); helpMenu(back, +(page || 0)); },
+  resume: () => closeMenu(),
+};
+let pending = [0, 0];
+$("helpBtn").onclick = () => { audio(); if ($("overlay").classList.contains("hidden")) helpMenu("game", 0); };
+$("retryBtn").onclick = () => { audio(); newLevel(si, li); closeMenu(); };
+$("menuBtn").onclick = () => { audio(); stageMenu(si); };
+
+// ============================================================
+//  LOOP
+// ============================================================
+function resize() {
+  const st = $("stage"), w = st.clientWidth, h = st.clientHeight, d = Math.min(3, devicePixelRatio || 1);
+  K = Math.max(0.3, Math.min(w / LW, h / LH));
+  cv.style.width = LW * K + "px"; cv.style.height = LH * K + "px"; cv.width = Math.round(LW * K * d); cv.height = Math.round(LH * K * d);
+}
+addEventListener("resize", resize); if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = now;
+  if (!paused) { acc += dt; while (acc >= 1 / 60) { acc -= 1 / 60; update(1 / 60); } }
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
+  draw(now / 1000);
+  if (menuAnim) menuAnim(now / 1000);
+  requestAnimationFrame(frame);
+}
+resize(); newLevel(0, 0); $("bubble").classList.remove("on"); bubbleT = 0;
+titleMenu();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
