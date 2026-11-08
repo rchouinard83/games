@@ -205,6 +205,7 @@
   #ovBox h2 { margin: 0 0 10px; font-size: 22px; }
   #ovBox p { color: var(--muted); margin: 0 0 14px; line-height: 1.4; font-size: 14px; }
   #ovBox .big { display: block; width: 100%; margin: 8px 0; padding: 12px; font-size: 17px; }
+  .stage-stars { color: var(--gold); letter-spacing: 0.08em; white-space: nowrap; }
   #ovBox .big small { font-weight: 500; color: var(--muted); font-size: 12px; }
   #ovBox .sel { outline: 2px solid var(--accent); background: #243058; }
   #overlay.tower-guide { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
@@ -1172,7 +1173,7 @@ function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 
-const defaultProfile = () => ({ unlocked: {}, endlessBest: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false, seenDeploymentHint: false });
+const defaultProfile = () => ({ unlocked: {}, campaignBest: {}, endlessBest: {}, autoStart: 15, sound: true, seenIntro: false, seenTutorial: false, seenDeploymentHint: false });
 let P = Object.assign(defaultProfile(), lsGet(KEY_PROFILE) || {}, { sound: true });
 delete P.points; delete P.research; // left over from the removed Research Lab
 const AUTO_OPTIONS = [10, 15, 30, 0]; // seconds before the next wave starts by itself; 0 = off
@@ -1817,7 +1818,11 @@ function update(dt) {
     if (e.type === "tank") step = tankStep(e, i, step);
     if (e.flying) {
       const dx = EXIT.x + 0.5 - e.x, dy = EXIT.y + 0.5 - e.y, L = Math.hypot(dx, dy);
-      if (L <= step) { leak(i); continue; }
+      if (L <= step) {
+        leak(i);
+        if (S.over) return;
+        continue;
+      }
       e.x += dx / L * step; e.y += dy / L * step; if (Math.abs(dx) > 0.01 * L) e.face = dx > 0 ? 1 : -1;
       e.mx = dx / L; e.my = dy / L; easeLane(e, dt);
       continue;
@@ -1826,7 +1831,11 @@ function update(dt) {
       const dx = e.tx + 0.5 - e.x, dy = e.ty + 0.5 - e.y, L = Math.hypot(dx, dy);
       if (L > step) { e.x += dx / L * step; e.y += dy / L * step; if (Math.abs(dx) > 0.01 * L) e.face = dx > 0 ? 1 : -1; if (L > 0.001) { e.mx = dx / L; e.my = dy / L; } break; }
       e.x = e.tx + 0.5; e.y = e.ty + 0.5; step -= L;
-      if (e.tx === EXIT.x && e.ty === EXIT.y) { leak(i); break; }
+      if (e.tx === EXIT.x && e.ty === EXIT.y) {
+        leak(i);
+        if (S.over) return;
+        break;
+      }
       chooseNext(e, dx, dy);
     }
     easeLane(e, dt);
@@ -2024,13 +2033,13 @@ function floatText(x, y, text, color, big) {
 function leak(i) {
   const e = S.enemies[i];
   S.enemies.splice(i, 1);
-  const lost = e.def.leak || 1;
+  const lost = Math.min(S.lives, e.def.leak || 1);
   S.lives -= lost;
   S.baseHit = 0.4;
   floatText(EXIT.x + 0.5, EXIT.y + 0.2, `−${lost}♥`, "#ff5d7a", true);
   if (!S.leaked) { S.leaked = true; toast("An enemy reached your base! −" + lost + "♥"); }
   S.fx.push({ kind: "flash", life: 0.25, max: 0.25 });
-  if (S.lives <= 0) { S.lives = 0; gameOver(); }
+  if (S.lives === 0) gameOver();
   else playSound("leak");
   updateHud();
 }
@@ -2049,6 +2058,7 @@ function checkWaveClear() {
     toast(`Wave ${w} cleared  +${bonus}◆`);
     return false;
   });
+  // Score only after the last wave resolves, including any enemies that reached the base.
   if (S.wave >= VICTORY_WAVE && !S.won && !S.pendingClear.length) victory();
   if (S.pendingClear.length !== pending) updateHud();
   else updateWaveBar();
@@ -2062,8 +2072,27 @@ function recordEndlessClear(wave) {
   saveProfile();
 }
 
+const STAGE_RATINGS = [{ hearts: 18, gold: 100 }, { hearts: 12, gold: 50 }];
+const stageStars = stars => `<span class="stage-stars" role="img" aria-label="${stars} of 3 stars">${"★".repeat(stars)}${"☆".repeat(3 - stars)}</span>`;
+const bestStage = (map, diff) => P.campaignBest[map]?.[diff];
+
+function scoreStage() {
+  const hearts = S.lives, gold = S.gold;
+  const score = hearts * 100 + gold;
+  const stars = 1 + STAGE_RATINGS.filter(rating => hearts >= rating.hearts && gold >= rating.gold).length;
+  const previous = bestStage(S.map, S.diff);
+  const best = {
+    score: Math.max(score, previous?.score ?? 0),
+    stars: Math.max(stars, previous?.stars ?? 0),
+  };
+  (P.campaignBest[S.map] ??= {})[S.diff] = best;
+  return { hearts, gold, score, stars, best, newBest: !previous || score > previous.score };
+}
+
 function victory() {
+  if (S.over || S.won || S.lives <= 0) return;
   S.won = true;
+  const result = scoreStage();
   const i = S.map, unlockedNow = maxDiff(i) <= S.diff, hasNext = i + 1 < WORLDS.length;
   if (unlockedNow) P.unlocked[i] = S.diff + 1;
   if (hasNext) P.campaignCheckpoint = { map: i + 1, diff: S.diff };
@@ -2073,8 +2102,14 @@ function victory() {
   saveRun();
   const btns = [];
   if (hasNext) btns.push({ label: `Next: ${WORLDS[i + 1].name} ▶`, act: "nextworld", main: true });
-  btns.push({ label: "Keep going (endless)", act: "endless", main: !hasNext }, { label: "Main menu", act: "menu" });
+  btns.push({ label: "Keep going (endless)", act: "endless", main: !hasNext }, { label: "Main menu", act: "menu" },
+    { label: arcadeLabel, act: "arcade" });
   const scenes = debriefScene(i, btns);
+  scenes[0].body.unshift(
+    `${stageStars(result.stars)} · <b>Score ${result.score.toLocaleString()}</b>${result.newBest ? " · New high score!" : ""}<br>
+    ${result.hearts} hearts · ${result.gold} gold<br>
+    Best: ${stageStars(result.best.stars)} · ${result.best.score.toLocaleString()}`
+  );
   if (!hasNext) scenes[0].body.push("Campaign complete.");
   if (unlockedNow) scenes[0].body.push(`Difficulty ${S.diff + 1} unlocked for ${WORLDS[i].name}.`);
   const debrief = () => playCine(scenes, r => {
@@ -2083,7 +2118,8 @@ function victory() {
     else {
       if (!hasNext) lsDel(KEY_RUN);
       S.started = false;
-      mainMenu();
+      if (r === "arcade") ACT.arcade();
+      else mainMenu();
     }
   });
   if (!hasNext) playCine(ENDING, debrief); else debrief();
@@ -2121,7 +2157,8 @@ function gameOver() {
     <p>You survived ${Math.max(0, S.wave - 1)} wave${S.wave - 1 === 1 ? "" : "s"} on ${MAPS[S.map].name} (D${S.diff}).</p>
     <p><b>Third defeat.</b> Fall back to ${WORLDS[S.map - 1].name} and clear it again to return here with a fresh attempt count.</p>
     <button class="big" data-act="fallback">Fall back to ${WORLDS[S.map - 1].name} ▶</button>
-    <button class="big" data-act="main">Main menu</button>`);
+    <button class="big" data-act="main">Main menu</button>
+    ${arcadeButton}`);
     return;
   }
   openMenu(`<h2>Relay Lost</h2>
@@ -2132,7 +2169,8 @@ function gameOver() {
     ${setback ? `<p>${setback.left ? `Defeats until fallback: <b>${setback.left} of ${CAMPAIGN_RETRIES}</b>` : `<b>Last chance:</b> lose again and you fall back to ${WORLDS[S.map - 1].name}.`}</p>` : ""}
     ${rewind ? `<p>Your towers, gold, and base health have been restored to the start of Wave ${rewind.wave + 1}.</p>` : ""}
     <button class="big" data-act="retry">${rewind ? `Replay Wave ${rewind.wave + 1}` : "Try again"}</button>
-    <button class="big" data-act="main">Main menu</button>`);
+    <button class="big" data-act="main">Main menu</button>
+    ${arcadeButton}`);
 }
 
 // ============================================================
@@ -4787,6 +4825,8 @@ cv.addEventListener("pointerdown", ev => {
 //  MENUS
 // ============================================================
 let campaignMap = 0, campaignDiff = 1;
+const arcadeLabel = "← Back to Alien Arcade";
+const arcadeButton = `<button class="big" data-act="arcade">${arcadeLabel}</button>`;
 
 function openMenu(html, splash = false) {
   if (S) { S.menu = true; S.ghost = null; drag = null; }
@@ -4817,9 +4857,28 @@ function mainMenu() {
       <button data-act="story">Story</button>
       <button data-act="guide" data-arg="main">Tower Guide</button>
       <button id="menuSound" data-act="sound" data-arg="main">${soundLabel()}</button>
+      <button data-act="campaignRecords">Campaign Records</button>
       <button data-act="records">Endless Records</button>
       <button data-act="resetPrompt">Reset Progress</button>
-    </div>`, true);
+    </div>
+    ${arcadeButton}`, true);
+}
+
+function campaignRecordsMenu() {
+  const rows = WORLDS.map(({ name }, map) => {
+    const records = Object.entries(P.campaignBest[map] ?? {});
+    const scores = records.map(([diff, best]) =>
+      `D${diff} · ${stageStars(best.stars)} · ${best.score.toLocaleString()} points`).join("<br>");
+    return `<p><strong>${name}</strong><br>${scores || "No scored wins yet."}</p>`;
+  }).join("");
+  const [three, two] = STAGE_RATINGS;
+  openMenu(`<h2>Campaign Records</h2>
+    <p>100 points per heart + 1 per gold.<br>
+    3 stars: ${three.hearts}+ hearts and ${three.gold}+ gold.<br>
+    2 stars: ${two.hearts}+ hearts and ${two.gold}+ gold.<br>
+    1 star: Win the stage.</p>
+    ${rows}
+    <button class="big" data-act="main">Back</button>`);
 }
 
 function endlessRecordsMenu() {
@@ -4836,7 +4895,7 @@ function endlessRecordsMenu() {
 
 function resetProgressMenu() {
   openMenu(`<h2>Reset progress?</h2>
-    <p>This clears your saved run, unlocked difficulties, and game settings on this device.</p>
+    <p>This clears your saved run, records, unlocked difficulties, and game settings on this device.</p>
     <button class="big" data-act="main">Cancel</button>
     <button class="big" data-act="resetProgress">Reset Progress</button>`);
 }
@@ -4850,7 +4909,7 @@ function showCampaignDeploy(map, diff = 1) {
 }
 
 function newGameMenu() {
-  const world = WORLDS[campaignMap], d = campaignDiff;
+  const world = WORLDS[campaignMap], d = campaignDiff, best = bestStage(campaignMap, d);
   openMenu(`<h2>Campaign</h2>
     <h3>World ${campaignMap + 1} of ${WORLDS.length} · ${world.name}</h3>
     <p>${world.desc}</p>
@@ -4859,6 +4918,7 @@ function newGameMenu() {
       <button data-act="dplus" ${d >= maxDiff(campaignMap) ? "disabled" : ""}>+</button></div>
     <p>${VICTORY_WAVE} waves, ending with a boss · Enemy HP ×${diffMul(campaignMap, d).toFixed(2).replace(/0$/, "")}${d >= SECOND_PORTAL_DIFF ? " · 2 portals" : ""}<br>
       Lose a wave and replay the previous one.${campaignMap > 0 ? ` ${CAMPAIGN_RETRIES - (P.retries?.map === campaignMap ? P.retries.used : 0)} of ${CAMPAIGN_RETRIES} defeats remaining before you fall back a world.` : ""}</p>
+    ${best ? `<p>Best: ${stageStars(best.stars)} · ${best.score.toLocaleString()} points</p>` : ""}
     <button class="big" data-act="start" style="background:#1d4a3a;border-color:#2f7a5c;color:var(--good)">Deploy</button>
     <button class="big" data-act="main">Back</button>`);
 }
@@ -4873,7 +4933,8 @@ function pauseMenu() {
     <button class="big" data-act="waves" data-arg="pause">Wave Info</button>
     <button class="big" data-act="howtoPause">How to play</button>
     <button class="big" data-act="guide" data-arg="pause">Tower Guide</button>
-    <button class="big" data-act="quit">Save &amp; quit to menu</button>`);
+    <button class="big" data-act="quit">Save &amp; quit to menu</button>
+    ${arcadeButton}`);
 }
 
 // ============================================================
@@ -5569,6 +5630,7 @@ function enterFullscreen() {
 function autoFullscreen() { if (isTouch()) enterFullscreen(); } // phones/tablets only, never on desktop
 
 const ACT = {
+  arcade: () => location.assign("../AlienGameLauncher/AlienGameLauncher.html"),
   main: () => mainMenu(),
   newmenu: () => showCampaignDeploy(0),
   resetPrompt: () => resetProgressMenu(),
@@ -5625,6 +5687,7 @@ const ACT = {
   howto: () => playTutorial(() => mainMenu()),
   howtoPause: () => playTutorial(() => pauseMenu()),
   story: () => playIntro(() => mainMenu()),
+  campaignRecords: campaignRecordsMenu,
   records: endlessRecordsMenu,
   cont: () => {
     const run = lsGet(KEY_RUN), next = nextSavedWorld(run);
@@ -5871,7 +5934,7 @@ function frame(now) {
     requestAnimationFrame(frame);
     return;
   }
-  if (!S.menu && !S.over) for (let k = 0; k < S.speed; k++) update(dt);
+  for (let k = 0; k < S.speed && !S.menu && !S.over; k++) update(dt);
   tickCountdown(dt);
   if (S.selEnemy && ++enemyInfoTick % 8 === 0) refreshBar(); // live HP readout
   updateStartCard();
