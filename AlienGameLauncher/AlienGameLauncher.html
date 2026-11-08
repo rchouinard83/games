@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Fourteen games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Fifteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -108,6 +108,8 @@ const GAMES = [
     desc: "Lob goo across alien skylines in a turn-by-turn duel. Read the wind, feel each planet's gravity, and blast craters." },
   { name: "Alien Rocks", tag: "Space shooter", color: "#4fd1ff", href: "AlienRocks/Alien-Rocks.html", art: artRocks,
     desc: "Drift your saucer through neon rock fields. Split the rocks, dodge alien hunters, and take down each stage's mothership." },
+  { name: "Alien Crossing", tag: "Hopper", color: "#5dff9b", href: "AlienCrossing/Alien-Crossing.html", art: artCrossing,
+    desc: "Hop across busy space lanes, ride drifting platforms over hazards, and dodge fast trains to reach the landing pad." },
 ];
 
 // ---------- shared little drawings ----------
@@ -135,6 +137,29 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artCrossing(c, w, h, t) { // Blip hops up across a road and a canal of barges toward the waiting saucer
+  const rows = 6, rh = h / rows, lane = (i, col) => { c.fillStyle = col; c.fillRect(0, h - (i + 1) * rh, w, rh); };
+  lane(0, "#3f8f52"); lane(1, "#26303e"); lane(2, "#26303e"); lane(3, "#367d47"); lane(4, "#1f6aa8"); lane(5, "#1a2a4a");
+  c.fillStyle = "rgba(255,255,255,0.3)"; for (let x = 0; x < w; x += 40) c.fillRect(x + 8, h - 2 * rh - 1, 20, 2);
+  c.strokeStyle = "rgba(255,255,255,0.25)"; c.lineWidth = 1.5; c.beginPath(); for (let x = 0; x <= w; x += 10) c.lineTo(x, h - 4.5 * rh + Math.sin(x * 0.06 + t * 2) * 2.5); c.stroke();
+  const car = (x, y, len, dir, col) => { const hw = len / 2; c.fillStyle = "rgba(255,240,170,0.18)"; c.beginPath(); c.moveTo(x + dir * hw, y - 5); c.lineTo(x + dir * (hw + 14), y - 10); c.lineTo(x + dir * (hw + 14), y + 10); c.lineTo(x + dir * hw, y + 5); c.fill();
+    c.fillStyle = col; c.beginPath(); c.roundRect(x - hw, y - rh * 0.3, len, rh * 0.6, 6); c.fill(); c.fillStyle = "#1a2a44"; c.fillRect(dir > 0 ? x + hw - 11 : x - hw + 4, y - rh * 0.2, 7, rh * 0.4);
+    c.fillStyle = "#fff6b0"; c.beginPath(); c.arc(x + dir * (hw - 2), y - rh * 0.18, 2, 0, TAU); c.arc(x + dir * (hw - 2), y + rh * 0.18, 2, 0, TAU); c.fill();
+    c.fillStyle = "#ff3a5a"; c.fillRect(dir > 0 ? x - hw : x + hw - 2, y - rh * 0.22, 2, 4); c.fillRect(dir > 0 ? x - hw : x + hw - 2, y + rh * 0.12, 2, 4); };
+  const wrap = (v, n) => ((v % n) + n) % n;
+  for (let k = 0; k < 3; k++) car(wrap(t * 60 + k * w * 0.42, w + 80) - 40, h - 1.5 * rh, 34, 1, ["#ff5d7a", "#ffd25d", "#4fd1ff"][k]);
+  for (let k = 0; k < 2; k++) car(w + 40 - wrap(t * 85 + k * w * 0.6, w + 80), h - 2.5 * rh, 52, -1, ["#4fd1ff", "#ff5d7a"][k]);
+  for (let k = 0; k < 3; k++) { const bx = wrap(t * 35 + k * w * 0.4, w + 120) - 60; c.fillStyle = "#8a5a30"; c.beginPath(); c.roundRect(bx - 32, h - 4.5 * rh - rh * 0.32, 64, rh * 0.64, 5); c.fill(); c.fillStyle = "#ff5d7a"; c.fillRect(bx - 32, h - 4.5 * rh - 1, 64, 2); }
+  // the saucer waiting at the top
+  const sx = w / 2, sy = h - 5.5 * rh + Math.sin(t * 2) * 2;
+  c.fillStyle = "rgba(93,255,155,0.25)"; c.beginPath(); c.moveTo(sx - 14, sy + 4); c.lineTo(sx + 14, sy + 4); c.lineTo(sx + 34, h - 5 * rh); c.lineTo(sx - 34, h - 5 * rh); c.fill();
+  c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(sx, sy, 34, 8, 0, 0, TAU); c.fill(); c.fillStyle = "rgba(190,235,255,0.7)"; c.beginPath(); c.ellipse(sx, sy - 4, 13, 9, 0, PI, TAU); c.fill();
+  // Blip hopping up one lane at a time
+  const T = t % 5, step = Math.min(5, Math.floor(T / 0.8)), k = (T % 0.8) / 0.8, hop = k < 0.35 && step < 5 ? Math.sin(k / 0.35 * PI) * 8 : 0;
+  const row = step + (k < 0.35 && step < 5 ? k / 0.35 : 0);
+  eyeAlien(c, w * 0.42, h - (row + 0.5) * rh - hop, rh * 0.3, "#5dff9b", t);
+  if (step >= 5) { c.fillStyle = "#ffd25d"; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText("Made it!", w * 0.75, h - 5.5 * rh + 5); }
+}
 function artRocks(c, w, h, t) { // a neon saucer drifts and blasts a big rock, which splits in two
   sky(c, w, h, "#081a36", "#01040b", 97);
   const ng = c.createRadialGradient(w * 0.7, h * 0.35, 0, w * 0.7, h * 0.35, h * 0.9); ng.addColorStop(0, "rgba(120,120,255,0.18)"); ng.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = ng; c.fillRect(0, 0, w, h);
