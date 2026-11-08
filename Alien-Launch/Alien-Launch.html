@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#070b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href='data:application/json,{"name":"Alien Launch","short_name":"Alien Launch","start_url":".","display":"standalone","background_color":"#070b16","theme_color":"#070b16"}'>
+<title>Alien Launch</title>
+<style>
+  :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none; touch-action: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #hud { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; pointer-events: none; padding: calc(8px + env(safe-area-inset-top)) 8px 0; }
+  .chip { background: rgba(10,16,34,0.85); border: 1px solid var(--line); border-radius: 12px; padding: 4px 9px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; }
+  .bar { display: block; height: 7px; margin-top: 5px; border-radius: 4px; background: #1b2546; overflow: hidden; }
+  .bar b { display: block; height: 100%; width: 100%; background: #5dff9b; transition: width 0.2s, background 0.3s; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hud .spacer { flex: 1; }
+  .hudBtn { pointer-events: auto; background: rgba(10,16,34,0.85); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 9px 13px; }
+  #bubble { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translate(-50%, 10px); display: flex; align-items: center; gap: 8px;
+    max-width: min(92vw, 380px); background: #f4f7ff; color: #10162c; border-radius: 16px; padding: 6px 12px 6px 6px; font-size: 14px; font-weight: 650; line-height: 1.3;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.45); opacity: 0; transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 4; }
+  #bubble.on { opacity: 1; transform: translate(-50%, 0); }
+  #bubble canvas { width: 40px; height: 40px; flex: none; border-radius: 10px; background: #0d1a2c; }
+  #bubble b { color: #1b5fd6; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(4,7,16,0.8); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 400px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 40px; line-height: 1.05; margin: 4px 0 2px; background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 24px; margin: 2px 0 6px; }
+  #box p { color: #c9d3f0; font-size: 15px; line-height: 1.45; margin: 6px 0 12px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  #titleArt, #howCv { width: 100%; display: block; border-radius: 12px; }
+  #titleArt { height: 160px; }
+  #howCv { height: 220px; background: #0a1024; border: 1px solid #22305a; margin: 6px 0 4px; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3a66; }
+  .dots i.on { background: var(--accent); }
+  .stageHead { display: flex; align-items: center; gap: 10px; text-align: left; margin: 14px 0 6px; }
+  .stageHead canvas { width: 46px; height: 46px; border-radius: 50%; flex: none; }
+  .stageHead small { display: block; color: var(--dim); font-size: 12px; font-weight: 650; }
+  .missions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .missions .big { margin: 0; padding: 10px 4px; font-size: 15px; }
+  .stars { color: var(--gold); letter-spacing: 0.1em; font-size: 15px; }
+  .stars i { color: #33406a; font-style: normal; }
+  .stats { display: flex; justify-content: center; gap: 18px; margin: 6px 0 10px; }
+  .stats div { font-size: 22px; font-weight: 900; }
+  .stats small { display: block; font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .bigStars { font-size: 44px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0; }
+  .bigStars i { color: #2a3560; font-style: normal; }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div class="chip"><small id="hStage">Oort Gate</small><span id="hMission">Mission 1</span></div>
+  <div class="chip"><small>Score</small><span id="hScore">0</span></div>
+  <div class="chip" style="min-width:96px"><small>Fuel <span id="hFuelPct" style="float:right">100%</span></small><i class="bar"><b id="hFuel"></b></i></div>
+  <div class="spacer"></div>
+  <button class="hudBtn" id="pauseBtn">❚❚</button>
+</div>
+<div id="bubble"><canvas id="zibFace" width="80" height="80"></canvas><span id="bubbleText"></span></div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN LAUNCH — take off, fly through the obstacles, land softly. One touch: hold to thrust, let go to fall.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, k) => a + (b - a) * k;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+let W = 0, H = 0, S = 0, DPR = 1;
+
+// ---------- stages, ordered by gravity: each one pulls harder ----------
+// g = gravity (in screen heights per second², scaled by S), thrust is always 2.3x gravity, so heavy worlds feel heavy.
+const STAGES = [
+  { name: "The Oort Gate", short: "Oort Gate", g: 0.55, theme: "ice",     sky: ["#14284a", "#060c1c"], ground: ["#bcd8f0", "#5a7a9c"], glow: "#4fd1ff",
+    feel: "Very light gravity. Floaty and forgiving.", obstacle: "ice spires" },
+  { name: "Mars, the Red Wall", short: "Mars", g: 0.8, theme: "mars", sky: ["#4a1c14", "#1a0806"], ground: ["#c8744e", "#6a2a1a"], glow: "#ff7a5d",
+    feel: "Light gravity. You'll fall a bit faster.", obstacle: "red rock towers" },
+  { name: "Earth, Final Stand", short: "Earth", g: 1.05, theme: "earth", sky: ["#123a5a", "#08142a"], ground: ["#4a8a52", "#24402a"], glow: "#5dff9b",
+    feel: "Normal gravity. Thrust carefully.", obstacle: "skyscrapers and antennas" },
+  { name: "Jupiter Storm", short: "Jupiter", g: 1.45, theme: "jupiter", sky: ["#5a3420", "#1e0e08"], ground: ["#e0a070", "#7a3a20"], glow: "#ffb84d", wind: true,
+    feel: "Crushing gravity, plus wind gusts. The final test.", obstacle: "storm walls" },
+];
+const MISSIONS = 3;
+// mission settings: number of obstacle gates, gap size, flight speed
+const missionSpec = (st, m) => ({ gates: 6 + st * 2 + m * 3, gap: 0.46 - m * 0.04 - st * 0.015, speed: 0.3 + m * 0.03 + st * 0.02 });
+// Fuel: the engine idles all the time and burns more while thrusting. Skip about half the cells and you run dry.
+const FUEL = { start: 75, burn: 8, idle: 0, cell: 32 }; // fuel only burns while you thrust. Tuned: collecting cells gets you home, skipping them runs you dry
+const SAFE_SPEED = 0.42; // touchdown speed limit, in S per second (the same on every world, so heavy gravity is harder)
+
+// ---------- save ----------
+const KEY = "alienLaunch.v1";
+let SAVE = { stars: {}, sound: true, seenHelp: false };
+try { Object.assign(SAVE, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
+const starsOf = (st, m) => SAVE.stars[st + "-" + m] || 0;
+const unlocked = (st, m) => (st === 0 && m === 0) || (m > 0 ? starsOf(st, m - 1) > 0 : starsOf(st - 1, MISSIONS - 1) > 0);
+const totalStars = () => Object.values(SAVE.stars).reduce((a, b) => a + b, 0);
+
+// ---------- sound ----------
+let AC = null, thrustNode = null;
+function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
+function tone(f, dur, type = "sine", vol = 0.1, delay = 0, slide = 0) {
+  if (!SAVE.sound || !AC) return;
+  const t = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t + dur + 0.05);
+}
+function thrustSound(on) { // a soft rumble while thrusting
+  if (!AC || !SAVE.sound) { on = false; }
+  if (on && !thrustNode && AC) {
+    const n = AC.sampleRate, b = AC.createBuffer(1, n, n), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+    src.buffer = b; src.loop = true; f.type = "lowpass"; f.frequency.value = 420; g.gain.value = 0.07; src.connect(f).connect(g).connect(AC.destination); src.start();
+    thrustNode = { src, g };
+  } else if (!on && thrustNode) { thrustNode.src.stop(); thrustNode = null; }
+}
+const SFX = {
+  gate: () => tone(880, 0.08, "triangle", 0.07),
+  fuel: () => { tone(520, 0.1, "sine", 0.09, 0, 2); tone(1040, 0.12, "triangle", 0.06, 0.08); },
+  crash: () => { tone(160, 0.6, "sawtooth", 0.12, 0, 0.3); tone(70, 0.7, "square", 0.06, 0.05, 0.5); },
+  land: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, "triangle", 0.1, i * 0.09)),
+  count: () => tone(660, 0.12, "square", 0.05),
+  go: () => tone(990, 0.3, "square", 0.06, 0, 1.5),
+  warn: () => tone(1200, 0.06, "square", 0.04),
+};
+
+// ============================================================
+//  GAME STATE
+// ============================================================
+let G = null, paused = true, holding = false, menuAnim = null, bubbleT = 0;
+const GROUND = () => H * 0.84;  // ground line during lift-off and landing
+const SHIP_X = () => W * 0.3;
+const SHIP_R = () => S * 0.058;        // lander size
+const REST = () => GROUND() - SHIP_R() * 0.95; // centre height when the legs touch the ground
+
+function newMission(st, m) {
+  const ST = STAGES[st], spec = missionSpec(st, m);
+  G = { st, m, ST, spec, phase: "count", t: 0, count: 3,
+        x: 0, y: REST(), vy: 0, vx: 0, ang: 0,   // x = distance flown along the course
+        gates: [], tunnels: [], cans: [], debris: [], fuel: FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, landStart: 0, padX: 0, touch: null, stars: 0 };
+  // the course: launch pad at 0, then gates and tunnels, then the landing pad
+  let cy = 0.45, gx = S * 1.4;
+  const moveChance = m === 0 ? 0 : 0.18 + (m - 1) * 0.14 + st * 0.07;          // sliding gaps from mission 2
+  const debrisChance = (m >= 2 && st >= 1) || st >= 2 ? 0.25 + st * 0.08 + m * 0.05 : 0;  // floating debris from Mars mission 3, then all of Earth and Jupiter
+  const nTunnels = (m >= 1 ? 1 : 0) + (st >= 2 ? 1 : 0) + (m === 2 && st >= 1 ? 1 : 0); // tunnels from mission 2, more on later planets
+  const tunnelAt = new Set();
+  while (tunnelAt.size < nTunnels) tunnelAt.add(2 + Math.floor(Math.random() * Math.max(1, spec.gates - 3)));
+  const lo = 0.24 + spec.gap / 2 * 0.5, hi = 0.68 - spec.gap / 2 * 0.5, items = [];
+  // fuel cells sit up high or down low (alternating), never on the straight line, and each one gets extra room
+  // so you can climb or dive for it and still make the next gap. At least one cell per two spaces.
+  const spaceCan = [], minCells = Math.ceil((spec.gates - 1) * 0.6);
+  let placed = 0;
+  const addCell = (exitX, exitY, i) => {
+    if (i >= spec.gates - 1) return;
+    if (!(Math.random() < 0.55 || minCells - placed >= spec.gates - 1 - i)) { spaceCan[i] = null; return; }
+    const up = placed % 2 === 0 ? exitY > 0.42 : exitY > 0.52;
+    const reach = 0.14 + st * 0.035 + Math.random() * 0.07; // further out on heavy worlds, where you climb and drop faster
+    let canY = up ? exitY - reach : exitY + reach;
+    if (canY < 0.15 || canY > 0.78) canY = up ? 0.16 + Math.random() * 0.05 : 0.73 + Math.random() * 0.05;
+    const room = S * (0.45 + Math.abs(canY - exitY) * 1.3);
+    G.cans.push({ x: exitX + room * 0.75, y: canY, got: false, seed: Math.random() * 9 });
+    spaceCan[i] = canY; placed++;
+    gx += room;                     // extra distance for the detour
+    cy = lerp(cy, canY, 0.45);       // the next gap leans toward where the cell was
+  };
+  for (let i = 0; i < spec.gates; i++) {
+    if (tunnelAt.has(i)) { // a winding tunnel through solid rock
+      const len = S * (1.5 + st * 0.25 + Math.random() * 0.4), amp = 0.08 + st * 0.025 + Math.random() * 0.04;
+      const T = { x0: gx, x1: gx + len, base: clamp(cy, 0.32, 0.58), amp, k: 0.75 + Math.random() * 0.5 + st * 0.15, ph: Math.random() * TAU, h: spec.gap * 0.42, seed: Math.random() * 9 };
+      G.tunnels.push(T); items.push({ kind: "tunnel", x0: T.x0, x1: T.x1, inY: tunnelCy(T, T.x0), outY: tunnelCy(T, T.x1), T });
+      G.cans.push({ x: lerp(T.x0, T.x1, 0.55), y: tunnelCy(T, lerp(T.x0, T.x1, 0.55)), got: false, seed: Math.random() * 9 }); // a cell inside every tunnel
+      cy = tunnelCy(T, T.x1); gx += len + S * 0.62;
+      addCell(T.x1, cy, i);
+      continue;
+    }
+    // big swings: usually flip to the other half of the screen
+    const prevY = cy, flip = Math.random() < 0.65, swing = 0.12 + Math.random() * (0.12 + st * 0.03);
+    cy = flip ? (cy > 0.46 ? cy - swing - 0.05 : cy + swing + 0.05) : cy + (Math.random() - 0.5) * 0.24;
+    cy = clamp(cy, lo, hi);
+    gx += S * 0.9 * Math.abs(cy - prevY); // bigger height changes get more room to make them
+    const moving = i > 0 && Math.random() < moveChance;
+    const gt = { x: gx, cy0: cy, cy, gap: spec.gap, seed: Math.random() * 10, passed: false,
+                 amp: moving ? 0.035 + Math.random() * 0.035 + st * 0.012 : 0, w: 0.9 + Math.random() * 0.8, ph: Math.random() * TAU };
+    G.gates.push(gt); items.push({ kind: "gate", x0: gx - S * 0.07, x1: gx + S * 0.07, inY: cy, outY: cy, gt });
+    gx += S * (0.82 - Math.min(0.2, st * 0.04 + m * 0.03));
+    addCell(gt.x + S * 0.07, cy, i);
+  }
+  // floating debris in some of the open spaces, kept away from any fuel cell there
+  for (let i = 0; i + 1 < items.length; i++) {
+    const a = items[i], b = items[i + 1], mx = (a.x1 + b.x0) / 2, canY = spaceCan[i] ?? null;
+    if (b.x0 - a.x1 > S * 0.4 && Math.random() < debrisChance) {
+      let y0 = 0.22 + Math.random() * 0.5;
+      if (canY != null && Math.abs(y0 - canY) < 0.18) y0 = canY + (y0 < canY ? -0.2 : 0.2);
+      G.debris.push({ x: mx + (Math.random() < 0.5 ? -1 : 1) * S * 0.12, y0: clamp(y0, 0.16, 0.76), amp: 0.03 + Math.random() * 0.05, w: 0.8 + Math.random(), ph: Math.random() * TAU, r: S * (0.04 + Math.random() * 0.02), seed: Math.random() * 9 });
+    }
+  }
+  G.landStart = gx + S * 0.3;           // ground returns here
+  G.padX = G.landStart + S * 1.25;      // the ship comes to rest over this point
+  G.padW = S * (0.34 - st * 0.02);
+  hud();
+  say(`Mission ${m + 1} on <b>${ST.name}</b>. ${ST.feel} <b>Hold</b> to thrust, let go to fall.`, 4.5);
+}
+// centre line of a tunnel (fraction of screen height) at world x: starts at its base and winds up and down
+const tunnelCy = (T, x) => clamp(T.base + T.amp * (Math.sin((x - T.x0) / (T.x1 - T.x0) * TAU * T.k + T.ph) - Math.sin(T.ph)), 0.2, 0.72);
+const gateCy = gt => gt.cy0 + gt.amp * Math.sin(G.t * gt.w + gt.ph); // sliding gaps move up and down
+const debrisY = d => (d.y0 + d.amp * Math.sin(G.t * d.w + d.ph)) * H;
+function hud() {
+  if (!G) return;
+  $("hStage").textContent = G.ST.short; $("hMission").textContent = `Mission ${G.m + 1}`; $("hScore").textContent = G.score;
+}
+
+// ---------- terrain: rough ground with the launch pad near 0 and the landing pad at padX ----------
+function groundY(x) { // world x → ground height on screen (only during lift-off and landing stretches)
+  const base = GROUND(), rough = Math.sin(x * 0.031) * S * 0.02 + Math.sin(x * 0.11 + 1) * S * 0.012;
+  if (Math.abs(x - G.padX) < G.padW / 2) return base;
+  if (x > -S * 0.2 && x < S * 0.2) return base;
+  return base + rough;
+}
+const onPad = x => Math.abs(x - G.padX) < G.padW / 2 - S * 0.03;
+
+// ============================================================
+//  UPDATE
+// ============================================================
+function update(dt) {
+  G.t += dt;
+  for (let i = G.fx.length - 1; i >= 0; i--) { const p = G.fx[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += S * 0.6 * dt; if (p.life <= 0) G.fx.splice(i, 1); }
+  if (G.over || G.done) { if (!G.menuShown && G.t - G.endAt > 1.4) { G.menuShown = true; G.done ? landedMenu() : crashMenu(); } return; }
+  const firing = holding && G.fuel > 0 && G.phase !== "count";
+  const g = G.ST.g * S, thrust = firing ? -g * 2.3 : 0;
+  if (G.phase === "fly" || G.phase === "land") G.fuel = Math.max(0, G.fuel - FUEL.idle * dt); // the engine idles all the time
+  if (firing) G.fuel = Math.max(0, G.fuel - FUEL.burn * dt);
+  if (firing || G.fuel <= 0) {
+    if (G.fuel < 25 && !G.lowWarned) { G.lowWarned = true; SFX.warn(); say("<b>Fuel low!</b> Grab a glowing fuel cell, and save some for the landing.", 3); }
+    if (G.fuel <= 0 && !G.emptyWarned) { G.emptyWarned = true; thrustSound(false); SFX.warn(); say("<b>Out of fuel!</b> The thruster is dead. Fuel cells refill it.", 3); }
+  }
+  if (G.fuel > 25) G.lowWarned = false;
+  if (G.fuel > 0) G.emptyWarned = false;
+  if (G.phase === "count") { // 3-2-1 on the launch pad
+    const before = Math.ceil(G.count); G.count -= dt;
+    if (Math.ceil(G.count) !== before && G.count > 0) SFX.count();
+    if (G.count <= 0) { G.phase = "launch"; SFX.go(); }
+    return;
+  }
+  // vertical motion: gravity down, thrust up; wind gusts on Jupiter
+  if (G.ST.wind && G.phase === "fly") {
+    G.windT -= dt;
+    if (G.windT <= 0) { G.wind = (Math.random() < 0.5 ? -1 : 1) * g * (0.25 + Math.random() * 0.25); G.windT = 1.2 + Math.random() * 1.5; if (Math.random() < 0.4) say(G.wind < 0 ? "Updraft! Ease off the thrust." : "Downdraft! Give it some power.", 1.8); }
+  } else G.wind *= 0.95;
+  if (G.phase === "launch") { // can't move forward until the ship has lifted off
+    G.vy += (g + thrust) * dt; G.y += G.vy * dt;
+    if (G.y > REST()) { G.y = REST(); G.vy = 0; }
+    if (G.y < REST() - S * 0.14) { G.phase = "fly"; say("Lift-off! Fly through the gaps.", 2); }
+    G.vx = lerp(G.vx, G.y < REST() - S * 0.05 ? G.spec.speed * S * 0.6 : 0, dt * 2);
+  } else if (G.phase === "fly" || G.phase === "land") {
+    G.vy += (g + thrust + G.wind) * dt;
+    G.vy = clamp(G.vy, -S * 1.2, S * 1.4);
+    G.y += G.vy * dt;
+    if (G.phase === "fly") {
+      G.vx = lerp(G.vx, G.spec.speed * S, dt * 1.5);
+      if (G.x > G.landStart - S * 0.2) { G.phase = "land"; say("Landing pad ahead! Come down <b>slowly</b>. Keep the speed meter green.", 3.5); }
+    } else { // slow down so the ship comes to rest right over the pad
+      const left = Math.max(1, G.padX - G.x);
+      G.vx = Math.max(S * 0.02, Math.min(G.vx, Math.sqrt(2 * left * S * 0.12)));
+      if (G.padX - G.x < 2) G.vx = 0;
+    }
+    G.x += G.vx * dt;
+  }
+  if (G.y < SHIP_R() + 48) { G.y = SHIP_R() + 48; G.vy = Math.max(0, G.vy); } // top of the screen: bump, no crash
+  G.ang = lerp(G.ang, clamp(G.vy / (S * 4), -0.15, 0.15), dt * 6); // just a slight lean
+  // exhaust
+  if (firing && Math.random() < dt * 50) G.fx.push({ x: SHIP_X() + (Math.random() - 0.5) * S * 0.02, y: G.y + S * 0.05, vx: (Math.random() - 0.5) * 30 - G.vx * 0.4, vy: S * 0.5, life: 0.35, max: 0.35, col: Math.random() < 0.5 ? "#ffd25d" : "#ff8a3d", screen: true });
+  // gates
+  const sx = SHIP_X(), r = SHIP_R() * 0.85; // collision size (the dome and body)
+  for (const gt of G.gates) {
+    gt.cy = gateCy(gt);
+    const gx = gt.x - G.x + sx, half = S * 0.07, gapT = (gt.cy - gt.gap / 2) * H, gapB = (gt.cy + gt.gap / 2) * H;
+    if (Math.abs(gx - sx) < half + r * 0.8 && (G.y - r * 0.8 < gapT || G.y + r * 0.8 > gapB)) return crash("obstacle");
+    if (!gt.passed && gx + half < sx - r) { gt.passed = true; G.passed++; G.score += 10; SFX.gate(); hud(); }
+  }
+  for (const T of G.tunnels) {
+    if (G.x + r < T.x0 || G.x - r > T.x1) continue;
+    const c = tunnelCy(T, clamp(G.x, T.x0, T.x1));
+    if (G.y - r * 0.85 < (c - T.h) * H || G.y + r * 0.85 > (c + T.h) * H) return crash("tunnel");
+    if (!T.entered) { T.entered = true; if (!G.tunnelSeen) { G.tunnelSeen = true; say("Tunnel! Follow it up and down, and don't scrape the walls.", 2.5); } }
+  }
+  for (const d of G.debris) { const dx = d.x - G.x + sx; if (Math.abs(dx - sx) < d.r + r && Math.hypot(dx - sx, debrisY(d) - G.y) < d.r * 0.85 + r * 0.65) return crash("debris"); }
+  for (const cn of G.cans) {
+    if (cn.got) continue;
+    const dx = cn.x - G.x + sx, dy = cn.y * H - G.y;
+    if (Math.hypot(dx - sx, dy) < SHIP_R() + S * 0.04) {
+      cn.got = true; G.fuel = Math.min(100, G.fuel + FUEL.cell); if (thrustNode == null && holding) thrustSound(true); G.score += 5; SFX.fuel(); hud();
+      for (let k = 0; k < 14; k++) { const a = k / 14 * TAU; G.fx.push({ x: sx, y: G.y, vx: Math.cos(a) * S * 0.4, vy: Math.sin(a) * S * 0.4, life: 0.45, max: 0.45, col: "#5dff9b", screen: true }); }
+    }
+  }
+  // ground: only exists near the launch pad and on the landing stretch; elsewhere there's a deep canyon
+  const inGround = G.x < S * 0.6 || G.x > G.landStart - S * 0.4;
+  const floor = inGround ? groundY(G.x) - SHIP_R() * 0.95 : H + S * 0.2;
+  if (G.y > floor) {
+    if (G.phase === "land" && onPad(G.x) && G.vy < SAFE_SPEED * S && Math.abs(G.ang) < 0.3) return touchdown();
+    if (G.phase === "launch") return;
+    return crash(G.phase === "land" ? (onPad(G.x) ? "hard" : "rocks") : "ground");
+  }
+  if (G.y > H + S * 0.1) return crash("ground");
+}
+function touchdown() {
+  G.done = true; G.endAt = G.t; G.y = groundY(G.padX) - SHIP_R() * 0.95; holding = false; thrustSound(false);
+  const soft = 1 - G.vy / (SAFE_SPEED * S), centre = 1 - Math.abs(G.x - G.padX) / (G.padW / 2);
+  G.landing = { soft, centre, speed: G.vy / S };
+  G.stars = 1 + (soft > 0.45 ? 1 : 0) + (soft > 0.45 && centre > 0.8 ? 1 : 0);
+  G.score += 50 + Math.round(soft * 100) + Math.round(centre * 50) + Math.round(G.fuel);
+  const key = G.st + "-" + G.m; SAVE.stars[key] = Math.max(SAVE.stars[key] || 0, G.stars); save();
+  SFX.land(); hud();
+  say(G.stars === 3 ? "Perfect landing! Textbook, controller." : G.stars === 2 ? "Nice and soft. Well done!" : "Down in one piece. Try for a softer touch!", 3);
+}
+function crash(why) {
+  G.over = true; G.endAt = G.t; holding = false; thrustSound(false); SFX.crash(); navigator.vibrate?.(200);
+  G.why = why;
+  for (let k = 0; k < 36; k++) { const a = Math.random() * TAU, v = S * (0.2 + Math.random() * 0.8); G.fx.push({ x: SHIP_X(), y: G.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - S * 0.3, life: 1.1, max: 1.1, col: k % 3 ? G.ST.glow : "#ffd25d", screen: true }); }
+  if (G.fuel <= 0 && why !== "obstacle" && why !== "debris" && why !== "tunnel") { say("Out of fuel and down we go! Grab more fuel cells next time.", 3); return; }
+  say({ tunnel: "Scraped the tunnel wall! Follow the bends early.", debris: "Hit the floating debris! Watch for it between the gaps.", obstacle: "Clipped an obstacle! Aim for the middle of the gap.", ground: "Too low! Keep tapping to stay up.", rocks: "That's not the pad! Wait until you're over it.", hard: `Too fast! Touch down below ${SAFE_SPEED.toFixed(2)} on the meter.` }[why], 3);
+}
+
+// ============================================================
+//  INPUT: hold anywhere (or Space / ↑) to thrust
+// ============================================================
+function press(on) { if (on) audio(); if (paused || !G || G.over || G.done) { holding = false; thrustSound(false); return; } holding = on; thrustSound(on); }
+cv.addEventListener("pointerdown", e => { e.preventDefault(); press(true); });
+window.addEventListener("pointerup", () => press(false));
+window.addEventListener("pointercancel", () => press(false));
+document.addEventListener("keydown", e => { if ((e.key === " " || e.key === "ArrowUp" || e.key === "w") && !e.repeat) { e.preventDefault(); press(true); } if (e.key === "p" || e.key === "Escape") pauseMenu(); });
+document.addEventListener("keyup", e => { if (e.key === " " || e.key === "ArrowUp" || e.key === "w") press(false); });
+
+// ============================================================
+//  DRAWING
+// ============================================================
+function rand(seed) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }; }
+function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+
+// the lander: a little pod with Commander Zib's crew inside, landing legs and a thruster
+function lander(c, x, y, r, ang, t, thrusting, crewTalk = false) {
+  c.save(); c.translate(x, y); c.rotate(ang);
+  if (thrusting) { const fl = 0.7 + 0.3 * Math.sin(t * 40); // flame
+    const g = c.createLinearGradient(0, r * 0.6, 0, r * 2); g.addColorStop(0, "#fff6c0"); g.addColorStop(0.4, "#ffb84d"); g.addColorStop(1, "rgba(255,90,40,0)");
+    c.fillStyle = g; c.beginPath(); c.moveTo(-r * 0.35, r * 0.6); c.quadraticCurveTo(0, r * (1.6 + fl * 0.8), r * 0.35, r * 0.6); c.fill(); }
+  c.strokeStyle = "#9aa6c0"; c.lineWidth = r * 0.12; c.lineCap = "round"; // legs
+  c.beginPath(); c.moveTo(-r * 0.55, r * 0.35); c.lineTo(-r * 0.95, r * 0.95); c.moveTo(r * 0.55, r * 0.35); c.lineTo(r * 0.95, r * 0.95); c.stroke();
+  c.beginPath(); c.moveTo(-r * 1.15, r * 0.95); c.lineTo(-r * 0.75, r * 0.95); c.moveTo(r * 0.75, r * 0.95); c.lineTo(r * 1.15, r * 0.95); c.stroke();
+  const b = c.createLinearGradient(0, -r, 0, r); b.addColorStop(0, "#e8f0ff"); b.addColorStop(0.5, "#9aa6c0"); b.addColorStop(1, "#4a5578"); // body
+  c.fillStyle = b; c.beginPath(); c.ellipse(0, r * 0.25, r, r * 0.45, 0, 0, TAU); c.fill(); c.strokeStyle = "#2a3350"; c.lineWidth = r * 0.07; c.stroke();
+  for (let k = -2; k <= 2; k++) { c.fillStyle = (Math.floor(t * 6) + k) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(k * r * 0.38, r * 0.32, r * 0.07, 0, TAU); c.fill(); }
+  c.fillStyle = "rgba(190,235,255,0.35)"; c.beginPath(); c.arc(0, -r * 0.05, r * 0.6, PI, 0); c.fill(); // glass dome
+  c.strokeStyle = "rgba(220,245,255,0.7)"; c.lineWidth = r * 0.05; c.stroke();
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(0, r * 0.1, r * 0.4, PI, 0); c.fill(); // Zib
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -r * 0.12, r * 0.2, 0, TAU); c.fill();
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(r * 0.05, -r * 0.1 + (thrusting ? -r * 0.04 : r * 0.03), r * 0.09, 0, TAU); c.fill();
+  c.strokeStyle = "#5dff9b"; c.lineWidth = r * 0.06; c.beginPath(); c.moveTo(0, -r * 0.3); c.lineTo(0, -r * 0.5); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(0, -r * 0.52, r * 0.06, 0, TAU); c.fill();
+  c.restore();
+}
+
+// an obstacle column, themed per world. top = true hangs from the top of the screen
+function column(c, x, y0, y1, w, theme, seed, t, top) {
+  const h = y1 - y0; if (h <= 0) return;
+  c.save();
+  if (theme === "ice") { // jagged ice spires
+    const g = c.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, "#5a8ab8"); g.addColorStop(0.5, "#e8f6ff"); g.addColorStop(1, "#4a7aa8");
+    c.fillStyle = g; c.beginPath();
+    const tip = top ? y1 : y0, base = top ? y0 : y1, dir = top ? 1 : -1;
+    c.moveTo(x - w, base); for (let k = 0; k <= 6; k++) { const yy = base + (tip - base) * k / 6; c.lineTo(x - w * (1 - k / 7) + Math.sin(seed + k * 2) * w * 0.15, yy); }
+    c.lineTo(x, tip + dir * w * 0.25); for (let k = 6; k >= 0; k--) { const yy = base + (tip - base) * k / 6; c.lineTo(x + w * (1 - k / 7) + Math.sin(seed + k * 3) * w * 0.15, yy); }
+    c.closePath(); c.fill(); c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 2; c.stroke();
+  } else if (theme === "mars") { // stacked boulders
+    c.fillStyle = "#8a3a24"; c.fillRect(x - w * 0.85, y0, w * 1.7, h);
+    const R = rand(Math.floor(seed * 1000));
+    for (let yy = y0; yy < y1; yy += w * 0.8) { const g = c.createRadialGradient(x - w * 0.3, yy, 2, x, yy + w * 0.4, w); g.addColorStop(0, "#d27a52"); g.addColorStop(1, "#6a2a1a");
+      c.fillStyle = g; c.beginPath(); c.ellipse(x + (R() - 0.5) * w * 0.3, yy + w * 0.4, w * (0.9 + R() * 0.15), w * 0.5, 0, 0, TAU); c.fill(); }
+  } else if (theme === "earth") { // a tower with lit windows and an antenna
+    const g = c.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, "#2a3a52"); g.addColorStop(0.5, "#56708e"); g.addColorStop(1, "#22304a");
+    c.fillStyle = g; c.fillRect(x - w, y0, w * 2, h);
+    const R = rand(Math.floor(seed * 1000)); c.fillStyle = "rgba(255,230,150,0.85)";
+    for (let yy = y0 + 8; yy < y1 - 8; yy += 14) for (let k = 0; k < 3; k++) if (R() < 0.55) c.fillRect(x - w * 0.75 + k * w * 0.55, yy, w * 0.32, 6);
+    const tipY = top ? y1 : y0, d = top ? 1 : -1;
+    c.strokeStyle = "#c9ced8"; c.lineWidth = 3; c.beginPath(); c.moveTo(x, tipY); c.lineTo(x, tipY + d * w * 0.9); c.stroke();
+    c.fillStyle = Math.sin(t * 5 + seed) > 0 ? "#ff5d7a" : "#5a2030"; c.beginPath(); c.arc(x, tipY + d * w * 0.9, 4, 0, TAU); c.fill();
+  } else { // Jupiter: a churning storm wall with lightning
+    const g = c.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, "rgba(120,60,30,0.95)"); g.addColorStop(0.5, "rgba(230,160,110,0.98)"); g.addColorStop(1, "rgba(120,60,30,0.95)");
+    c.fillStyle = g; c.beginPath(); c.moveTo(x - w, y0);
+    for (let yy = y0; yy <= y1; yy += 10) c.lineTo(x - w + Math.sin(yy * 0.05 + t * 3 + seed) * w * 0.18, yy);
+    for (let yy = y1; yy >= y0; yy -= 10) c.lineTo(x + w + Math.sin(yy * 0.05 + t * 3 + seed + 2) * w * 0.18, yy);
+    c.closePath(); c.fill();
+    if (Math.sin(t * 2.3 + seed * 3) > 0.92) { c.strokeStyle = "#fffbe0"; c.lineWidth = 2.5; const yy = lerp(y0, y1, 0.5);
+      c.beginPath(); c.moveTo(x - w * 0.3, yy - 30); c.lineTo(x + w * 0.2, yy - 6); c.lineTo(x - w * 0.1, yy + 4); c.lineTo(x + w * 0.3, yy + 30); c.stroke(); }
+  }
+  c.restore();
+}
+
+// A tunnel through solid rock. The rock is drawn slightly see-through so the ship stays visible inside.
+const ROCK = { ice: ["#9cc4e4", "#4a6a8c"], mars: ["#b0603e", "#5a2014"], earth: ["#5a6a7a", "#2a3442"], jupiter: ["#c08050", "#6a3018"] };
+function drawTunnel(T, sx, t) {
+  const a = Math.max(T.x0, G.x - sx - 20), b = Math.min(T.x1, G.x - sx + W + 20);
+  if (a >= b) return;
+  const X = x => x - G.x + sx, [r0, r1] = ROCK[G.ST.theme], step = 8;
+  const top = [], bot = [];
+  for (let x = a; x <= b + step; x += step) { const xx = Math.min(x, b), c = tunnelCy(T, xx); top.push([X(xx), (c - T.h) * H]); bot.push([X(xx), (c + T.h) * H]); }
+  // the glass tube you fly through
+  ctx.fillStyle = hexA(G.ST.glow, 0.07); ctx.beginPath(); top.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); for (let i = bot.length - 1; i >= 0; i--) ctx.lineTo(bot[i][0], bot[i][1]); ctx.closePath(); ctx.fill();
+  // rock above and below, 78% opaque so the stars and the ship show through
+  const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, r1); g.addColorStop(0.5, r0); g.addColorStop(1, r1);
+  ctx.save(); ctx.globalAlpha = 0.78; ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(top[0][0], -10); top.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(top[top.length - 1][0], -10); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(bot[0][0], H + 10); bot.forEach(([x, y]) => ctx.lineTo(x, y)); ctx.lineTo(bot[bot.length - 1][0], H + 10); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  // glowing glass edges
+  ctx.save(); ctx.strokeStyle = hexA(G.ST.glow, 0.85); ctx.lineWidth = 3; ctx.shadowColor = G.ST.glow; ctx.shadowBlur = 10;
+  for (const line of [top, bot]) { ctx.beginPath(); line.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke(); }
+  ctx.restore();
+  // entrance and exit rims
+  for (const ex of [T.x0, T.x1]) { if (ex < a - 1 || ex > b + 1) continue; const c = tunnelCy(T, ex), x = X(ex);
+    ctx.strokeStyle = "#e6ecff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(x, c * H, 7, T.h * H, 0, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = hexA(G.ST.glow, 0.9); ctx.lineWidth = 2; ctx.stroke(); }
+}
+// a glowing fuel cell: a capsule with a bolt, pulsing so it's easy to spot
+function fuelCell(c, x, y, r, t) {
+  c.save(); c.translate(x, y + Math.sin(t * 3) * r * 0.2);
+  const pulse = 0.5 + 0.5 * Math.sin(t * 5);
+  c.fillStyle = `rgba(93,255,155,${0.12 + pulse * 0.12})`; c.beginPath(); c.arc(0, 0, r * 1.9, 0, TAU); c.fill();
+  c.rotate(Math.sin(t * 1.5) * 0.2);
+  const g = c.createLinearGradient(-r, 0, r, 0); g.addColorStop(0, "#1f8a50"); g.addColorStop(0.5, "#8bffbf"); g.addColorStop(1, "#1f8a50");
+  c.fillStyle = g; c.beginPath(); c.roundRect(-r * 0.7, -r, r * 1.4, r * 2, r * 0.45); c.fill();
+  c.strokeStyle = "#e8fff2"; c.lineWidth = Math.max(1.5, r * 0.12); c.stroke();
+  c.fillStyle = "#c9d3e6"; c.fillRect(-r * 0.35, -r * 1.25, r * 0.7, r * 0.28);
+  c.fillStyle = "#0b3a22"; c.beginPath(); c.moveTo(r * 0.12, -r * 0.6); c.lineTo(-r * 0.3, r * 0.08); c.lineTo(0, r * 0.08); c.lineTo(-r * 0.12, r * 0.6); c.lineTo(r * 0.3, -r * 0.08); c.lineTo(0, -r * 0.08); c.closePath(); c.fill();
+  c.restore();
+}
+// floating debris, themed per world: an ice chunk, a boulder, a broken satellite, a storm ball
+function debrisArt(c, x, y, r, theme, seed, t) {
+  c.save(); c.translate(x, y); c.rotate(t * 0.6 + seed);
+  c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.arc(r * 0.15, r * 0.2, r, 0, TAU); c.fill();
+  if (theme === "earth") {
+    c.fillStyle = "#3a6ac8"; c.fillRect(-r * 1.25, -r * 0.35, r * 0.75, r * 0.7); c.fillRect(r * 0.5, -r * 0.35, r * 0.75, r * 0.7);
+    c.strokeStyle = "#9fc4ff"; c.lineWidth = 1.5; c.strokeRect(-r * 1.25, -r * 0.35, r * 0.75, r * 0.7); c.strokeRect(r * 0.5, -r * 0.35, r * 0.75, r * 0.7);
+    c.fillStyle = "#c9ced8"; c.beginPath(); c.arc(0, 0, r * 0.55, 0, TAU); c.fill();
+    c.fillStyle = Math.sin(t * 6 + seed) > 0 ? "#ff5d7a" : "#5a2030"; c.beginPath(); c.arc(0, 0, r * 0.15, 0, TAU); c.fill();
+  } else if (theme === "jupiter") {
+    for (let i = 0; i < 3; i++) { c.fillStyle = i === 0 ? "#8a4a2a" : i === 1 ? "#d89060" : "#ffd8b0"; c.beginPath(); c.arc(0, 0, r * (1 - i * 0.3), 0, TAU); c.fill(); }
+    c.strokeStyle = "#fffbe0"; c.lineWidth = 2; c.beginPath(); c.arc(0, 0, r * 0.65, 0, 3.5); c.stroke();
+  } else {
+    const [a, b] = theme === "ice" ? ["#e8f6ff", "#5a8ab8"] : ["#d27a52", "#5a2014"];
+    c.beginPath(); for (let i = 0; i < 8; i++) { const ang = i / 8 * TAU, rr = r * (0.85 + 0.2 * Math.sin(seed * 3 + i * 2.3)); c.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr); } c.closePath();
+    const g = c.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r); g.addColorStop(0, a); g.addColorStop(1, b); c.fillStyle = g; c.fill();
+    c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.arc(r * 0.3, r * 0.15, r * 0.2, 0, TAU); c.arc(-r * 0.25, r * 0.35, r * 0.13, 0, TAU); c.fill();
+  }
+  c.restore();
+}
+
+let skyKey = "", skyCv = document.createElement("canvas");
+function drawSky() {
+  const key = [G.st, W, H, DPR].join("|");
+  if (key !== skyKey) {
+    skyKey = key; skyCv.width = W * DPR; skyCv.height = H * DPR;
+    const c = skyCv.getContext("2d"); c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, G.ST.sky[1]); g.addColorStop(1, G.ST.sky[0]); c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const R = rand(5 + G.st * 13);
+    for (let i = 0; i < W * H / 1400; i++) { c.fillStyle = `rgba(255,255,255,${0.2 + R() * 0.6})`; c.fillRect(R() * W, R() * H * 0.8, R() < 0.9 ? 1 : 2, 1); }
+    // the planet itself hangs in the sky
+    const px = W * 0.78, py = H * 0.2, pr = S * 0.16, th = G.ST.theme;
+    const pg = c.createRadialGradient(px - pr * 0.3, py - pr * 0.3, pr * 0.1, px, py, pr);
+    const pc = { ice: ["#e8f6ff", "#6a9ac8"], mars: ["#f0a070", "#8a3020"], earth: ["#9fd8ff", "#1a4a8a"], jupiter: ["#f8d8b0", "#a0603a"] }[th];
+    pg.addColorStop(0, pc[0]); pg.addColorStop(1, pc[1]); c.fillStyle = pg; c.beginPath(); c.arc(px, py, pr, 0, TAU); c.fill();
+    if (th === "jupiter") { c.save(); c.beginPath(); c.arc(px, py, pr, 0, TAU); c.clip(); for (let k = -3; k <= 3; k++) { c.fillStyle = k % 2 ? "rgba(160,90,50,0.35)" : "rgba(255,230,200,0.25)"; c.fillRect(px - pr, py + k * pr * 0.26, pr * 2, pr * 0.14); } c.fillStyle = "rgba(200,80,50,0.6)"; c.beginPath(); c.ellipse(px + pr * 0.3, py + pr * 0.25, pr * 0.2, pr * 0.11, 0, 0, TAU); c.fill(); c.restore(); }
+    if (th === "earth") { c.fillStyle = "rgba(93,200,120,0.7)"; c.beginPath(); c.ellipse(px - pr * 0.2, py + pr * 0.1, pr * 0.4, pr * 0.25, 0.5, 0, TAU); c.fill(); }
+  }
+  ctx.drawImage(skyCv, 0, 0, W, H);
+}
+
+function drawGround(t) {
+  const sx = SHIP_X(), from = G.x - sx - 10, to = G.x - sx + W + 10, th = G.ST.theme;
+  const seg = (a, b) => { // ground between world x = a..b
+    if (b < from || a > to) return;
+    a = Math.max(a, from); b = Math.min(b, to);
+    const g = ctx.createLinearGradient(0, GROUND(), 0, H); g.addColorStop(0, G.ST.ground[0]); g.addColorStop(1, G.ST.ground[1]);
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(a - G.x + sx, H);
+    for (let x = a; x <= b; x += 6) ctx.lineTo(x - G.x + sx, groundY(x)); ctx.lineTo(b - G.x + sx, groundY(b)); ctx.lineTo(b - G.x + sx, H); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = 2; ctx.beginPath(); for (let x = a; x <= b; x += 6) { const X = x - G.x + sx; x === a ? ctx.moveTo(X, groundY(x)) : ctx.lineTo(X, groundY(x)); } ctx.stroke();
+  };
+  seg(-W, S * 0.6); seg(G.landStart - S * 0.4, G.padX + W * 2);
+  // launch pad and landing pad
+  for (const [px, w, label, isTarget] of [[0, S * 0.3, "LAUNCH", false], [G.padX, G.padW, "LAND", true]]) {
+    const X = px - G.x + sx, y = GROUND();
+    if (X < -w || X > W + w) continue;
+    ctx.fillStyle = "#2a3350"; ctx.fillRect(X - w / 2, y - 4, w, 10);
+    ctx.fillStyle = isTarget ? "#5dff9b" : "#4fd1ff"; ctx.fillRect(X - w / 2, y - 6, w, 4);
+    for (let k = 0; k < 5; k++) { const on = isTarget && Math.floor(t * 4) % 5 === k; ctx.fillStyle = on ? "#fff" : isTarget ? "#5dff9b" : "#4fd1ff"; ctx.beginPath(); ctx.arc(X - w / 2 + w * k / 4, y - 8, 3, 0, TAU); ctx.fill(); }
+    if (isTarget && G.phase === "land") { // a beam marks the pad
+      const bg = ctx.createLinearGradient(0, y - H * 0.5, 0, y); bg.addColorStop(0, "rgba(93,255,155,0)"); bg.addColorStop(1, "rgba(93,255,155,0.18)");
+      ctx.fillStyle = bg; ctx.fillRect(X - w / 2, y - H * 0.5, w, H * 0.5); }
+    ctx.fillStyle = "#e6ecff"; ctx.font = "800 11px system-ui"; ctx.textAlign = "center"; ctx.fillText(label, X, y + 22);
+  }
+}
+
+function drawSpeedMeter() { // shown while landing: green below the safe touchdown speed
+  if (G.phase !== "land" || G.over || G.done) return;
+  const v = Math.max(0, G.vy / S), k = clamp(v / (SAFE_SPEED * 2), 0, 1), x = W - 30, y0 = H * 0.3, h = H * 0.36;
+  ctx.fillStyle = "rgba(10,16,34,0.85)"; ctx.beginPath(); ctx.roundRect(x - 13, y0 - 30, 26, h + 46, 10); ctx.fill();
+  ctx.fillStyle = "rgba(93,255,155,0.25)"; ctx.fillRect(x - 6, y0 + h / 2, 12, h / 2);
+  ctx.fillStyle = "rgba(255,93,122,0.25)"; ctx.fillRect(x - 6, y0, 12, h / 2);
+  const ok = v < SAFE_SPEED, yy = y0 + h - k * h;
+  ctx.fillStyle = ok ? "#5dff9b" : "#ff5d7a"; ctx.fillRect(x - 10, yy - 3, 20, 6);
+  ctx.fillStyle = "#e6ecff"; ctx.font = "800 9px system-ui"; ctx.textAlign = "center"; ctx.fillText("SPEED", x, y0 - 16);
+  ctx.fillStyle = ok ? "#5dff9b" : "#ff5d7a"; ctx.font = "900 10px system-ui"; ctx.fillText(ok ? "SAFE" : "SLOW!", x, y0 - 4);
+}
+
+function draw(t) {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (!G) return;
+  drawSky();
+  const sx = SHIP_X(), cw = S * 0.07;
+  for (const gt of G.gates) {
+    const X = gt.x - G.x + sx; if (X < -cw * 2 || X > W + cw * 2) continue;
+    const cy = gateCy(gt);
+    column(ctx, X, -10, (cy - gt.gap / 2) * H, cw, G.ST.theme, gt.seed, t, true);
+    column(ctx, X, (cy + gt.gap / 2) * H, H + 10, cw, G.ST.theme, gt.seed + 3, t, false);
+    if (gt.amp) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.font = "900 14px system-ui"; ctx.textAlign = "center"; // arrows show the gap slides
+      ctx.fillText("▲", X, (cy - gt.gap / 2) * H - 8 - Math.abs(Math.sin(t * 3)) * 4); ctx.fillText("▼", X, (cy + gt.gap / 2) * H + 20 + Math.abs(Math.sin(t * 3)) * 4); }
+  }
+  for (const T of G.tunnels) drawTunnel(T, sx, t);
+  for (const d of G.debris) { const X = d.x - G.x + sx; if (X > -60 && X < W + 60) debrisArt(ctx, X, debrisY(d), d.r, G.ST.theme, d.seed, t); }
+  for (const cn of G.cans) { const X = cn.x - G.x + sx; if (!cn.got && X > -40 && X < W + 40) fuelCell(ctx, X, cn.y * H, S * 0.035, t + cn.seed); }
+  drawGround(t);
+  if (G.ST.wind && Math.abs(G.wind) > 1) { ctx.strokeStyle = `rgba(255,230,200,${Math.min(0.35, Math.abs(G.wind) / (S * 2))})`; ctx.lineWidth = 2; // wind streaks
+    for (let k = 0; k < 14; k++) { const x = (k * 97 + t * 300) % W, y = (k * 53 + (G.wind > 0 ? t : -t) * 200) % H; ctx.beginPath(); ctx.moveTo(x, (y + H) % H); ctx.lineTo(x - 6, ((y + H) % H) + Math.sign(G.wind) * 26); ctx.stroke(); } }
+  for (const p of G.fx) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); } ctx.globalAlpha = 1;
+  if (!G.over) lander(ctx, sx, G.y, SHIP_R(), G.ang, t, holding && !G.done && G.fuel > 0 && G.phase !== "count");
+  if (!G.over && !G.done && G.fuel <= 0 && G.t % 0.6 < 0.4) { ctx.fillStyle = "#ff5d7a"; ctx.font = "900 16px system-ui"; ctx.textAlign = "center"; ctx.fillText("NO FUEL", sx, G.y - SHIP_R() - 12); }
+  const fb = $("hFuel"), fk = Math.round(G.fuel); if (fb.dataset.k != fk) { fb.dataset.k = fk; fb.style.width = fk + "%"; fb.style.background = fk > 50 ? "#5dff9b" : fk > 25 ? "#ffd25d" : "#ff5d7a"; $("hFuelPct").textContent = fk + "%"; }
+  drawSpeedMeter();
+  // progress bar along the bottom: launch → gates → pad
+  const prog = clamp(G.x / G.padX, 0, 1);
+  ctx.fillStyle = "rgba(10,16,34,0.7)"; ctx.fillRect(W * 0.1, H - 10, W * 0.8, 4); ctx.fillStyle = G.ST.glow; ctx.fillRect(W * 0.1, H - 10, W * 0.8 * prog, 4);
+  // countdown
+  if (G.phase === "count") { ctx.fillStyle = "#fff"; ctx.font = "900 64px system-ui"; ctx.textAlign = "center"; ctx.fillText(Math.ceil(G.count), W / 2, H * 0.42);
+    ctx.font = "700 16px system-ui"; ctx.fillStyle = "#9fe8ff"; ctx.fillText("Hold anywhere to thrust", W / 2, H * 0.42 + 30); }
+  if (G.phase === "launch" && G.t % 1 < 0.7) { ctx.fillStyle = "#5dff9b"; ctx.font = "900 22px system-ui"; ctx.textAlign = "center"; ctx.fillText("HOLD TO LIFT OFF", W / 2, H * 0.4); }
+}
+
+// ---------- Commander Zib's speech bubble ----------
+function drawZib(c, s, t, talk) {
+  c.clearRect(0, 0, s, s); c.save(); c.scale(s / 80, s / 80);
+  c.fillStyle = "#0d1a2c"; c.fillRect(0, 0, 80, 80);
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(40, 62, 26, PI, 0); c.fill();
+  c.strokeStyle = "#5dff9b"; c.lineWidth = 3; c.beginPath(); c.moveTo(40, 36); c.lineTo(40, 22); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(40, 20, 4, 0, TAU); c.fill();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(40, 52, 12, 0, TAU); c.fill();
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(42 + Math.sin(t) * 2, 52, 5.5, 0, TAU); c.fill();
+  c.strokeStyle = "#1a2240"; c.lineWidth = 4; c.beginPath(); c.arc(40, 56, 28, PI * 1.12, PI * 1.88); c.stroke();
+  if (talk) { c.fillStyle = "#10162c"; c.beginPath(); c.ellipse(40, 72, 5, 1.5 + Math.abs(Math.sin(t * 18)) * 2.5, 0, 0, TAU); c.fill(); }
+  c.restore();
+}
+function say(html, secs = 3) { $("bubbleText").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
+
+// ============================================================
+//  MENUS
+// ============================================================
+function openMenu(html, anim = null) { paused = true; holding = false; thrustSound(false); menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden"); $("hud").style.visibility = "hidden"; wire(); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("hud").style.visibility = ""; last = performance.now(); }
+function wire() {
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-planet]")) planetIcon(c, +c.dataset.planet);
+}
+const starStr = (n, max = 3) => "★".repeat(n) + `<i>${"★".repeat(max - n)}</i>`;
+function planetIcon(cvs, st) {
+  const c = cvs.getContext("2d"), n = 92; cvs.width = cvs.height = n;
+  const pc = { ice: ["#e8f6ff", "#6a9ac8"], mars: ["#f0a070", "#8a3020"], earth: ["#9fd8ff", "#1a4a8a"], jupiter: ["#f8d8b0", "#a0603a"] }[STAGES[st].theme];
+  const g = c.createRadialGradient(n * 0.38, n * 0.38, 4, n / 2, n / 2, n / 2); g.addColorStop(0, pc[0]); g.addColorStop(1, pc[1]);
+  c.fillStyle = g; c.beginPath(); c.arc(n / 2, n / 2, n / 2 - 2, 0, TAU); c.fill();
+}
+
+function titleMenu() {
+  openMenu(`<canvas id="titleArt"></canvas><h1>Alien Launch</h1>
+    <p>Blast off, weave through the obstacles, and land softly. Every planet pulls a little harder.</p>
+    <button class="big main" data-act="missions">Play<small>${totalStars()} of ${STAGES.length * MISSIONS * 3} stars</small></button>
+    <div class="row"><button class="big" data-act="help" data-arg="title">How to play</button><button class="big" data-act="sound">Sound: ${SAVE.sound ? "On" : "Off"}</button></div>`, titleAnim);
+}
+function titleAnim(t) { // the lander bobbing over a pad
+  const cvs = $("titleArt"); if (!cvs) return;
+  const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+  const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
+  const y = h * 0.45 + Math.sin(t * 1.6) * h * 0.14, thr = Math.cos(t * 1.6) < 0;
+  column(c, w * 0.12, -10, h * 0.32, 16, "ice", 1, t, true); column(c, w * 0.12, h * 0.75, h + 10, 16, "ice", 2, t, false);
+  column(c, w * 0.88, -10, h * 0.25, 16, "mars", 3, t, true); column(c, w * 0.88, h * 0.68, h + 10, 16, "mars", 4, t, false);
+  c.fillStyle = "#5dff9b"; c.fillRect(w * 0.38, h * 0.92, w * 0.24, 4);
+  lander(c, w / 2, y, 24, Math.sin(t) * 0.1, t, thr);
+}
+function missionsMenu() {
+  openMenu(`<p class="kicker">Missions</p><h2>Choose a mission</h2>
+    ${STAGES.map((st, i) => `<div class="stageHead"><canvas data-planet="${i}"></canvas><div><b>${i + 1} · ${st.name}</b><small>${st.feel}</small></div></div>
+      <div class="missions">${Array.from({ length: MISSIONS }, (_, m) => `<button class="big ${unlocked(i, m) && !starsOf(i, m) ? "main" : ""}" data-act="go" data-arg="${i}|${m}" ${unlocked(i, m) ? "" : "disabled"}>
+        ${unlocked(i, m) ? `Mission ${m + 1}<br><span class="stars">${starStr(starsOf(i, m))}</span>` : `🔒<br><small>Mission ${m + 1}</small>`}</button>`).join("")}</div>`).join("")}
+    <button class="big" data-act="title" style="margin-top:14px">Back</button>`);
+}
+function pauseMenu() {
+  if (!G || G.over || G.done || paused) return;
+  openMenu(`<p class="kicker">${G.ST.name} · Mission ${G.m + 1}</p><h2>Paused</h2>
+    <button class="big main" data-act="resume">Resume</button>
+    <button class="big" data-act="help" data-arg="pause">How to play</button>
+    <button class="big" data-act="retry">Restart mission</button>
+    <button class="big" data-act="missions">Missions</button>`);
+}
+function crashMenu() {
+  openMenu(`<p class="kicker">${G.ST.name} · Mission ${G.m + 1}</p><h2>Crashed!</h2>
+    <p>${G.fuel <= 0 && G.why !== "obstacle" && G.why !== "debris" && G.why !== "tunnel" ? "You ran out of fuel. Grab the glowing fuel cells along the way, and save some for the landing." : { tunnel: "You scraped a tunnel wall. Start climbing or dropping before each bend.", debris: "You hit floating debris. It drifts between the gaps, so watch ahead.", obstacle: "You clipped an obstacle. Aim for the middle of each gap.", ground: "You dropped too low. Tap or hold to stay up.", rocks: "You touched down on the rocks. Wait until you're over the green pad.", hard: "You hit the pad too fast. Keep the speed meter green as you land." }[G.why]}</p>
+    <div class="stats"><div>${G.passed}/${G.gates.length}<small>Gates</small></div><div>${G.score}<small>Score</small></div></div>
+    <button class="big main" data-act="retry">Try again</button>
+    <button class="big" data-act="missions">Missions</button>`);
+}
+function landedMenu() {
+  const next = G.m + 1 < MISSIONS ? [G.st, G.m + 1] : G.st + 1 < STAGES.length ? [G.st + 1, 0] : null;
+  openMenu(`<p class="kicker">${G.ST.name} · Mission ${G.m + 1}</p><h2>Landed!</h2>
+    <div class="bigStars">${starStr(G.stars)}</div>
+    <div class="stats"><div>${G.score}<small>Score</small></div><div>${G.landing.speed.toFixed(2)}<small>Touchdown speed</small></div><div>${Math.round(G.landing.centre * 100)}%<small>On target</small></div></div>
+    <p style="font-size:13px;color:var(--dim)">★ landed · ★★ soft (under ${(SAFE_SPEED * 0.55).toFixed(2)}) · ★★★ soft and dead centre</p>
+    ${next ? `<button class="big main" data-act="go" data-arg="${next[0]}|${next[1]}">Next: ${next[1] === 0 ? STAGES[next[0]].name : "Mission " + (next[1] + 1)} ▶</button>` : `<p><b style="color:var(--good)">Every mission complete!</b> Go back for 3 stars on each.</p>`}
+    <button class="big" data-act="retry">Fly it again</button>
+    <button class="big" data-act="missions">Missions</button>`);
+}
+
+// ---------- How to play: four pages with live demos ----------
+const HOWTO = [
+  { title: "Hold to thrust", text: "<b>Hold</b> anywhere on the screen (or Space) to fire the thruster and rise. <b>Let go</b> to fall. That's the only control.", demo: demoThrust },
+  { title: "Fly through the gaps", text: "After lift-off the course scrolls by. Steer up and down through each gap. Touching an obstacle is a crash. Later missions add <b>sliding gaps</b> (marked ▲▼), winding <b>tunnels</b> you can see through, and from Mars, <b>floating debris</b>.", demo: demoGaps },
+  { title: "Watch your fuel", text: "The thruster burns <b>fuel</b> (top of the screen). Fuel only burns <b>while you're thrusting</b>, but the tank is small, so <b>you will run out</b> unless you climb or dive for the glowing <b style='color:var(--good)'>fuel cells</b> (they sit high or low, off the straight path). Run dry and you fall. Leftover fuel adds to your landing score.", demo: demoFuel },
+  { title: "Land softly", text: "At the end your ship slows over the <b style='color:var(--good)'>green pad</b>. Come down gently: keep the <b>speed meter</b> green. Land off the pad or too fast and you crash.", demo: demoLand },
+  { title: "Gravity gets stronger", text: "Each planet pulls harder: floaty on the <b>Oort Gate</b>, heavier on <b>Mars</b> and <b>Earth</b>, crushing on <b>Jupiter</b>, which also has wind gusts. Earn up to <b style='color:var(--gold)'>3 stars</b> per mission.", demo: demoGravity },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><p>${p.text}</p>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${first ? "start" : back}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${first ? "start" : back}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    t => { const cvs = $("howCv"); if (!cvs) return; const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
+      if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
+      const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.fillStyle = "#0e1838"; c.fillRect(0, 0, w, h); p.demo(c, t, w, h); });
+}
+function finger(c, x, y, down) { c.fillStyle = down ? "rgba(93,255,155,0.35)" : "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x, y, 20, 0, TAU); c.fill(); c.fillStyle = down ? "#5dff9b" : "rgba(255,255,255,0.8)"; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
+  c.font = "800 11px system-ui"; c.textAlign = "center"; c.fillText(down ? "HOLD" : "let go", x, y + 34); }
+function demoThrust(c, t, w, h) {
+  const T = t % 4, down = T < 1.6, y = h * 0.62 - Math.sin(Math.min(PI, T / 4 * TAU) ) * h * 0.3;
+  c.fillStyle = "#4fd1ff"; c.fillRect(w * 0.38, h * 0.88, w * 0.24, 4);
+  lander(c, w / 2, y, 22, 0, t, down);
+  finger(c, w * 0.84, h * 0.6, down);
+}
+function demoGaps(c, t, w, h) {
+  const off = (t * 80) % 160;
+  for (let k = -1; k < 4; k++) { const x = k * 160 - off + 120, cy = h * (0.45 + 0.18 * Math.sin(k * 1.7));
+    column(c, x, -10, cy - 52, 14, "earth", k + 1, t, true); column(c, x, cy + 52, h + 10, 14, "earth", k + 3, t, false); }
+  const nearest = [0, 1, 2].map(k => k * 160 - off + 120).find(x => x > w * 0.3 - 40) ?? 120, k = Math.round((nearest - 120 + off) / 160);
+  const ty = h * (0.45 + 0.18 * Math.sin(k * 1.7)), y = ty + Math.sin(t * 3) * 8;
+  lander(c, w * 0.3, y, 18, Math.sin(t * 2) * 0.15, t, Math.sin(t * 5) > 0);
+}
+function demoFuel(c, t, w, h) {
+  const T = t % 5, x = w * 0.15 + T * w * 0.16, got = x > w * 0.6, fuel = got ? Math.min(100, 32 + 25) : Math.max(5, 40 - T * 3);
+  if (!got) fuelCell(c, w * 0.62, h * 0.5, 13, t);
+  if (got && T < 4.2) { c.fillStyle = "#5dff9b"; c.font = "900 16px system-ui"; c.textAlign = "center"; c.fillText("+25% fuel", w * 0.62, h * 0.32 - (T - 2.9) * 10); }
+  lander(c, x, h * 0.5 + Math.sin(t * 4) * 6, 18, 0, t, Math.sin(t * 6) > 0);
+  c.fillStyle = "rgba(10,16,34,0.9)"; c.beginPath(); c.roundRect(w * 0.25, h * 0.84, w * 0.5, 16, 8); c.fill();
+  c.fillStyle = fuel > 50 ? "#5dff9b" : fuel > 25 ? "#ffd25d" : "#ff5d7a"; c.beginPath(); c.roundRect(w * 0.25 + 2, h * 0.84 + 2, (w * 0.5 - 4) * fuel / 100, 12, 6); c.fill();
+  c.fillStyle = "#e6ecff"; c.font = "800 11px system-ui"; c.textAlign = "center"; c.fillText(`FUEL ${Math.round(fuel)}%`, w / 2, h * 0.84 - 6);
+}
+function demoLand(c, t, w, h) {
+  const T = t % 5.5, k = Math.min(1, T / 4), y = lerp(h * 0.2, h * 0.8 - 18, 1 - Math.pow(1 - k, 2)), thr = T > 1.5 && T < 4 && Math.sin(t * 8) > -0.3;
+  c.fillStyle = "#4a8a52"; c.fillRect(0, h * 0.82, w, h * 0.18);
+  c.fillStyle = "#5dff9b"; c.fillRect(w * 0.36, h * 0.8, w * 0.28, 5);
+  const bg = c.createLinearGradient(0, 0, 0, h * 0.8); bg.addColorStop(0, "rgba(93,255,155,0)"); bg.addColorStop(1, "rgba(93,255,155,0.18)"); c.fillStyle = bg; c.fillRect(w * 0.36, 0, w * 0.28, h * 0.8);
+  lander(c, w / 2, y, 20, 0, t, thr && k < 1);
+  const v = k < 1 ? (1 - k) * 0.9 : 0, ok = v < 0.42; // speed meter
+  c.fillStyle = "rgba(10,16,34,0.85)"; c.fillRect(w - 40, h * 0.18, 26, h * 0.6);
+  c.fillStyle = ok ? "#5dff9b" : "#ff5d7a"; c.fillRect(w - 38, h * 0.18 + h * 0.6 * (1 - Math.min(1, v)), 22, 6);
+  c.font = "900 10px system-ui"; c.textAlign = "center"; c.fillText(ok ? "SAFE" : "SLOW!", w - 27, h * 0.14);
+  if (k >= 1 && T < 5.3) { c.fillStyle = "#ffd25d"; c.font = "900 26px system-ui"; c.fillText("★★★", w / 2, h * 0.3); }
+}
+function demoGravity(c, t, w, h) {
+  STAGES.forEach((st, i) => { const x = w * (0.14 + i * 0.24), period = 2.4 / Math.sqrt(st.g), ph = (t % period) / period, y = h * 0.28 + Math.pow(ph, 2) * h * 0.46;
+    const pc = { ice: "#6a9ac8", mars: "#c06a48", earth: "#3a8ad8", jupiter: "#c08050" }[st.theme];
+    c.fillStyle = pc; c.beginPath(); c.arc(x, h * 0.88, 14, 0, TAU); c.fill();
+    lander(c, x, y, 13, 0, t, ph < 0.04);
+    c.fillStyle = "#c9d3f0"; c.font = "800 11px system-ui"; c.textAlign = "center"; c.fillText(st.short, x, h * 0.13);
+    c.fillStyle = "#8f9cc4"; c.font = "700 10px system-ui"; c.fillText(`${st.g.toFixed(2)}g`, x, h * 0.13 + 14); });
+}
+
+// ---------- actions ----------
+let pending = [0, 0];
+const ACT = {
+  title: () => titleMenu(),
+  missions: () => missionsMenu(),
+  go: arg => { pending = String(arg).split("|").map(Number); if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("first", 0); } else ACT.start(); },
+  start: () => { newMission(pending[0], pending[1]); closeMenu(); },
+  retry: () => { pending = [G.st, G.m]; ACT.start(); },
+  help: arg => { const [back, page] = String(arg).split("|"); helpMenu(back, +(page || 0)); },
+  first: () => ACT.start(),
+  pause: () => { paused = false; pauseMenu(); },
+  resume: () => closeMenu(),
+  sound: () => { SAVE.sound = !SAVE.sound; save(); titleMenu(); },
+};
+$("pauseBtn").onclick = () => pauseMenu();
+document.addEventListener("visibilitychange", () => { if (document.hidden) pauseMenu(); });
+
+// ============================================================
+//  LOOP
+// ============================================================
+function resize() { W = innerWidth; H = innerHeight; S = Math.min(W, H * 0.62, 600); DPR = Math.min(3, devicePixelRatio || 1); cv.width = W * DPR; cv.height = H * DPR; skyKey = ""; }
+window.addEventListener("resize", resize); resize();
+let last = performance.now();
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.04); // never negative: a frame can be stamped just before a menu closed last = now;
+  if (G && !paused) update(dt);
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
+  drawZib($("zibFace").getContext("2d"), 80, now / 1000, bubbleT > 0);
+  draw(now / 1000);
+  if (menuAnim) menuAnim(now / 1000);
+  requestAnimationFrame(frame);
+}
+newMission(0, 0); paused = true; $("bubble").classList.remove("on"); bubbleT = 0;
+titleMenu();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
