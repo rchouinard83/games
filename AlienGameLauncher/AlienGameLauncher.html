@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Eleven games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Twelve games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -102,6 +102,8 @@ const GAMES = [
     desc: "Pull back and putt your alien through 72 holes on four worlds: ice, wind, gravity wells, sand, portals and windmills." },
   { name: "Alien Lockdown", tag: "Arcade puzzle", color: "#4fd1ff", href: "AlienLockdown/Alien-Lockdown.html", art: artLockdown,
     desc: "Swipe force beams across the arena to fence in the bouncing aliens. Lock down 75% without getting your beams broken." },
+  { name: "Alien Bowling", tag: "Bowling", color: "#e8ff83", href: "AlienBowling/Alien-Bowling.html", art: artBowling,
+    desc: "Ten alien pins who taunt, panic and laugh at your gutter balls. Pick a ball, hook it, and bowl across four worlds." },
 ];
 
 // ---------- shared little drawings ----------
@@ -129,6 +131,37 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artBowling(c, w, h, t) { // a ball rolls down the lane into ten taunting alien pins, which go flying
+  sky(c, w, h, "#332449", "#101229", 71);
+  const T = t % 4, far = h * 0.2, near = h, cx = w / 2, nearW = w * 0.32, farW = w * 0.12;
+  const at = k => ({ y: near - (near - far) * k, half: nearW + (farW - nearW) * k }); // k: 0 at the bowler, 1 at the back of the lane
+  const a = at(0), b = at(1);
+  c.fillStyle = "#30354a"; c.beginPath(); c.moveTo(cx - a.half - 12, a.y); c.lineTo(cx + a.half + 12, a.y); c.lineTo(cx + b.half + 5, b.y); c.lineTo(cx - b.half - 5, b.y); c.fill();
+  c.fillStyle = "#c69561"; c.beginPath(); c.moveTo(cx - a.half, a.y); c.lineTo(cx + a.half, a.y); c.lineTo(cx + b.half, b.y); c.lineTo(cx - b.half, b.y); c.fill();
+  c.strokeStyle = "rgba(112,67,46,0.35)"; c.lineWidth = 1;
+  for (let i = 1; i < 8; i++) { const f = i / 8 - 0.5; c.beginPath(); c.moveTo(cx + f * 2 * a.half, a.y); c.lineTo(cx + f * 2 * b.half, b.y); c.stroke(); }
+  // the rack: ten aliens in a triangle, front pin nearest
+  const hitAt = 1.5, cols = ["#5dff9b", "#ffe35d", "#ff8bd0", "#7ab8ff", "#ff8f5d", "#ff5d7a"];
+  let n = 0; const pinsAt = [];
+  for (let row = 3; row >= 0; row--) for (let col = 0; col <= row; col++) {
+    const k = 0.82 + row * 0.035, p = at(k), x = cx + (col - row / 2) * p.half * 0.42, r = h * 0.045 * (1 - k * 0.45);
+    pinsAt.push({ x, y: p.y, r, col: cols[n++ % cols.length], side: col < row / 2 ? -1 : 1, i: n });
+  }
+  for (const p of pinsAt) {
+    const fall = T > hitAt ? Math.min(1, (T - hitAt) * 3) : 0, hop = T < hitAt ? Math.abs(Math.sin(t * 6 + p.i)) * p.r * 0.4 : 0;
+    c.save(); c.translate(p.x + p.side * fall * p.r * 1.5, p.y - p.r - hop); c.rotate(p.side * fall * PI / 2);
+    eyeAlien(c, 0, 0, p.r, p.col, t + p.i); c.restore();
+  }
+  // the ball
+  if (T < hitAt) { const k = T / hitAt * 0.8, p = at(k), r = h * 0.075 * (1 - k * 0.55);
+    const g = c.createRadialGradient(cx - r * 0.3, p.y - r * 1.3, r * 0.1, cx, p.y - r, r); g.addColorStop(0, "#eaffc7"); g.addColorStop(0.4, "#7db84f"); g.addColorStop(1, "#233f49");
+    c.fillStyle = g; c.beginPath(); c.arc(cx + p.half * 0.05 * k, p.y - r, r, 0, TAU); c.fill(); }
+  // a taunt, then the groan
+  const line = T < hitAt ? "Bet you miss!" : "STRIKE!", fw = T < hitAt ? "800 13px system-ui" : "950 20px system-ui";
+  c.font = fw; c.textAlign = "center"; c.textBaseline = "middle"; const tw = c.measureText(line).width + 16;
+  if (T < hitAt) { c.fillStyle = "#fffbe8"; c.beginPath(); c.roundRect(cx - tw / 2, h * 0.04, tw, 22, 9); c.fill(); c.fillStyle = "#1d1a33"; c.fillText(line, cx, h * 0.04 + 11.5); }
+  else { c.lineWidth = 5; c.strokeStyle = "#1c203e"; c.strokeText(line, cx, h * 0.5); c.fillStyle = "#f2ff92"; c.fillText(line, cx, h * 0.5); }
+}
 function artLockdown(c, w, h, t) { // aliens bounce in an arena, a beam grows down the middle and the empty side locks down
   sky(c, w, h, "#0c1a33", "#04080f", 63);
   const x0 = w * 0.06, y0 = h * 0.1, aw = w * 0.88, ah = h * 0.8, T = t % 4.4, cut = x0 + aw * 0.6;
