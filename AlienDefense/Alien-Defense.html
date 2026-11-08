@@ -124,6 +124,10 @@
   #stage { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
   canvas { display: block; touch-action: none; border-radius: 6px; }
   #cv { flex: none; border-radius: 0; }
+  @media (max-width: 480px) and (max-aspect-ratio: 3/5) {
+    #app { justify-content: center; }
+    #stage { flex: none; height: var(--board-height, 0px); }
+  }
   #hud, #bar { align-self: center; width: 100%; max-width: 100%; }
   #bar { flex: none; background: var(--panel); padding: 6px 8px; min-height: 76px; }
   #build { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
@@ -351,7 +355,7 @@
 </div>
 <div id="overlay" class="splash booting">
   <canvas id="splashCv" aria-hidden="true"></canvas>
-  <span id="gameVersion">v1.0.42</span>
+  <span id="gameVersion">v1.0.44</span>
   <div id="ovBox">
     <p id="bootStatus" role="status">Loading Alien Defense…</p>
     <button id="bootSound">Enable sound</button>
@@ -2138,13 +2142,26 @@ const $ = id => document.getElementById(id);
 const cv = $("cv");
 let ctx = cv.getContext("2d"); // swapped temporarily when drawing icons
 let CELL = 30, DPR = 1;
+const tallPhoneLayout = window.matchMedia("(max-width: 480px) and (max-aspect-ratio: 3/5)");
 
 function resize() {
   const stage = $("stage");
-  CELL = Math.max(1, Math.min(stage.clientWidth / COLS, stage.clientHeight / ROWS));
+  const hud = $("hud"), bar = $("bar");
+  let availableHeight = stage.clientHeight;
+  if (tallPhoneLayout.matches) {
+    const app = $("app");
+    const padding = getComputedStyle(app);
+    availableHeight = app.clientHeight - parseFloat(padding.paddingTop) - parseFloat(padding.paddingBottom)
+      - hud.offsetHeight - bar.offsetHeight;
+  }
+  CELL = Math.max(1, Math.min(stage.clientWidth / COLS, availableHeight / ROWS));
   DPR = window.devicePixelRatio || 1;
   const width = COLS * CELL, height = ROWS * CELL;
-  cv.style.width = $("hud").style.width = $("bar").style.width = width + "px";
+  stage.style.setProperty("--board-height", height + "px");
+  cv.style.width = width + "px";
+  // Keep the controls readable when a short viewport limits the board width.
+  const controlsWidth = Math.min(stage.clientWidth, Math.max(320, width));
+  hud.style.width = bar.style.width = controlsWidth + "px";
   cv.style.height = height + "px";
   const pixelWidth = Math.round(width * DPR), pixelHeight = Math.round(height * DPR);
   if (cv.width !== pixelWidth || cv.height !== pixelHeight) {
@@ -5884,7 +5901,10 @@ function initializeGame() {
   $("bootButton").addEventListener("click", mainMenu);
 
   window.addEventListener("resize", resize);
-  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe($("stage"));
+  if (window.ResizeObserver) {
+    const observer = new ResizeObserver(resize);
+    for (const id of ["app", "stage", "hud", "bar"]) observer.observe($(id));
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) syncSceneAudio(null);
     if (document.hidden && S.started && !S.over && !S.menu) pauseMenu();
