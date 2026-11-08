@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101229">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Alien Bowling · Alien Arcade</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101229;color:#f9f6ec;--accent:#e8ff83}
@@ -38,12 +41,15 @@ h2{margin:3px 0;font-size:1.55rem;letter-spacing:-.04em}.panel p{font-size:.88re
 .how{list-style:none;padding:0;margin:6px 0;display:grid;gap:5px;text-align:left}.how li{font-size:.86rem;line-height:1.3;padding:6px 9px;background:#171832;border-radius:8px}
 .how b{color:var(--accent)}.how b.r{color:#ff8f9f}.how b.y{color:#ffd25d}
 .dots{display:flex;justify-content:center;gap:6px;margin:6px 0 8px}.dots i{width:7px;height:7px;border-radius:50%;background:#424464}.dots i.on{background:var(--accent)}
+.topRight{display:flex;align-items:center;gap:8px}#fsBtn{min-width:44px;padding:4px 8px}
+/* big view (phones that can't go full screen): drop the title so the lane gets the room */
+body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content:flex-end}body.bigView main{gap:4px}
 [hidden]{display:none!important}
 @media(max-width:360px){body{padding:7px}.panel{padding:9px}.frame strong{font-size:.62rem}}
 </style>
 </head>
 <body><main>
-<header class="top"><div><div class="kicker">Alien Arcade · Ten-pin</div><h1>Alien <span>Bowling</span></h1></div><span class="stage" id="stage"></span></header>
+<header class="top"><div><div class="kicker">Alien Arcade · Ten-pin</div><h1>Alien <span>Bowling</span></h1></div><div class="topRight"><span class="stage" id="stage"></span><button id="fsBtn" type="button" aria-label="Full screen" aria-pressed="false" hidden></button></div></header>
 <div class="arena"><canvas id="lane" aria-label="Bowling lane and alien pins"></canvas>
 <section class="overlay" id="overlay" aria-label="Game menu"><div class="panel" id="panel"></div></section></div>
 <div class="score" id="score" aria-label="Ten-frame scorecard"></div>
@@ -192,8 +198,19 @@ const world=()=>WORLDS[worldIndex];
 const rolls=()=>frames[frame];
 const isOpen=i=>i===0||(records[i-1]??0)>=WORLDS[i-1].unlock;
 const stars=(i,score)=>WORLDS[i].stars.filter(target=>score>=target).length;
+// sound on/off, remembered between visits
+const SOUND_KEY="alienArcade.bowling.sound";
+let soundOn=true;
+try{soundOn=localStorage.getItem(SOUND_KEY)!=="0";}catch{}
+const soundLabel=()=>soundOn?"🔊 Sound: On":"🔇 Sound: Off";
+const soundButton=()=>`<button data-act="sound" aria-pressed="${soundOn}">${soundLabel()}</button>`; // goes in the main and pause menus
+function showSound(){for(const b of document.querySelectorAll("[data-act='sound']")){b.textContent=soundLabel();b.setAttribute("aria-pressed",String(soundOn));}}
+function toggleSound(){
+  soundOn=!soundOn;try{localStorage.setItem(SOUND_KEY,soundOn?"1":"0");}catch{}
+  showSound();if(soundOn)playSound(520,.1,"triangle");
+}
 function playSound(hz,seconds=.12,type="sine",end=hz*.65){
-  if(!audioCtx)return;
+  if(!audioCtx||!soundOn)return;
   const t=audioCtx.currentTime,o=audioCtx.createOscillator(),g=audioCtx.createGain();
   o.type=type;o.frequency.setValueAtTime(hz,t);o.frequency.exponentialRampToValueAtTime(end,t+seconds);
   g.gain.setValueAtTime(.12,t);g.gain.exponentialRampToValueAtTime(.001,t+seconds);
@@ -269,7 +286,7 @@ let bubbles=[], tauntT=1, idleT=0, boredDone=false;
 const VOICE={blip:{f:520,type:"square"},runner:{f:780,type:"square"},goo:{f:430,type:"sine",bubbly:true},
   jelly:{f:620,type:"triangle",bubbly:true},chonk:{f:170,type:"sawtooth"},mother:{f:115,type:"sawtooth"}};
 function voice(id,kind="talk",n=4,delay=0){
-  if(!audioCtx)return;
+  if(!audioCtx||!soundOn)return;
   const v=VOICE[id]||VOICE.blip, filter=audioCtx.createBiquadFilter(), out=audioCtx.createGain();
   filter.type="lowpass";filter.frequency.value=v.f*4;filter.Q.value=3;out.gain.value=.55;
   filter.connect(out).connect(audioCtx.destination);
@@ -369,7 +386,7 @@ function title(){
   showMenu(`<div class="kicker">Four worlds · Ten frames each</div><h2>Clear the lane.</h2><p>Ten aliens. One ball. They’re already heckling you.</p>
     <div class="worlds">${WORLDS.map((w,i)=>`<button data-act="world" data-index="${i}" ${isOpen(i)?"":"disabled"}>${w.name}<small>${isOpen(i)?w.caption+(records[i]?` · Best ${records[i]}`:""):`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name}`}</small></button>`).join("")}</div>
     <button data-act="balls" style="width:100%;margin-bottom:6px;justify-content:flex-start;gap:10px"><i style="width:26px;height:26px;border-radius:50%;flex:none;background:radial-gradient(circle at 35% 30%,${myBall().colors[0]},${myBall().colors[1]} 45%,${myBall().colors[2]})"></i>Ball: ${myBall().name} ›</button>
-    <div class="actions"><button data-act="help">How to play</button><a class="button" href="../AlienGameLauncher/AlienGameLauncher.html">← Alien Arcade</a></div>`);
+    <div class="actions"><button data-act="help">How to play</button>${soundButton()}<a class="button" href="../AlienGameLauncher/AlienGameLauncher.html">← Alien Arcade</a></div>`);
 }
 // ---------- How to play: short pages, each with a little animated demo ----------
 const HOWTO=[
@@ -599,7 +616,7 @@ function result(){
 function pause(){
   if(!["aim","roll","settle"].includes(state))return;
   resumeState=state;state="pause";gesture=null;
-  showMenu('<div class="kicker">Alien Bowling</div><h2>Paused</h2><div class="actions"><button class="primary" data-act="resume">Resume</button><button data-act="retry">Restart</button><button data-act="menu">World menu</button></div>');
+  showMenu('<div class="kicker">Alien Bowling</div><h2>Paused</h2><div class="actions"><button class="primary" data-act="resume">Resume</button><button data-act="retry">Restart</button><button data-act="menu">World menu</button>'+soundButton()+'</div>');
 }
 // The camera: the long approach is squeezed and the pin deck (past DECK) is stretched out,
 // so the lane feels shorter and the aliens at the end are big enough to see what they're up to.
@@ -803,6 +820,7 @@ function act(name,i){
     case "retry":start(worldIndex);break;
     case "help":help(clamp(i||0,0,HOWTO.length-1));break;
     case "balls":ballMenu();break;
+    case "sound":toggleSound();break;
     case "ball":ballPick=clamp(i||0,0,BALLS.length-1);try{localStorage.setItem(BALL_KEY,String(ballPick));}catch{}playSound(300+ballPick*80,.1,"triangle");ballMenu();break;
     case "menu":title();break;
     case "left":case "right":
@@ -874,5 +892,26 @@ function animate(now){
   while(carry>=1/120){update(1/120);carry-=1/120;}
   draw();if(helpAnim)helpAnim(now/1000);requestAnimationFrame(animate);
 }
-resize();title();requestAnimationFrame(animate);
+// ---------- full screen (like Dr Alien). Hidden where the browser can't do it, such as iPhone Safari. ----------
+(()=>{
+  const btn=$("fsBtn"),root=document.documentElement,req=root.requestFullscreen||root.webkitRequestFullscreen;
+  const can=!!(req&&(document.fullscreenEnabled||document.webkitFullscreenEnabled));
+  const ICON=on=>`<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${on?"M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5":"M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}"/></svg>`;
+  btn.hidden=false;
+  if(!can){ // iPhone Safari can't go full screen, so the button switches to a big view instead: the title hides and the lane grows
+    const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+    let tipShown=standalone;
+    const set=on=>{document.body.classList.toggle("bigView",on);btn.innerHTML=ICON(on);btn.setAttribute("aria-label",on?"Normal view":"Big view");btn.setAttribute("aria-pressed",String(on));
+      try{localStorage.setItem("alienArcade.bowling.bigView",on?"1":"0");}catch{}setTimeout(resize,60);};
+    btn.addEventListener("click",()=>{enableSound();const on=!document.body.classList.contains("bigView");set(on);
+      if(on&&!tipShown){tipShown=true;setStatus("Tip: for true full screen on iPhone, tap Share → Add to Home Screen, then open it from there.");}});
+    let saved=false;try{saved=localStorage.getItem("alienArcade.bowling.bigView")==="1";}catch{}
+    set(saved||standalone);return;
+  }
+  const isFull=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+  const sync=()=>{const on=isFull();btn.innerHTML=ICON(on);btn.setAttribute("aria-label",on?"Exit full screen":"Full screen");btn.setAttribute("aria-pressed",String(on));setTimeout(resize,120);};
+  btn.addEventListener("click",()=>{enableSound();const r=isFull()?(document.exitFullscreen||document.webkitExitFullscreen).call(document):req.call(root);if(r&&r.catch)r.catch(()=>{});});
+  document.addEventListener("fullscreenchange",sync);document.addEventListener("webkitfullscreenchange",sync);sync();
+})();
+resize();showSound();title();requestAnimationFrame(animate);
 </script></body></html>
