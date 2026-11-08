@@ -22,6 +22,7 @@
     background: radial-gradient(ellipse at 50% 0, #1b2751, transparent 64%), var(--bg);
   }
   main { max-width: 970px; margin: auto; padding: 22px 20px; }
+  main:has(.lab:not(.menu-layout)) { min-height: 100dvh; touch-action: none; }
   header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
   h1, h2, p { margin: 0; }
   h1 { font-size: clamp(36px, 6vw, 59px); line-height: 1; letter-spacing: -.055em; }
@@ -181,7 +182,7 @@
         <summary>How to play</summary>
         <p class="muted">Move and rotate the two-color capsules as they fall. Line up four or more of the same color in a row or column. Spores and capsule halves both count.</p>
         <p class="muted">Loose halves fall after a clear and can start a chain. Clear every spore to advance. Keep the capsule feed at the top open.</p>
-        <p class="muted">Keyboard: ← / → move, ↓ drops faster, Z / X rotate, and P pauses. On a phone, use the buttons under the chamber.</p>
+        <p class="muted">Keyboard: ← / → move, ↓ drops faster, Z / X rotate, and P pauses. On a phone, tap the play screen to rotate clockwise, swipe left or right to move, or swipe down to drop faster. You can also use the buttons under the chamber.</p>
       </details>
     </section>
     <section class="chamber" id="chamber" aria-label="Containment chamber" hidden>
@@ -681,6 +682,32 @@ byId("restart").addEventListener("click", () => start(true));
 document.querySelectorAll("[data-command]").forEach(button => {
   button.addEventListener("click", () => command(button.dataset.command));
 });
+const playScreen = document.querySelector("main");
+let gesture;
+
+playScreen.addEventListener("pointerdown", event => {
+  if (event.pointerType === "mouse" || !event.isPrimary || menuOpen || paused || phase !== "fall") return;
+  if (event.target.closest("button, select, input, .overlay")) return;
+  gesture = { id: event.pointerId, x: event.clientX, y: event.clientY };
+  playScreen.setPointerCapture(event.pointerId);
+});
+
+playScreen.addEventListener("pointerup", event => {
+  if (gesture?.id !== event.pointerId) return;
+  const dx = event.clientX - gesture.x;
+  const dy = event.clientY - gesture.y;
+  gesture = null;
+
+  const threshold = 14;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) command("cw");
+  else if (Math.abs(dx) > Math.abs(dy)) command(dx < 0 ? "left" : "right");
+  else if (dy >= threshold) command("down");
+});
+
+playScreen.addEventListener("lostpointercapture", event => {
+  if (gesture?.id === event.pointerId) gesture = null;
+});
+
 const keys = {
   ArrowLeft: "left", ArrowRight: "right", ArrowDown: "down",
   z: "ccw", x: "cw", ArrowUp: "cw"
