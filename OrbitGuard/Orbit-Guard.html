@@ -33,7 +33,9 @@
   .choices button { padding:6px; }
   button:disabled { opacity:.45; }
   .arcade { display:inline-block; margin-top:8px; color:#a5eee2; font-weight:750; }
-  .mission { color:#b0eadf; font-weight:750; margin:0 0 6px; font-size:.87rem; }
+  .mission { color:#b0eadf; font-weight:750; margin:0 0 2px; font-size:.87rem; }
+  .progress { color:#bdcfdf; margin:0 0 7px; font-size:.78rem; }
+  .panel .eyebrow { color:#a9c2d5; font-weight:800; font-size:.69rem; letter-spacing:.08em; text-transform:uppercase; margin:0 0 4px; }
   .guide { padding:10px 12px; }
   .guide .step { margin:0 0 3px; color:#a9c2d5; font-size:.66rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
   .guide svg { display:block; width:100%; height:clamp(76px,26vw,125px); background:#0c192d; border:1px solid #355369; border-radius:8px; }
@@ -61,6 +63,7 @@
     <div><small>Score</small><strong id="score">0</strong></div>
   </div>
   <p id="mission" class="mission"></p>
+  <p id="progress" class="progress"></p>
   <div class="arena">
     <canvas id="sky" width="600" height="480" aria-label="Orbit Guard skyline and interceptor battlefield"></canvas>
     <section class="overlay" id="overlay" aria-label="Game menu"><div class="panel" id="panel"></div></section>
@@ -107,6 +110,9 @@ try {
   sound = saved?.sound ?? true;
 } catch {}
 const level = () => MISSIONS[mission];
+const nextLevel = () => MISSIONS[mission + 1];
+const sectorBoundary = next => next.si !== level().si;
+const nextDestination = next => sectorBoundary(next) ? next.sector.name : next.name;
 const settings = () => MODES[mode];
 const best = i => records[mode]?.[i] ?? {stars:0,score:0};
 const unlocked = i => i === 0 || best(i-1).stars > 0;
@@ -129,7 +135,13 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi,v));
 const aliveCount = () => cities.filter(city => city.hp > 0).length;
 
 function hud() {
-  $("mission").textContent = `${level().sector.name} · ${level().name} · ${settings().name}`;
+  const {sector, si, mi, name} = level();
+  $("mission").textContent = `${sector.name} · ${name}`;
+  const left = WAVES.length - wave - 1;
+  const next = nextLevel();
+  const progress = left ? `${left} more wave${left === 1 ? "" : "s"} after this` :
+    next ? `Final wave · Up next: ${nextDestination(next)}` : "Final wave of the campaign";
+  $("progress").textContent = `Sector ${si + 1}/${SECTORS.length} · Mission ${mi + 1}/${sector.missions.length} · ${progress}`;
   $("wave").textContent = `${wave + 1} / ${WAVES.length}`;
   $("shots").textContent = ammo;
   $("cities").textContent = `${aliveCount()} / 3`;
@@ -256,8 +268,12 @@ function endWave() {
   if (wave === WAVES.length - 1 || aliveCount() === 0) { finish(); return; }
   score += ammo * 12;
   hud();
-  menu("between", `<h2>Wave ${wave + 1} cleared</h2><p>${aliveCount()} cities standing · ${ammo} unused shots · Score ${score.toLocaleString()}</p>
-    <button class="primary" data-act="next">Next wave</button> <button data-act="start">Restart</button>`);
+  const remaining = WAVES.length - wave - 1;
+  const nextWave = remaining === 1 ? "Start final wave" : `Start wave ${wave + 2}`;
+  menu("between", `<p class="eyebrow">${level().name}</p><h2>Wave ${wave + 1} of ${WAVES.length} cleared</h2>
+    <p><b>${remaining === 1 ? "One more wave to clear this mission." : `${remaining} waves left in this mission.`}</b><br>
+    ${aliveCount()} cities standing · Score ${score.toLocaleString()}</p>
+    <button class="primary" data-act="next">${nextWave}</button> <button data-act="start">Restart</button>`);
 }
 function finish() {
   const stars=aliveCount(), old=best(mission);
@@ -266,11 +282,12 @@ function finish() {
     (records[mode]??={})[mission]={stars:Math.max(stars,old.stars),score:Math.max(score,old.score)};
     save();
   }
-  const next=stars && mission+1<MISSIONS.length;
+  const next = stars ? nextLevel() : null;
   hud(); tone(stars?700:115); message(stars?"The cities held.":"All cities lost.");
-  menu("results", `<h2>${stars?(next?"Mission complete":"Campaign complete"):"Defense lost"}</h2>
+  menu("results", `<p class="eyebrow">${level().sector.name} · ${level().name}</p><h2>${stars?(next?"Mission complete":"Campaign complete"):"Defense lost"}</h2>
     <p><b class="stars" aria-label="${stars} of 3 stars">${starsText(stars)}</b><br>Score ${score.toLocaleString()} · Best ${best(mission).score.toLocaleString()}</p>
-    <div class="choices">${next?`<button class="primary" data-act="advance">${level().mi===2?"Next sector":"Next mission"}</button>`:""}
+    ${next ? `<p><b>${sectorBoundary(next) ? "Next sector" : "Next mission"}:</b> ${nextDestination(next)}</p>` : ""}
+    <div class="choices">${next?`<button class="primary" data-act="advance">${sectorBoundary(next)?"Enter next sector":"Start next mission"}</button>`:""}
     <button data-act="start">Play again</button><button data-act="missions">Missions</button></div>${ARCADE}`);
 }
 function update(dt) {
