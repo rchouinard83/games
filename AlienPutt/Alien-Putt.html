@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#060c1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Alien Putt</title>
+<style>
+  :root { --bg: #060c1c; --panel: #0e1a30; --line: #2a3e66; --ink: #e6f0ff; --dim: #93a6c9; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 6px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+  #hud { width: 100%; max-width: 480px; display: flex; gap: 6px; align-items: stretch; }
+  .chip { background: rgba(14,26,48,0.9); border: 1px solid var(--line); border-radius: 12px; padding: 4px 9px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; white-space: nowrap; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(14,26,48,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 11px; }
+  #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  #cv { display: block; border-radius: 16px; border: 1px solid var(--line); touch-action: none; }
+  #bubble { position: fixed; left: 50%; top: calc(60px + env(safe-area-inset-top)); transform: translate(-50%, -8px); max-width: min(92vw, 380px); background: #f0f8ff; color: #0c1a30;
+    border-radius: 14px; padding: 8px 12px; font-size: 15px; font-weight: 700; line-height: 1.3; box-shadow: 0 4px 16px rgba(0,0,0,0.45); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 4; text-align: center; }
+  #bubble.on { opacity: 1; transform: translate(-50%, 0); }
+  #bubble b { color: #1a6ac4; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(3,6,14,0.8); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 420px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 42px; line-height: 1.05; background: linear-gradient(90deg, #5dff9b, #4fd1ff 60%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 26px; margin-bottom: 4px; }
+  #box p { color: #d6e2f5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  #titleArt { width: 100%; height: 150px; display: block; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17284a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .worldCard { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .worldCard canvas { width: 60px; height: 60px; flex: none; border-radius: 12px; }
+  .worldCard span { flex: 1; min-width: 0; }
+  .holes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 10px 0; }
+  .holes .big { margin: 0; padding: 12px 0 6px; font-size: 18px; position: relative; }
+  .holes .big .par { position: absolute; top: 2px; right: 3px; font-size: 9px; font-weight: 900; line-height: 1; padding: 2px 3px; border-radius: 5px; background: rgba(79,209,255,0.18); color: var(--accent); }
+  .holes .big small { font-size: 9px; letter-spacing: 0; color: var(--gold); margin-top: 1px; }
+  .holes .big small i, .stars i, .bigStars i { color: #2a3e66; font-style: normal; }
+  .stars { color: var(--gold); }
+  .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; }
+  .score { font-size: 15px; color: var(--dim); font-weight: 700; }
+  .chars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .charBtn { background: #0a1428; border: 2px solid #2a3e66; border-radius: 14px; padding: 6px 4px 8px; color: var(--ink); font: inherit; font-weight: 800; font-size: 14px; }
+  .charBtn.on { border-color: var(--good); background: #10301f; }
+  .charBtn canvas { width: 100%; aspect-ratio: 1; display: block; }
+  .charDesc { min-height: 42px; }
+  #howCv { width: 100%; height: 200px; display: block; border-radius: 12px; background: #0a1428; border: 1px solid #2a3e66; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 18px; font-weight: 650; line-height: 1.3; padding: 7px 12px; background: #0a1428; border: 1px solid #2a3e66; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; } .how b.c { color: var(--accent); } .how b.y { color: var(--gold); } .how b.g { color: var(--good); } .how b.r { color: var(--bad); }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3e66; }
+  .dots i.on { background: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small id="hWorld">Oort Gate</small><span id="hHole">Hole 1</span></div>
+    <div class="chip"><small>Par</small><span id="hPar">2</span></div>
+    <div class="chip"><small>Strokes</small><span id="hStrokes">0</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="retryBtn" aria-label="Restart hole">↻</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="bubble"></div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN PUTT — mini golf across the four Alien Arcade worlds, 18 holes each.
+//  Pull back from anywhere on the course and let go to putt.
+//  The world is 360 x 640 units: a 9 x 16 grid of 40-unit tiles, scaled to fit the screen.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const LW = 360, LH = 640, TILE = 40, COLS = 9, ROWS = 16;
+const BALL_R = 9, CUP_R = 13, BUMPER_R = 14;
+const PUTT = { maxPower: 760, dragFullPx: 95 };     // a full pull-back is 95 screen pixels of finger movement, so it fits on any phone
+const CUP = { sinkSpeed: 430, pull: 900 };          // slower than sinkSpeed over the cup drops in; near the cup the ball is pulled toward it
+const BOUNCE = { wall: 0.78, bumper: 1.15 };        // speed kept off a wall; bumpers kick it back harder
+const SAND = { drag: 3.2, rolling: 170 };           // sand: slows the ball hard
+const ICE = { drag: 0.12, rolling: 10 };            // ice patches: hardly slows at all
+const SLOPE = 240;                                  // slopes (Mars, Earth) and wind (Jupiter): push per second
+const WELL = { r: 105, pull: 720 };                 // gravity wells: reach and strongest pull
+const PORTAL_R = 15, MILL = { arm: 36, spin: 1.5 }; // portals; windmill blade length and turn speed (radians/s)
+const MAX_STROKES = 10;
+const RAMP = 420;                                   // ramps up to a raised deck: how hard they push the ball back down
+const JUMP = { min: 230, lift: 0.5, g: 1500 };      // launch pads: slowest speed that jumps, how high, how fast it falls
+const ROCK_R = 15;                                  // asteroids
+const MOON = { r: 10, orbit: 24, spin: 1.8 };       // orbiting moons: size, orbit radius, speed
+const SAUCER = { r: 14, range: 60, speed: 1.2 };    // patrol saucers: size, how far each way, speed
+
+// ============================================================
+//  THE CHARACTERS: Stage 1 "First Contact" aliens from Alien Defense (attacker-design.html)
+//  Each is drawn upright at the origin; s = body radius.
+// ============================================================
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15, desc: "Little wobbling slime drop. Squishy and bouncy.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95, desc: "Big round three-eyed bruiser. Built like a bowling ball.",
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    // draw a character centred at (x, y), body radius s; hop = cheering jump height
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+// ============================================================
+//  THE COURSES. Each hole is a 9 x 16 tile map, top row first:
+//   .  off the course (walls go round it)    g  green    T  tee    C  cup
+//   o  bumper    i  ice patch    s  sand    ~  hazard (+1 stroke, back to your last spot)
+//   < > ^ v  slope or wind pushing that way    @  gravity well
+//   A↔B, D↔E  portal pairs    W  windmill
+//   x  asteroid    a  orbiting moon    z  patrol saucer (slides left and right)    J  launch pad (jumps gaps)
+//   u  raised deck    r  ramp between the deck and the ground    Q  tee on the deck    K  cup on the deck
+//   H  drop hole on the deck: the ball falls through a tube and comes out at X on the ground
+// ============================================================
+const WORLDS = [
+  { name: "The Oort Gate", short: "Oort Gate", hazard: "space crack", roll: { drag: 0.42, rolling: 38 },
+    look: { sky: ["#14284a", "#060c1c"], green: ["#3c94b4", "#24607e"], wall: "#7fb8ff", hz: "crack" },
+    intro: "Icy greens at the edge of the solar system. The ball <b>slides</b> a long way!",
+    holes: [
+      { name: "First Putt", par: 2, tip: "<b>Pull back</b> from anywhere and <b>let go</b> to putt!", map: [
+        ".........", ".ggggggg.", ".ggggggC.", ".ogggggg.", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "The Kink", par: 3, tip: "A <b>short pull</b> is a soft putt. Follow the bends.", map: [
+        ".........", ".ggggg...", ".gCggg...", ".ggggg...", ".ggggg...", "...gggg..", "...gggg..", "....gggg.",
+        "....gggg.", "...gggg..", "..gggg...", ".gggg....", ".gggg....", ".gTgg....", ".gggg....", "........."] },
+      { name: "Dogleg Right", par: 2, tip: "<b>Bank it</b> off the wall round the corner.", map: [
+        ".........", ".....ggg.", ".....gCg.", ".....ggg.", ".....ggg.", ".....ggg.", ".ggggggg.", ".ggggggg.",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Ice Rink", par: 3, tip: "Pale <b>ice</b> barely slows the ball. The cup is tucked in the corner!", map: [
+        ".........", ".Cgggggg.", ".ggggggg.", ".ggggggg.", ".g.....g.", ".g.....g.", ".giiiiig.", ".giiiiig.",
+        ".giiiiig.", ".giiiiig.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Bumper Alley", par: 3, tip: "Purple <b>bumpers</b> kick the ball back hard.", map: [
+        ".........", ".ggggCgg.", ".ggggggg.", ".ggo.....", ".ggg.....", ".ggggggg.", ".ggggogg.", ".....ggg.",
+        ".....ggg.", ".ggggggg.", ".ggoggg..", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Space Crack", par: 3, tip: "Fall in a <b>crack</b> and it costs a stroke! Use the bridge.", map: [
+        ".........", "..ggggg..", "..gggCg..", "..ggggg..", "..ggggg..", "..g~~~~..", "..g~~~~..", "..ggggg..",
+        "..ggggg..", "..ggxgg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggTgg..", "..ggggg..", "........."] },
+      { name: "Asteroid Belt", par: 2, tip: "No straight line here: <b>bank around</b> the rocks.", map: [
+        ".........", "...ggg...", "..ggCgg..", ".gxgggxg.", ".gggxggg.", ".xggggxg.", ".ggggggg.", ".ggxgxgg.",
+        ".ggggggg.", ".gxgggxg.", ".ggggggg.", ".gggxggg.", "..ggggg..", "...gTg...", "...ggg...", "........."] },
+      { name: "First Jump", par: 2, tip: "Hit the <b>launch pad</b> hard enough to clear the gap!", map: [
+        ".........", "..ggggg..", "..gggCg..", "..ggggg..", "..gxggg..", ".........", ".........", "..ggggg..",
+        "..ggJgg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggTgg..", "..ggggg..", "........."] },
+      { name: "Moon Lane", par: 2, tip: "Zig, zag, and mind the <b>moons</b>.", map: [
+        ".........", ".ggg.....", ".gCg.....", ".ggg.....", ".gaggggg.", ".ggggggg.", ".....ggg.", ".....gag.",
+        ".....ggg.", ".ggggggg.", ".ggggagg.", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Ice Bridge", par: 3, map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggggggg.", ".~~iii~~.", ".~~iii~~.", ".~~iii~~.", ".~~iii~~.",
+        ".ggggggg.", ".ggggggg.", ".~~~~ii~.", ".~~~~ii~.", ".ggggggg.", ".ggTgggg.", ".ggggggg.", "........."] },
+      { name: "The Pinball", par: 2, map: [
+        ".........", ".ggggggg.", ".ggogogg.", ".ggoCogg.", ".ggggggg.", ".ggggggg.", ".ggg.ggg.", ".ggg.ggg.",
+        ".ggg.ggg.", ".ggg.ggg.", ".ggg.ggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Switchback", par: 4, map: [
+        ".........", ".ggggggC.", ".ggggggg.", ".gg......", ".gggzggg.", ".ggggggg.", "......gg.", ".ggggggg.",
+        ".ggggggg.", ".gg......", ".ggzgggg.", ".ggggggg.", "......gg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Space Station", par: 3, tip: "Start up on the deck. Find the <b>drop hole</b>!", map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".ggxgggg.", ".gggggXg.", ".ggggggg.", ".........",
+        ".uuuuuuu.", ".uuuuuuu.", ".uHuuuuu.", ".uuuxuuu.", ".uuuuuuu.", ".uuuuuQu.", ".uuuuuuu.", "........."] },
+      { name: "Comet Jump", par: 3, map: [
+        ".........", ".....ggg.", ".....gCg.", ".....ggg.", ".....ggg.", ".....~~~.", ".....ggg.", ".....gJg.",
+        ".ggggggg.", ".ggggggg.", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Crack in the Ice", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggggggg.", ".gg~~~~g.", ".gg~~~~g.", ".gg~~~~g.", ".gg~~~~g.",
+        ".gg~~~~g.", ".gg~~~~g.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Upper Deck", par: 3, tip: "Climb the <b>ramp</b> to the cup on the deck.", map: [
+        ".........", ".uuuuuuu.", ".uuKuuuu.", ".uuuuuuu.", ".uuuuxuu.", ".uuuuuuu.", ".uuuuuru.", ".ggggggg.",
+        ".ggggggg.", ".ggxgggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Bumper Gate", par: 2, map: [
+        ".........", ".ggggggg.", ".gggCggg.", ".ggggggg.", ".ggggggg.", ".ogogogo.", ".ggggggg.", ".gggzggg.",
+        ".ggggggg.", ".gogogog.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Oort Finale", par: 4, tip: "Down the ramp, up the side, <b>jump</b>, then tuck it in behind the rocks.", map: [
+        ".........", ".Cgggggg.", ".gggxggg.", ".ggxgggg.", ".~~~~ggg.", ".........", ".........", ".ggggJgg.",
+        ".ggaggxg.", ".ggggggg.", ".uuuuurg.", ".uuuuu.g.", ".uxuuu.g.", ".uuQuu.g.", ".uuuuu.g.", "........."] },
+    ] },
+  { name: "Jupiter Storm", short: "Jupiter", hazard: "radiation belt", roll: { drag: 0.55, rolling: 55 },
+    look: { sky: ["#4a2a18", "#1a0c06"], green: ["#b07a48", "#7a4a26"], wall: "#ffb84d", hz: "radiation" },
+    intro: "Storm winds push the ball, and <b>gravity wells</b> bend it off course.",
+    holes: [
+      { name: "Gravity Well", par: 3, tip: "A <b>gravity well</b> pulls the ball. Let it swing you round the corner.", map: [
+        ".........", ".gggggg..", ".gCggggg.", ".ggggggg.", ".gg...gg.", ".gg...gg.", ".gg...gg.", ".gg...@g.",
+        ".gg...gg.", ".gg...gg.", ".ggggggg.", ".ggggggg.", "......gg.", ".....gTg.", ".....ggg.", "........."] },
+      { name: "Tailwind", par: 3, tip: "<b>Wind streams</b> push the ball the way they blow. Ride them!", map: [
+        ".........", ".ggggggg.", ".gC<<<<g.", ".ggggggg.", ".....g^g.", ".....g^g.", ".....g^g.", ".....ggg.",
+        ".....ggg.", ".ggggggg.", ".ggggggg.", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Crosswind", par: 3, tip: "The wind blows <b>away</b> from the cup. Hug the calm edge.", map: [
+        ".........", ".ggggggg.", ".gCggggg.", ".ggggggg.", ".g>>>>>>.", ".g>>>>>>.", ".ggggggg.", "......gg.",
+        "......gg.", ".ggggggg.", ".ggggggg.", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Twin Wells", par: 3, map: [
+        ".........", "..ggggg..", ".ggggCgg.", ".ggggggg.", ".g@ggg@g.", ".ggggggg.", ".ggg.ggg.", ".ggg.ggg.",
+        ".ggg.ggg.", ".ggggggg.", ".ggg@ggg.", ".ggggggg.", ".ggggggg.", "..ggTgg..", "..ggggg..", "........."] },
+      { name: "Radiation Belt", par: 3, tip: "Purple <b>radiation</b> costs a stroke. Find the gaps.", map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".~~~~~gg.", ".ggggggg.", ".ggggggg.", ".gg~~~~~.",
+        ".gggzggg.", ".ggggggg.", ".~~~~~gg.", ".ggggggg.", ".ggggggg.", ".gggggTg.", ".ggggggg.", "........."] },
+      { name: "Black Hole Jump", par: 2, tip: "The well <b>bends</b> your run-up to the launch pad.", map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggggggg.", ".ggggggg.", ".........", ".........", ".g@gJggg.",
+        ".ggggggg.", ".ggggggg.", ".ggxgggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Slingshot", par: 2, map: [
+        ".........", ".....ggg.", ".....gCg.", ".....ggg.", ".....ggg.", ".ggggggg.", ".gg@gggg.", ".ggggggg.",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Jet Stream", par: 2, map: [
+        ".........", ".....ggg.", ".....gCg.", ".....g^g.", ".....g^g.", ".....g^g.", ".g>>>>^g.", ".g>>>>^g.",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Eye of the Storm", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggggg.", ".ggg@Cgg.", ".ggggggg.", ".ggggggg.", ".~~ggg~~.", ".~~ggg~~.",
+        ".ggg.ggg.", ".ggg.ggg.", ".ggagagg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Storm Station", par: 3, map: [
+        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".g@ggggg.", ".ggggggg.", ".gXggggg.", ".........",
+        ".uuuuuuu.", ".uuuuuuu.", ".uuxuuuu.", ".uuuuxuu.", ".uHuuuuu.", ".uuuuuuQ.", ".uuuuuuu.", "........."] },
+      { name: "Pinwheel", par: 2, map: [
+        ".........", ".ggggggg.", ".gggCggg.", ".ggggggg.", ".gogogog.", ".ggggggg.", ".ggg@ggg.", ".ggggggg.",
+        ".gogggog.", ".ggxxggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Downdraft", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggggg.", ".gggCggg.", ".vgvvvvv.", ".vvvvvgv.", ".ggggggg.", ".ggggggg.",
+        ".gxgggxg.", ".ggggggg.", ".gggxggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Belt Hopper", par: 4, map: [
+        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".g~~~~~~.", ".ggggggg.", ".ggggggg.", ".~~~~~gg.",
+        ".ggggggg.", ".ggggggg.", ".gg~~~~~.", ".ggggggg.", ".ggggggg.", ".gggggTg.", ".ggggggg.", "........."] },
+      { name: "Gravity Jump", par: 2, map: [
+        ".........", ".ggggggg.", ".gCggggg.", ".ggggggg.", ".~~~~~~~.", ".~~~~~~~.", ".ggggggg.", ".ggggJgg.",
+        ".gggggg@.", ".ggggggg.", ".ggxgggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Hurricane", par: 3, map: [
+        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".<<<<<<<.", ".gggggxg.", ".ggggggg.", ".>>>>>>>.",
+        ".gggzggg.", ".gggxggg.", ".<<<<<<<.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Moon Orbit", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggggg.", ".ggaggag.", ".ggggggg.", ".ggg@ggg.", ".ggggggg.", ".ggCgggg.",
+        ".ggagggg.", ".gg...gg.", ".gg...gg.", ".ggggggg.", ".ggggggg.", ".ggggggT.", ".ggggggg.", "........."] },
+      { name: "Storm Gates", par: 3, map: [
+        ".........", ".ggggggg.", ".gggCggg.", ".ggggggg.", ".~~ggg~~.", ".gggoggg.", ".ggggggg.", ".ggggggg.",
+        ".ggg~ggg.", ".ggg~ggg.", ".ggggggg.", ".@ggggg@.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Great Red Spot", par: 4, tip: "Jupiter's biggest storm. <b>Plan every shot.</b>", map: [
+        ".........", ".ggggggg.", ".gCgg@gg.", ".ggggggg.", ".~~~~~gg.", ".ggggg^g.", ".ggggg^g.", ".gg~~~~~.",
+        ".gggzggg.", ".g@ggggg.", ".>>>>ggg.", ".ggggggg.", ".ggg~~~g.", ".gTggggg.", ".ggggggg.", "........."] },
+    ] },
+  { name: "Mars, the Red Wall", short: "Mars", hazard: "crystal field", roll: { drag: 0.55, rolling: 55 },
+    look: { sky: ["#4a1c14", "#1a0806"], green: ["#a04a32", "#6a2a1a"], wall: "#ff8f5d", hz: "crystal" },
+    intro: "Red dust, deep <b>sand traps</b> and <b>slopes</b> that roll you downhill.",
+    holes: [
+      { name: "Sand Trap", par: 3, tip: "<b>Sand</b> slows the ball right down. Go round the rock.", map: [
+        ".........", "..ggggg..", "..gCggg..", "..ggggg..", "..ssssg..", "..ssssg..", "..ggggg..", "..ggxgg..",
+        "..ggggg..", "...ggg...", "...ggg...", "..ggggg..", "..ggggg..", "..gggTg..", "..ggggg..", "........."] },
+      { name: "Downhill", par: 3, tip: "The arrows are <b>slopes</b>: the ball rolls that way. All downhill!", map: [
+        ".........", ".ggggggg.", ".gTggggg.", ".ggggggg.", ".....vvv.", ".....vvv.", ".....ggg.", ".ggggggg.",
+        ".g<<<<<g.", ".ggggggg.", ".vvv.....", ".vvv.....", ".ggg.....", ".ggggggg.", ".ggggggC.", "........."] },
+      { name: "The Bowl", par: 3, map: [
+        ".........", ".ggggggg.", ".gvvvvvg.", ".g>ggg<g.", ".g>gCg<g.", ".g>ggg<g.", ".g^^^^^g.", ".ggggggg.",
+        ".ggggggg.", ".gggxggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Red Canyon", par: 3, map: [
+        ".........", ".ggg.....", ".gCg.....", ".ggg.....", ".ggg.....", ".gggsggg.", ".ggsssgg.", ".....ggg.",
+        ".....ggg.", ".....ggg.", ".....ggg.", ".....ggg.", ".....ggg.", ".....gTg.", ".....ggg.", "........."] },
+      { name: "Crystal Garden", par: 2, tip: "Red <b>crystals</b> cost a stroke. Steer between them.", map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggggggg.", ".g~ggg~g.", ".ggg~ggg.", ".ggggggg.", ".~ggggg~.",
+        ".ggg~ggg.", ".ggggggg.", ".g~g~g~g.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Uphill Climb", par: 2, tip: "Uphill! Putt <b>harder</b> or it rolls back.", map: [
+        ".........", ".....ggg.", ".....gCg.", ".....vvv.", ".....vvv.", ".ggggvvv.", ".ggggggg.", ".ggg.....",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Dune Sea", par: 3, map: [
+        ".........", ".sssssss.", ".sssCsss.", ".sssgsss.", ".ssgggss.", ".sgggggs.", ".ggsssgg.", ".ggsssgg.",
+        ".ggsssgg.", ".sggxggs.", ".ssgggss.", ".sssgsss.", ".sssgsss.", ".sssTsss.", ".sssssss.", "........."] },
+      { name: "Canyon Jump", par: 2, tip: "A wide canyon. <b>Big putt</b> onto the launch pad!", map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggxgggg.", ".ggggggg.", ".........", ".........", ".........",
+        ".gggJggg.", ".ggggggg.", ".ggssggg.", ".ggggggg.", ".gxgggxg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Mesa Top", par: 3, map: [
+        ".........", ".uuuuuuu.", ".uuuKuuu.", ".uuuuuuu.", ".uuxuxuu.", ".uuuuuuu.", ".uruuuuu.", ".ggggggg.",
+        ".g>>>>>g.", ".ggggggg.", ".ggggggg.", ".gsssggg.", ".ggggggg.", ".ggggggT.", ".ggggggg.", "........."] },
+      { name: "Crystal Maze", par: 3, map: [
+        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".~~~~ggg.", ".ggggggg.", ".ggggggg.", ".ggg~~~~.",
+        ".ggggggg.", ".ggggggg.", ".~~~~ggg.", ".ggggggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Sand Moat", par: 2, map: [
+        ".........", ".ggggggg.", ".gsssssg.", ".gsgggsg.", ".gsgCgsg.", ".gsgggsg.", ".gsssssg.", ".ggggggg.",
+        ".ggggggg.", ".ggg~ggg.", ".ggg~ggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Rolling Hills", par: 2, map: [
+        ".........", ".ggggggg.", ".gggCggg.", ".ggggggg.", ".>>>>>>>.", ".ggggggg.", ".<<<<<<<.", ".ggggggg.",
+        ".>>>>>>>.", ".gxgggxg.", ".<<<<<<<.", ".gggxggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Olympus", par: 3, tip: "The tallest climb on Mars. <b>Full power!</b>", map: [
+        ".........", "...ggg...", "...gCg...", "...sss...", "..ggggg..", "..vvvvv..", "..vvvvv..", "..ggggg..",
+        "..vvvvv..", "..ggxgg..", "..ggggg..", "..~ggg~..", "..ggggg..", "..ggTgg..", "..ggggg..", "........."] },
+      { name: "Bumper Canyon", par: 3, map: [
+        ".........", ".ggg.....", ".gCg.....", ".ggg.....", ".gggggg..", ".gggoggg.", ".....ggg.", ".....gag.",
+        ".ggggggg.", ".ggogggg.", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+      { name: "Dust Devil", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggggg.", ".g<^^^>g.", ".g<gCg>g.", ".g<vvv>g.", ".gvvvvvg.", ".ggggggg.",
+        ".gggxggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "The Red Wall", par: 4, map: [
+        ".........", ".ggggggC.", ".ggggggg.", ".~~~~~gg.", ".ggggggg.", ".ggggggg.", ".gg~~~~~.", ".ggggggg.",
+        ".ggggggg.", ".~~~~~gg.", ".ggggggg.", ".ggggggg.", ".gg~~~~~.", ".ggggggg.", ".gTggggg.", "........."] },
+      { name: "Lava Tube", par: 3, tip: "Drop through the deck, then dodge the crystals.", map: [
+        ".........", ".ggggggg.", ".ggggggC.", ".gg~~ggg.", ".ggggggg.", ".gXggggg.", ".ggggggg.", ".........",
+        ".uuuuuuu.", ".uuuuuuu.", ".uxuuuxu.", ".uuuHuuu.", ".uuuxuuu.", ".uuuuuuu.", ".uuuQuuu.", "........."] },
+      { name: "Mars Finale", par: 4, tip: "Up the crystal lane, then let the <b>slope</b> feed you onto the sandy green.", map: [
+        ".........", ".sssss...", ".sgCgs...", ".sgggg<<.", ".sssssgg.", ".....ggg.", ".....g~g.", ".....ggg.",
+        ".....gxg.", ".....ggg.", ".ggggggg.", ".gx~gggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+    ] },
+  { name: "Earth, Final Stand", short: "Earth", hazard: "pond", roll: { drag: 0.55, rolling: 55 },
+    look: { sky: ["#123a32", "#081a16"], green: ["#4aa860", "#2a7040"], wall: "#c9d6e2", hz: "water" },
+    intro: "Home turf: city <b>portals</b>, spinning <b>windmills</b> and ponds.",
+    holes: [
+      { name: "Portal Putt", par: 2, tip: "Roll into a <b>portal</b> and pop out of its twin!", map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".gggggBg.", ".ggggggg.", ".........", ".........",
+        ".........", ".ggggggg.", ".ggggggg.", ".ggAgggg.", ".ggggggg.", ".gggggTg.", ".ggggggg.", "........."] },
+      { name: "Windmill", par: 3, tip: "Time your putt through the <b>windmill</b>, then turn the corner.", map: [
+        ".........", ".ggggg...", ".gCggg...", ".ggggg...", "...ggg...", "..ggggg..", "..ggWgg..", "..ggggg..",
+        "...ggg...", "...ggg...", "...ggg...", "...ggg...", "...ggg...", "...gTg...", "...ggg...", "........."] },
+      { name: "City Block", par: 3, map: [
+        ".........", ".ggggggg.", ".gCggggg.", ".ggggggg.", ".g....gg.", ".g....gg.", ".g....gg.", ".g....gg.",
+        ".g....gg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "The Pond", par: 3, tip: "Splash in the <b>pond</b> and it costs a stroke.", map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".g~~~~gg.", ".g~~~~~g.", ".g~~~~~g.", ".gg~~~gg.",
+        ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Two Portals", par: 3, tip: "Purple is <b>fast</b> but lands by a bumper. Orange is <b>safe</b>: then cross the bridge.", map: [
+        ".........", ".gggoggg.", ".gCggBgg.", ".ggggggg.", ".~~~g~~~.", ".~~~g~~~.", ".ggggggg.", ".gEggggg.",
+        ".ggggggg.", ".........", ".ggggggg.", ".gAgggDg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Traffic", par: 2, tip: "A <b>saucer</b> patrols in front of the cup. Wait for your gap.", map: [
+        ".........", ".ggggggg.", ".gggCggg.", ".gggzggg.", ".ggggggg.", ".gWgggWg.", ".ggggggg.", ".gggzggg.",
+        ".ggggggg.", ".gggWggg.", ".ggggggg.", ".ggg.ggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Park Path", par: 2, map: [
+        ".........", ".ggggggg.", ".ggggCgg.", ".ggssggg.", ".gosggog.", ".ggggggg.", ".ggggsgg.", ".goggsog.",
+        ".ggxgggg.", ".gssgggg.", ".ggggogg.", ".ggggggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Subway", par: 2, tip: "Portal to portal to portal...", map: [
+        ".........", ".ggg.ggg.", ".gCg.gDg.", ".ggg.ggg.", ".gEg.ggg.", ".ggg.gBg.", ".ggg.ggg.", ".........",
+        ".........", ".ggggggg.", ".ggggggg.", ".gggggAg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Skyscraper", par: 3, tip: "Start on the roof. Drop down the tube to the street.", map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggxgg.", ".~~~~ggg.", ".~~~~gXg.", ".ggggggg.", ".........",
+        ".uuuuuuu.", ".uuuuxuu.", ".uHuuuuu.", ".uuuuuuu.", ".uuxuuuu.", ".uuuuuQu.", ".uuuuuuu.", "........."] },
+      { name: "Spin Cycle", par: 2, map: [
+        ".........", "..ggggg..", "..ggCgg..", "..ggggg..", "..ggWgg..", "..ggggg..", "..ggggg..", ".ggggggg.",
+        ".ggggggg.", ".ggggggg.", ".ggg~ggg.", ".ggg~ggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Harbor", par: 2, tip: "Portal across the harbor, then <b>bank off the dock</b>.", map: [
+        ".........", ".ggggggg.", ".gg..gCg.", ".gg..ggg.", ".gBggggg.", ".~~~~~~~.", ".~~~~~~~.", ".~~~~~~~.",
+        ".~~~~~~~.", ".ggggggg.", ".ggggAgg.", ".ggggggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Main Street", par: 4, map: [
+        ".........", ".ggggggC.", ".ggggggg.", ".gg......", ".ggggggg.", ".ggggWgg.", "......gg.", ".ggggggg.",
+        ".gggWggg.", ".gg......", ".ggggggg.", ".ggggggg.", "......gg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Bridges", par: 3, map: [
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".~g~~~g~.", ".~g~~~g~.", ".ggggggg.", ".gggzggg.",
+        ".~~~g~~~.", ".~~~g~~~.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Sky Garden", par: 2, map: [
+        ".........", ".ggggggg.", ".gogCgog.", ".ggggggg.", ".g>ggg<g.", ".g>ggg<g.", ".ggggggg.", ".sss.g^g.",
+        ".sss.g^g.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Rush Hour", par: 2, tip: "Dodge the traffic to the portal, then beat the <b>saucer</b> to the cup.", map: [
+        ".........", ".ggggggg.", ".gCgggWg.", ".ggzgggg.", ".gggBggg.", ".........", ".ggggggg.", ".ggWgggg.",
+        ".ggggggg.", ".ggggWgg.", ".ggggggg.", ".gggAggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Mothership", par: 3, map: [
+        ".........", ".ggggggg.", ".ggggooo.", ".ggggoCg.", ".ggggggg.", ".~~ggg~~.", ".~~ggg~~.", ".ggggggg.",
+        ".ggWgggg.", ".ggggxgg.", ".ggggggg.", ".~~~~ggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+      { name: "Pond Jump", par: 3, tip: "Jump the pond, between the moons.", map: [
+        ".........", ".ggggggg.", ".gggggCg.", ".gggxggg.", ".~~~~~~~.", ".~~~~~~~.", ".~~~~~~~.", ".ggggggg.",
+        ".gagJgag.", ".ggggggg.", ".ggggggg.", ".gxgggxg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
+      { name: "Final Stand", par: 3, tip: "Portal into the pocket, <b>time the windmill</b> out of it, then bank home round the rock.", map: [
+        ".........", ".ggggggg.", ".gCggggg.", ".ggxgggg.", ".~~~gggg.", ".~~~gggg.", ".gggggWg.", ".gggg.gg.",
+        ".gggg.gB.", ".........", ".ggggggg.", ".ggsgAgg.", ".gxggggg.", ".gTggggg.", ".ggggggg.", "........."] },
+    ] },
+];
+
+// ---------- save: best strokes per hole, chosen character ----------
+const KEY = "alienPutt.v2";
+let SAVE = { best: WORLDS.map(w => w.holes.map(() => 0)), char: "blip", seenHelp: false, seen: [] }; // seen = objects already explained
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.best)) {
+  SAVE.best = WORLDS.map((w, i) => w.holes.map((_, h) => +((s.best[i] || [])[h]) || 0)); SAVE.char = s.char || "blip"; SAVE.seenHelp = !!s.seenHelp;
+  SAVE.seen = Array.isArray(s.seen) ? s.seen : []; } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
+const finished = n => n > 0 && n <= MAX_STROKES; // a picked-up hole (over the limit) doesn't count
+const starsFrom = (n, par) => !finished(n) ? 0 : n <= par ? 3 : n === par + 1 ? 2 : 1; // any real finish earns at least 1 star
+const holeStars = (w, h) => starsFrom(SAVE.best[w][h], WORLDS[w].holes[h].par);
+const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every hole for testing (progress is not changed)
+const holeOpen = (w, h) => TEST_ALL || (h === 0 ? worldOpen(w) : finished(SAVE.best[w][h - 1]));
+const worldOpen = w => TEST_ALL || w === 0 || SAVE.best[w - 1].every(finished);
+const worldStars = w => WORLDS[w].holes.reduce((a, _, h) => a + holeStars(w, h), 0);
+
+// ============================================================
+//  BUILDING A HOLE from its map
+// ============================================================
+let wi = 0, hi = 0, W = WORLDS[0], H = W.holes[0], grid = [], walls = [], bumpers = [], wells = [], portals = [], mills = [], tee = [0, 0], cup = [0, 0];
+let rocks = [], moons = [], saucers = [], drops = [], exitX = null;
+const cell = (cx, cy) => (cy < 0 || cy >= ROWS || cx < 0 || cx >= COLS) ? "." : grid[cy][cx];
+const tileAt = (x, y) => cell(Math.floor(x / TILE), Math.floor(y / TILE));
+const ctr = (cx, cy) => [cx * TILE + TILE / 2, cy * TILE + TILE / 2];
+// height of a tile: -1 off the course, 0 ground, 1 raised deck, 0.5 ramp
+const level = ch => ch === "." ? -1 : "uQKH".includes(ch) ? 1 : ch === "r" ? 0.5 : 0;
+function rampDir(cx, cy) { // which way is "up the ramp": toward the deck next to it
+  for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) if (level(cell(cx + dx, cy + dy)) === 1) return [dx, dy];
+  return null;
+}
+const rampDirAt = (x, y) => rampDir(Math.floor(x / TILE), Math.floor(y / TILE));
+function wallBetween(x1, y1, x2, y2) { // is there a wall on the edge between these two tiles?
+  let a = level(cell(x1, y1)), b = level(cell(x2, y2));
+  if (a === 0.5 && !rampDir(x1, y1)) a = 0; if (b === 0.5 && !rampDir(x2, y2)) b = 0;
+  if (a < 0 && b < 0) return false; if (a < 0 || b < 0) return true;
+  if (a === 0.5 && b === 0.5) return false;
+  if (a === 0.5 || b === 0.5) { // a ramp is open at its top (to the deck) and its bottom (to the ground); its sides are walls
+    const [rx, ry, ox, oy, ol] = a === 0.5 ? [x1, y1, x2, y2, b] : [x2, y2, x1, y1, a], d = rampDir(rx, ry), sx = ox - rx, sy = oy - ry;
+    const open = ol === 1 ? (sx === d[0] && sy === d[1]) : (sx === -d[0] && sy === -d[1]);
+    return !open;
+  }
+  return a !== b; // deck edges are walls
+}
+function buildHole() {
+  grid = H.map.map(r => (r + ".........").slice(0, COLS).split(""));
+  while (grid.length < ROWS) grid.push(".........".split(""));
+  bumpers = []; wells = []; portals = []; mills = []; rocks = []; moons = []; saucers = []; drops = []; exitX = null;
+  const pairs = {};
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const ch = grid[y][x], [px, py] = ctr(x, y);
+    if (ch === "T" || ch === "Q") tee = [px, py]; else if (ch === "C" || ch === "K") cup = [px, py];
+    else if (ch === "o") bumpers.push({ x: px, y: py, flash: 0 });
+    else if (ch === "@") wells.push({ x: px, y: py });
+    else if (ch === "W") mills.push({ x: px, y: py, dir: mills.length % 2 ? -1 : 1 });
+    else if (ch === "x") rocks.push({ x: px, y: py, seed: x * 7 + y * 13 });
+    else if (ch === "a") moons.push({ x: px, y: py, dir: moons.length % 2 ? -1 : 1, ph: moons.length * 2.1 });
+    else if (ch === "z") saucers.push({ x: px, y: py, ph: saucers.length * 1.7 });
+    else if (ch === "H") drops.push({ x: px, y: py });
+    else if (ch === "X") exitX = { x: px, y: py };
+    else if ("ABDE".includes(ch)) pairs[ch] = { x: px, y: py, ch };
+  }
+  for (const [a, b, col] of [["A", "B", "#c77dff"], ["D", "E", "#ffb84d"]]) if (pairs[a] && pairs[b]) {
+    const p = { ...pairs[a], col }, q = { ...pairs[b], col }; p.to = q; q.to = p; portals.push(p, q); }
+  // walls: every tile edge that needs one, merged into long straight runs
+  walls = [];
+  for (let y = 0; y <= ROWS; y++) { let run = null; // horizontal edges along the top of row y
+    for (let x = 0; x <= COLS; x++) { const edge = x < COLS && wallBetween(x, y - 1, x, y);
+      if (edge && run === null) run = x; if (!edge && run !== null) { walls.push({ ax: run * TILE, ay: y * TILE, bx: x * TILE, by: y * TILE }); run = null; } } }
+  for (let x = 0; x <= COLS; x++) { let run = null; // vertical edges along the left of column x
+    for (let y = 0; y <= ROWS; y++) { const edge = y < ROWS && wallBetween(x - 1, y, x, y);
+      if (edge && run === null) run = y; if (!edge && run !== null) { walls.push({ ax: x * TILE, ay: run * TILE, bx: x * TILE, by: y * TILE }); run = null; } } }
+  courseCache = null;
+}
+const moonPos = m => { const a = t * MOON.spin * m.dir + m.ph; return [m.x + Math.cos(a) * MOON.orbit, m.y + Math.sin(a) * MOON.orbit, a]; };
+const saucerPos = z => { const k = t * SAUCER.speed + z.ph; return [z.x + Math.sin(k) * SAUCER.range, z.y, k]; };
+
+// ============================================================
+//  PLAYING A HOLE
+// ============================================================
+const ball = { x: 0, y: 0, vx: 0, vy: 0, last: [0, 0], still: 0, rollT: 0, inPortal: null, squash: 0, air: null, onJ: false };
+let strokes = 0, state = "aim", sinkT = 0, t = 0, fx = [], aim = null, resultShown = false, splashT = 0;
+function loadHole(w, h) {
+  wi = w; hi = h; W = WORLDS[w]; H = W.holes[h]; buildHole();
+  ball.x = tee[0]; ball.y = tee[1]; ball.vx = ball.vy = 0; ball.last = [...tee]; ball.inPortal = null; ball.air = null; ball.onJ = false;
+  strokes = 0; state = "aim"; sinkT = 0; fx = []; aim = null; resultShown = false;
+  $("hWorld").textContent = W.short; $("hHole").textContent = `Hole ${h + 1}`; $("hPar").textContent = H.par; $("hStrokes").textContent = 0;
+  if (H.tip) say(H.tip, 4); else say(`<b>${H.name}</b> · par ${H.par}`, 2.2);
+}
+function physics(dt) {
+  const tl = tileAt(ball.x, ball.y), air = ball.air;
+  // forces: slopes and wind, ramps, gravity wells, the cup's pull
+  let ax = 0, ay = 0;
+  if (!air) {
+    if (tl === ">") ax += SLOPE; else if (tl === "<") ax -= SLOPE; else if (tl === "v") ay += SLOPE; else if (tl === "^") ay -= SLOPE;
+    if (tl === "r") { const d = rampDirAt(ball.x, ball.y); if (d) { ax -= d[0] * RAMP; ay -= d[1] * RAMP; } } // ramps roll you back down unless you putt hard enough
+  }
+  for (const w of wells) { const dx = w.x - ball.x, dy = w.y - ball.y, d = Math.hypot(dx, dy);
+    if (d < WELL.r && d > 1) { const f = WELL.pull * 4 * (d / WELL.r) * (1 - d / WELL.r); ax += dx / d * f; ay += dy / d * f; } } // strongest halfway out, calm at the centre
+  const cdx = cup[0] - ball.x, cdy = cup[1] - ball.y, cd = Math.hypot(cdx, cdy);
+  if (!air && cd < CUP_R + 6 && cd > 0.01) { ax += cdx / cd * CUP.pull; ay += cdy / cd * CUP.pull; }
+  ball.vx += ax * dt; ball.vy += ay * dt;
+  // friction: the world's ground, unless the ball is on ice or sand (none in the air)
+  let sp = Math.hypot(ball.vx, ball.vy);
+  if (!air) { const f = tl === "s" ? SAND : tl === "i" ? ICE : W.roll;
+    if (sp > 0) { const ns = Math.max(0, sp - (sp * f.drag + f.rolling) * dt); ball.vx *= ns / sp; ball.vy *= ns / sp; sp = ns; } }
+  // the cup
+  if (!air && cd < CUP_R - 2 && sp < CUP.sinkSpeed) { sink(); return; }
+  if (!air && cd < CUP_R - 4 && sp >= CUP.sinkSpeed) { const a = Math.atan2(ball.vy, ball.vx) + (Math.random() - 0.5) * 0.5; ball.vx = Math.cos(a) * sp * 0.75; ball.vy = Math.sin(a) * sp * 0.75; }
+  ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+  if (air) { // flying over everything until it lands
+    air.vz -= JUMP.g * dt; air.z += air.vz * dt;
+    if (air.z <= 0) land();
+    return;
+  }
+  for (const w of walls) collideSeg(w.ax, w.ay, w.bx, w.by, 0, 0, 0, BOUNCE.wall);
+  for (const b of bumpers) if (collideCircle(b.x, b.y, BUMPER_R, 0, 0, BOUNCE.bumper)) { b.flash = 0.3; ball.squash = 0.25; tone(300 + Math.random() * 80, 0.12, "square", 0.05); }
+  for (const r of rocks) if (collideCircle(r.x, r.y, ROCK_R, 0, 0, 0.6)) tone(120, 0.08, "triangle", 0.06);
+  movingHits();
+  // portals: in one, out of its twin at the same speed
+  if (ball.inPortal && Math.hypot(ball.x - ball.inPortal.x, ball.y - ball.inPortal.y) > PORTAL_R + BALL_R + 4) ball.inPortal = null;
+  if (!ball.inPortal) for (const p of portals) if (Math.hypot(ball.x - p.x, ball.y - p.y) < PORTAL_R) {
+    ball.x = p.to.x; ball.y = p.to.y; ball.inPortal = p.to; burst(p.x, p.y, p.col, 10); burst(p.to.x, p.to.y, p.col, 10); tone(700, 0.25, "sine", 0.06, 0.4); break; }
+  // drop holes: down the tube, and the exit ring always shoots the ball out the way its ▲ points (up), gently
+  for (const d of drops) if (exitX && Math.hypot(ball.x - d.x, ball.y - d.y) < CUP_R - 1 && sp < 520) {
+    ball.vx = 0; ball.vy = -200;
+    burst(d.x, d.y, "#c9d6ea", 10); ball.x = exitX.x; ball.y = exitX.y; burst(ball.x, ball.y, "#c9d6ea", 12); tone(500, 0.3, "sine", 0.07, 0.4); tone(300, 0.2, "triangle", 0.06, 1.4, 0.25); break; }
+  // launch pads: hit one fast enough and the ball jumps
+  const nt = tileAt(ball.x, ball.y), onJ = nt === "J";
+  if (onJ && !ball.onJ && sp > JUMP.min) { ball.air = { z: 0, vz: sp * JUMP.lift }; burst(ball.x, ball.y, "#4fd1ff", 10); tone(260, 0.25, "sawtooth", 0.05, 2.2); ball.onJ = true; return; }
+  ball.onJ = onJ;
+  // hazards and escapes
+  if (nt === "~") { hazard(); return; }
+  if (nt === ".") { ball.x = ball.last[0]; ball.y = ball.last[1]; ball.vx = ball.vy = 0; } // should never happen: walls keep it in
+  // rest: once it has been barely moving for a moment (or rolled for very long), it stops
+  sp = Math.hypot(ball.vx, ball.vy); ball.rollT += dt;
+  ball.still = sp < 12 ? ball.still + dt : 0;
+  if (ball.still > 0.35 || ball.rollT > 20) { ball.vx = ball.vy = 0; state = "aim"; ball.last = [ball.x, ball.y]; afterStroke(); }
+}
+function land() {
+  ball.air = null; ball.squash = 0.3; const lt = tileAt(ball.x, ball.y); ball.onJ = lt === "J";
+  if (lt === ".") { hazard("Lost in space!"); return; }
+  if (lt === "~") { hazard(); return; }
+  ball.vx *= 0.85; ball.vy *= 0.85; tone(150, 0.1, "triangle", 0.08); burst(ball.x, ball.y, "rgba(255,255,255,0.8)", 6);
+}
+// circle obstacle (ox, oy, r) moving at (ovx, ovy); e = bounciness
+function collideCircle(ox, oy, r, ovx, ovy, e) {
+  const dx = ball.x - ox, dy = ball.y - oy, d = Math.hypot(dx, dy), m = r + BALL_R;
+  if (d >= m || d < 0.01) return false;
+  const nx = dx / d, ny = dy / d, vn = (ball.vx - ovx) * nx + (ball.vy - ovy) * ny;
+  ball.x = ox + nx * m; ball.y = oy + ny * m;
+  if (vn < 0) { ball.vx -= (1 + e) * vn * nx; ball.vy -= (1 + e) * vn * ny; return true; }
+  return false;
+}
+// circle vs a line segment; (ox, oy, w) = the segment's spin centre and speed, for windmill blades
+function collideSeg(ax, ay, bx, by, ox, oy, w, e) {
+  const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey || 1;
+  const k = clamp(((ball.x - ax) * ex + (ball.y - ay) * ey) / L2, 0, 1), px = ax + ex * k, py = ay + ey * k;
+  const dx = ball.x - px, dy = ball.y - py, d = Math.hypot(dx, dy), r = w ? BALL_R + 3 : BALL_R;
+  if (d >= r || d < 0.001) return false;
+  const nx = dx / d, ny = dy / d, sx = -w * (py - oy), sy = w * (px - ox); // the surface's own speed at the contact point
+  const vn = (ball.vx - sx) * nx + (ball.vy - sy) * ny;
+  ball.x = px + nx * r; ball.y = py + ny * r;
+  if (vn < 0) { ball.vx -= (1 + e) * vn * nx; ball.vy -= (1 + e) * vn * ny; if (-vn > 60) tone(180, 0.06, "triangle", Math.min(0.08, -vn / 6000)); return true; }
+  return false;
+}
+function movingHits() { // windmills, moons and saucers (they can also knock a resting ball)
+  let hit = false;
+  for (const m of mills) { const a = t * MILL.spin * m.dir;
+    for (const k of [0, PI / 2]) { const cx = Math.cos(a + k) * MILL.arm, cy = Math.sin(a + k) * MILL.arm;
+      if (collideSeg(m.x - cx, m.y - cy, m.x + cx, m.y + cy, m.x, m.y, MILL.spin * m.dir, 0.6)) hit = true; } }
+  for (const m of moons) { const [ox, oy, a] = moonPos(m), w = MOON.spin * m.dir;
+    if (collideCircle(ox, oy, MOON.r, -Math.sin(a) * MOON.orbit * w, Math.cos(a) * MOON.orbit * w, 0.7)) { hit = true; tone(200, 0.08, "triangle", 0.06); } }
+  for (const z of saucers) { const [ox, oy, k] = saucerPos(z);
+    if (collideCircle(ox, oy, SAUCER.r, Math.cos(k) * SAUCER.range * SAUCER.speed, 0, 0.8)) { hit = true; tone(420, 0.1, "square", 0.05); } }
+  return hit;
+}
+function hazard(msg) {
+  strokes++; $("hStrokes").textContent = strokes; splashT = 0.6; ball.air = null;
+  burst(ball.x, ball.y, W.look.hz === "water" ? "#7ad0ff" : W.look.hz === "crystal" ? "#ff5d7a" : W.look.hz === "radiation" ? "#c78bff" : "#c9d6ea", 18);
+  tone(160, 0.35, "sawtooth", 0.06, 0.5);
+  say(`${msg || `Into the ${W.hazard}!`} <b>+1 stroke</b>.`, 2);
+  ball.x = ball.last[0]; ball.y = ball.last[1]; ball.vx = ball.vy = 0; ball.onJ = tileAt(ball.x, ball.y) === "J"; state = "aim"; afterStroke();
+}
+function sink() {
+  state = "sunk"; sinkT = 0; ball.vx = ball.vy = 0;
+  const one = strokes === 1; burst(cup[0], cup[1], one ? "#ffd25d" : "#5dff9b", one ? 40 : 18);
+  (one ? [523, 659, 784, 1047, 1319] : [523, 659, 784]).forEach((f, i) => tone(f, 0.2, "triangle", 0.09, 0, i * 0.09));
+  const ch = CHARS.byId(SAVE.char).name;
+  say(one ? `<b>HOLE IN ONE!</b> ${ch} is amazed!` : `<b>${scoreName(strokes - H.par)}!</b>`, 2.5);
+}
+function afterStroke() { if (strokes >= MAX_STROKES && state !== "sunk") { say(`${MAX_STROKES} strokes: picked up.`, 2.5); state = "sunk"; sinkT = 0; strokes = MAX_STROKES + 1; } }
+const scoreName = d => strokes === 1 ? "Hole in one" : ({ "-3": "Albatross", "-2": "Eagle", "-1": "Birdie", "0": "Par", "1": "Bogey", "2": "Double bogey" })[d] || `${d > 0 ? "+" : ""}${d}`;
+
+function update(dt) {
+  t += dt;
+  for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy *= 0.96; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); }
+  for (const b of bumpers) b.flash = Math.max(0, b.flash - dt);
+  ball.squash = Math.max(0, ball.squash - dt); splashT = Math.max(0, splashT - dt);
+  if (state === "sunk") { sinkT += dt; if (sinkT > 1.7 && !resultShown) { resultShown = true; resultMenu(); } return; }
+  if (state === "aim" && (mills.length || moons.length || saucers.length) && movingHits()) { state = "roll"; ball.rollT = 0; ball.still = 0; } // moving things can knock a resting ball
+  if (state === "roll") for (let s = 0; s < 4; s++) { physics(dt / 4); if (state !== "roll") break; }
+}
+function burst(x, y, col, n) { for (let k = 0; k < n; k++) { const a = Math.random() * TAU, v = 60 + Math.random() * 200; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.8, col }); } }
+
+// ---------- aiming: pull back anywhere, let go to putt ----------
+let K = 1;
+const toWorld = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / K, y: (e.clientY - r.top) / K }; };
+function aimVec() { if (!aim) return null; const dx = aim.sx - aim.x, dy = aim.sy - aim.y, d = Math.hypot(dx, dy), px = d * K; // px = how far the finger moved on screen
+  if (px < 6) return null;
+  return { nx: dx / d, ny: dy / d, p: Math.min(1, px / PUTT.dragFullPx) }; }
+cv.addEventListener("pointerdown", e => { audio(); if (paused || state !== "aim") return; cv.setPointerCapture(e.pointerId); const p = toWorld(e); aim = { sx: p.x, sy: p.y, x: p.x, y: p.y }; });
+cv.addEventListener("pointermove", e => { if (!aim) return; const p = toWorld(e); aim.x = p.x; aim.y = p.y; });
+cv.addEventListener("pointerup", () => {
+  const a = aimVec(); aim = null; if (!a || state !== "aim" || paused) return;
+  const v = PUTT.maxPower * (a.p * a.p * 0.6 + a.p * 0.4); // a gentle curve, so short putts are easy to control
+  ball.vx = a.nx * v; ball.vy = a.ny * v; ball.last = [ball.x, ball.y]; ball.rollT = 0; ball.still = 0;
+  strokes++; $("hStrokes").textContent = strokes; state = "roll";
+  tone(220 + a.p * 260, 0.08, "triangle", 0.09); $("bubble").classList.remove("on");
+});
+cv.addEventListener("pointercancel", () => { aim = null; });
+
+// ============================================================
+//  DRAWING
+// ============================================================
+let courseCache = null; // the still parts of the course, drawn once per hole and screen size
+function drawCourse(c) { // in world units
+  const L = W.look;
+  const g = c.createLinearGradient(0, 0, 0, LH); g.addColorStop(0, L.sky[0]); g.addColorStop(1, L.sky[1]); c.fillStyle = g; c.fillRect(0, 0, LW, LH);
+  let s = 11 + wi * 7; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 80; i++) { c.fillStyle = `rgba(255,255,255,${0.15 + R() * 0.5})`; c.fillRect(R() * LW, R() * LH, 1.5, 1.5); }
+  if (wi === 1) { c.fillStyle = "rgba(255,184,77,0.08)"; for (let k = 0; k < 6; k++) { c.beginPath(); c.ellipse(LW * 0.5, 80 + k * 110, 260, 18, 0, 0, TAU); c.fill(); } }
+  // glow under the course
+  c.save(); c.shadowColor = L.wall; c.shadowBlur = 22; c.fillStyle = L.green[1];
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (grid[y][x] !== ".") c.fillRect(x * TILE, y * TILE, TILE, TILE);
+  c.restore();
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const ch = grid[y][x]; if (ch === ".") continue; drawTile(c, ch, x * TILE, y * TILE, x, y); }
+  // raised decks cast a shadow onto the ground below and to the right
+  c.fillStyle = "rgba(0,0,0,0.3)";
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (level(grid[y][x]) === 1) {
+    if (level(cell(x, y + 1)) === 0) c.fillRect(x * TILE, (y + 1) * TILE, TILE, 9);
+    if (level(cell(x + 1, y)) === 0) c.fillRect((x + 1) * TILE, y * TILE, 9, TILE); }
+  // drop tubes: a faint dashed pipe from each drop hole to the exit ring, so you can see where you'll come out
+  if (exitX) for (const d of drops) { c.strokeStyle = "rgba(201,214,234,0.35)"; c.lineWidth = 5; c.setLineDash([2, 8]); c.lineCap = "round";
+    c.beginPath(); c.moveTo(d.x, d.y); c.lineTo(exitX.x, exitX.y); c.stroke(); c.setLineDash([]); }
+  // tee pad
+  c.fillStyle = "rgba(255,255,255,0.14)"; c.beginPath(); c.roundRect(tee[0] - 16, tee[1] - 12, 32, 24, 6); c.fill();
+  // walls
+  c.lineCap = "round";
+  for (const [w, col] of [[10, "#0b1220"], [5, L.wall], [1.5, "rgba(255,255,255,0.55)"]]) { c.strokeStyle = col; c.lineWidth = w; c.beginPath();
+    for (const s of walls) { c.moveTo(s.ax, s.ay); c.lineTo(s.bx, s.by); } c.stroke(); }
+}
+function drawTile(c, ch, x, y, cx, cy, dir = null) {
+  const L = W.look, light = (cx + cy) % 2 === 0, deck = "uQKH".includes(ch);
+  c.fillStyle = light ? L.green[0] : shadeHex(L.green[0], -0.08); c.fillRect(x, y, TILE, TILE);
+  if (deck) { // raised space-station deck: lighter metal-edged plates with rivets
+    c.fillStyle = shadeHex(L.green[0], light ? 0.22 : 0.16); c.fillRect(x, y, TILE, TILE);
+    c.strokeStyle = "rgba(255,255,255,0.18)"; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, TILE - 3, TILE - 3);
+    c.fillStyle = "rgba(255,255,255,0.35)"; for (const [rx, ry] of [[5, 5], [35, 5], [5, 35], [35, 35]]) c.fillRect(x + rx - 1, y + ry - 1, 2, 2);
+  }
+  if (ch === "r") { // ramp: shading from ground up to the deck, chevrons pointing uphill
+    const d = dir || rampDir(cx, cy) || [0, -1], a = Math.atan2(d[1], d[0]);
+    const g = c.createLinearGradient(x + 20 - d[0] * 20, y + 20 - d[1] * 20, x + 20 + d[0] * 20, y + 20 + d[1] * 20);
+    g.addColorStop(0, shadeHex(L.green[0], -0.12)); g.addColorStop(1, shadeHex(L.green[0], 0.2)); c.fillStyle = g; c.fillRect(x, y, TILE, TILE);
+    c.save(); c.translate(x + 20, y + 20); c.rotate(a); c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 2.5; c.lineCap = "round";
+    for (const o of [-9, 3]) { c.beginPath(); c.moveTo(o, -9); c.lineTo(o + 7, 0); c.lineTo(o, 9); c.stroke(); } c.restore();
+  }
+  if (ch === "J") { // launch pad: a dark pad with glowing booster rings
+    c.fillStyle = "#0b1426"; c.beginPath(); c.roundRect(x + 3, y + 3, 34, 34, 8); c.fill();
+    c.strokeStyle = "#4fd1ff"; c.lineWidth = 2; c.stroke();
+    for (const r of [6, 11]) { c.strokeStyle = `rgba(79,209,255,${r === 6 ? 0.9 : 0.5})`; c.beginPath(); c.arc(x + 20, y + 20, r, 0, TAU); c.stroke(); }
+    c.fillStyle = "#c9f3ff"; c.font = "900 7px system-ui"; c.textAlign = "center"; c.fillText("JUMP", x + 20, y + 37);
+  }
+  if (ch === "H" || ch === "X") { // drop hole on the deck, and the tube's exit ring down on the ground
+    c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.arc(x + 20, y + 21, CUP_R + 4, 0, TAU); c.fill();
+    c.fillStyle = "#8e97ad"; c.beginPath(); c.arc(x + 20, y + 20, CUP_R + 3, 0, TAU); c.fill();
+    c.fillStyle = "#050a14"; c.beginPath(); c.arc(x + 20, y + 20, CUP_R, 0, TAU); c.fill();
+    c.fillStyle = "#c9d6ea"; c.font = "900 11px system-ui"; c.textAlign = "center"; c.fillText(ch === "H" ? "▼" : "▲", x + 20, y + 24);
+  }
+  if (ch === "x") drawRock(c, x + 20, y + 20, cx * 7 + cy * 13);
+  if (ch === "i") { c.fillStyle = "rgba(220,245,255,0.55)"; c.fillRect(x, y, TILE, TILE); c.strokeStyle = "rgba(255,255,255,0.7)"; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(x + 8, y + 30); c.lineTo(x + 20, y + 18); c.moveTo(x + 22, y + 34); c.lineTo(x + 34, y + 22); c.stroke(); }
+  else if (ch === "s") { c.fillStyle = wi === 2 ? "#e0a070" : "#e8d29a"; c.fillRect(x, y, TILE, TILE);
+    for (let k = 0; k < 10; k++) { c.fillStyle = k % 2 ? "rgba(120,70,30,0.25)" : "rgba(255,255,255,0.25)"; c.fillRect(x + hashN(cx, cy, k) * 38, y + hashN(cy, cx, k + 3) * 38, 2, 2); } }
+  else if (ch === "~") drawHazardTile(c, x, y, cx, cy);
+  else if ("<>^v".includes(ch) && wi !== 1) { // slopes: shaded ramps with painted arrows
+    const a = { ">": 0, "v": PI / 2, "<": PI, "^": -PI / 2 }[ch];
+    const g = c.createLinearGradient(x + TILE / 2 - Math.cos(a) * 20, y + TILE / 2 - Math.sin(a) * 20, x + TILE / 2 + Math.cos(a) * 20, y + TILE / 2 + Math.sin(a) * 20);
+    g.addColorStop(0, "rgba(255,255,255,0.14)"); g.addColorStop(1, "rgba(0,0,0,0.22)"); c.fillStyle = g; c.fillRect(x, y, TILE, TILE);
+    c.save(); c.translate(x + TILE / 2, y + TILE / 2); c.rotate(a); c.fillStyle = "rgba(255,255,255,0.4)";
+    c.beginPath(); c.moveTo(10, 0); c.lineTo(-2, -8); c.lineTo(-2, -3); c.lineTo(-10, -3); c.lineTo(-10, 3); c.lineTo(-2, 3); c.lineTo(-2, 8); c.closePath(); c.fill(); c.restore();
+  }
+  else if ("<>^v".includes(ch)) { c.fillStyle = "rgba(255,230,190,0.12)"; c.fillRect(x, y, TILE, TILE); } // Jupiter wind: moving streaks are drawn live
+}
+function drawHazardTile(c, x, y, cx, cy) {
+  const hz = W.look.hz;
+  if (hz === "water") { c.fillStyle = "#1f6aa8"; c.fillRect(x, y, TILE, TILE); c.strokeStyle = "rgba(255,255,255,0.3)"; c.lineWidth = 1.5;
+    for (const yy of [12, 26]) { c.beginPath(); c.moveTo(x + 6, y + yy); c.quadraticCurveTo(x + 13, y + yy - 4, x + 20, y + yy); c.quadraticCurveTo(x + 27, y + yy + 4, x + 34, y + yy); c.stroke(); } }
+  else if (hz === "crack") { c.fillStyle = "#04060e"; c.fillRect(x, y, TILE, TILE); for (let k = 0; k < 5; k++) { c.fillStyle = "rgba(255,255,255,0.7)"; c.fillRect(x + hashN(cx, cy, k) * 38, y + hashN(cy, cx, k) * 38, 1.5, 1.5); }
+    c.strokeStyle = "rgba(160,210,255,0.5)"; c.lineWidth = 1; c.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2); }
+  else if (hz === "radiation") { c.fillStyle = "#2a0b2a"; c.fillRect(x, y, TILE, TILE); c.strokeStyle = "rgba(199,125,255,0.5)"; c.lineWidth = 3;
+    for (let k = -1; k < 3; k++) { c.beginPath(); c.moveTo(x + k * 18, y + TILE); c.lineTo(x + k * 18 + 28, y); c.stroke(); } }
+  else { c.fillStyle = "#3a1018"; c.fillRect(x, y, TILE, TILE); // Mars crystals
+    for (let k = 0; k < 3; k++) { const px = x + 7 + k * 13, h = 18 + hashN(cx, cy, k) * 14; const g = c.createLinearGradient(px - 6, 0, px + 6, 0); g.addColorStop(0, "#ff5d7a"); g.addColorStop(0.5, "#ffd0d8"); g.addColorStop(1, "#a01a3a");
+      c.fillStyle = g; c.beginPath(); c.moveTo(px - 6, y + 36); c.lineTo(px, y + 36 - h); c.lineTo(px + 6, y + 36); c.closePath(); c.fill(); } }
+}
+function drawRock(c, x, y, seed) { // a lumpy grey asteroid with craters
+  c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x + 3, y + 5, ROCK_R, ROCK_R * 0.7, 0, 0, TAU); c.fill();
+  const g = c.createRadialGradient(x - 5, y - 5, 2, x, y, ROCK_R + 2); g.addColorStop(0, "#c9c2b6"); g.addColorStop(1, "#5a5248");
+  c.fillStyle = g; c.beginPath();
+  for (let k = 0; k < 10; k++) { const a = k / 10 * TAU, r = ROCK_R * (0.85 + 0.25 * hashN(seed, k, 1)); c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); }
+  c.closePath(); c.fill(); c.strokeStyle = "#2a2622"; c.lineWidth = 1.5; c.stroke();
+  c.fillStyle = "rgba(40,34,28,0.5)"; for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(x - 6 + k * 6, y - 3 + (k % 2) * 7, 2.5 + k * 0.5, 0, TAU); c.fill(); }
+}
+function drawMoon(c, x, y, ox, oy) { // a little cratered moon, with its orbit faintly shown
+  if (ox !== undefined) { c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 1; c.setLineDash([3, 5]); c.beginPath(); c.arc(ox, oy, MOON.orbit, 0, TAU); c.stroke(); c.setLineDash([]); }
+  const g = c.createRadialGradient(x - 3, y - 3, 1, x, y, MOON.r); g.addColorStop(0, "#f4f0e6"); g.addColorStop(1, "#8a8478");
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, MOON.r, 0, TAU); c.fill(); c.strokeStyle = "#3a362e"; c.lineWidth = 1.2; c.stroke();
+  c.fillStyle = "rgba(60,56,48,0.45)"; c.beginPath(); c.arc(x + 3, y - 2, 2.5, 0, TAU); c.fill(); c.beginPath(); c.arc(x - 3, y + 3, 1.8, 0, TAU); c.fill();
+}
+function drawSaucer(c, x, y, tt, tx) { // a patrol saucer, with its track dashed underneath
+  if (tx !== undefined) { c.strokeStyle = "rgba(255,93,122,0.3)"; c.lineWidth = 2; c.setLineDash([5, 6]); c.beginPath(); c.moveTo(tx - SAUCER.range, y); c.lineTo(tx + SAUCER.range, y); c.stroke(); c.setLineDash([]); }
+  c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(x + 2, y + 5, SAUCER.r, 5, 0, 0, TAU); c.fill();
+  c.fillStyle = "rgba(160,230,255,0.85)"; c.beginPath(); c.ellipse(x, y - 4, 7, 6, 0, PI, TAU); c.fill();
+  const g = c.createLinearGradient(0, y - 5, 0, y + 5); g.addColorStop(0, "#dfe5f1"); g.addColorStop(1, "#4a5068");
+  c.fillStyle = g; c.beginPath(); c.ellipse(x, y, SAUCER.r, 5, 0, 0, TAU); c.fill(); c.strokeStyle = "#1a2030"; c.lineWidth = 1.2; c.stroke();
+  for (let k = 0; k < 5; k++) { c.fillStyle = (Math.floor(tt * 6) + k) % 2 ? "#ff5d7a" : "#ffd25d"; c.beginPath(); c.arc(x - 9 + k * 4.5, y + 1, 1.4, 0, TAU); c.fill(); }
+}
+function hashN(a, b, k) { const n = Math.sin(a * 127.1 + b * 311.7 + k * 74.7) * 43758.5453; return n - Math.floor(n); }
+function shadeHex(hex, f) { return CHARS.shade(hex, f); }
+// ---- the course objects, one function each (also used by the "New!" cards) ----
+function drawWind(c, ch, x, y, tt) { // Jupiter wind streaks blowing across one tile
+  const a = { ">": 0, "v": PI / 2, "<": PI, "^": -PI / 2 }[ch], px = x * TILE + TILE / 2, py = y * TILE + TILE / 2;
+  c.save(); c.beginPath(); c.rect(x * TILE, y * TILE, TILE, TILE); c.clip(); c.translate(px, py); c.rotate(a);
+  c.strokeStyle = "rgba(255,240,210,0.55)"; c.lineWidth = 2; c.lineCap = "round";
+  for (let k = 0; k < 3; k++) { const o = ((tt * 60 + k * 17 + (x + y) * 9) % 60) - 30; c.beginPath(); c.moveTo(o - 8, -12 + k * 12); c.lineTo(o + 6, -12 + k * 12); c.stroke(); }
+  c.restore();
+}
+function drawWell(c, w, tt) { // gravity well: a swirling little black hole, its reach shown as a dotted ring
+  c.strokeStyle = "rgba(199,125,255,0.18)"; c.lineWidth = 1.5; c.setLineDash([4, 6]); c.beginPath(); c.arc(w.x, w.y, WELL.r, 0, TAU); c.stroke(); c.setLineDash([]);
+  for (let k = 0; k < 4; k++) { c.strokeStyle = `rgba(199,125,255,${0.5 - k * 0.1})`; c.lineWidth = 2.5; c.beginPath(); c.arc(w.x, w.y, 8 + k * 6, tt * (2 + k) + k, tt * (2 + k) + k + 3.6); c.stroke(); }
+  c.fillStyle = "#10041c"; c.beginPath(); c.arc(w.x, w.y, 7, 0, TAU); c.fill();
+}
+function drawPortal(c, p, tt) {
+  c.save(); c.translate(p.x, p.y);
+  c.fillStyle = "#0a0614"; c.beginPath(); c.arc(0, 0, PORTAL_R + 2, 0, TAU); c.fill();
+  for (let k = 0; k < 3; k++) { c.strokeStyle = p.col; c.globalAlpha = 0.9 - k * 0.25; c.lineWidth = 3; c.beginPath(); c.arc(0, 0, 6 + k * 5, tt * 3 + k * 2, tt * 3 + k * 2 + 4); c.stroke(); }
+  c.globalAlpha = 1; c.fillStyle = "#fff"; c.font = "900 9px system-ui"; c.textAlign = "center"; c.fillText(p.ch === "A" || p.ch === "D" ? "IN" : "OUT", 0, PORTAL_R + 12); c.restore();
+}
+function drawBumper(c, b) {
+  const f = b.flash / 0.3;
+  c.fillStyle = `rgba(199,125,255,${0.25 + f * 0.5})`; c.beginPath(); c.arc(b.x, b.y, BUMPER_R + 5 + f * 6, 0, TAU); c.fill();
+  const bg = c.createRadialGradient(b.x - 4, b.y - 4, 2, b.x, b.y, BUMPER_R); bg.addColorStop(0, "#f2dcff"); bg.addColorStop(1, "#8a3ac4");
+  c.fillStyle = bg; c.beginPath(); c.arc(b.x, b.y, BUMPER_R * (1 + f * 0.15), 0, TAU); c.fill(); c.strokeStyle = "#3a1460"; c.lineWidth = 2; c.stroke();
+}
+function drawMill(c, m, a) { // windmill: a little saucer hub with two spinning blades
+  c.save(); c.translate(m.x, m.y); c.rotate(a); c.lineCap = "round";
+  for (const k of [0, PI / 2]) { c.save(); c.rotate(k); c.strokeStyle = "#1a2030"; c.lineWidth = 9; c.beginPath(); c.moveTo(-MILL.arm, 0); c.lineTo(MILL.arm, 0); c.stroke();
+    c.strokeStyle = "#e6ecff"; c.lineWidth = 5; c.stroke(); c.restore(); }
+  c.restore(); c.fillStyle = "#4fd1ff"; c.beginPath(); c.arc(m.x, m.y, 8, 0, TAU); c.fill(); c.strokeStyle = "#0b1a2e"; c.lineWidth = 2; c.stroke();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(m.x, m.y, 3, 0, TAU); c.fill();
+}
+function drawLive(c, tt) { // the moving parts, in world units
+  if (wi === 1) for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if ("<>^v".includes(grid[y][x])) drawWind(c, grid[y][x], x, y, tt);
+  for (const w of wells) drawWell(c, w, tt);
+  for (const p of portals) drawPortal(c, p, tt);
+  for (const b of bumpers) drawBumper(c, b);
+  for (const m of mills) drawMill(c, m, t * MILL.spin * m.dir);
+  for (const m of moons) { const [x, y] = moonPos(m); drawMoon(c, x, y, m.x, m.y); }
+  for (const z of saucers) { const [x, y] = saucerPos(z); drawSaucer(c, x, y, tt, z.x); }
+  // the cup and its flag
+  const [cx, cy] = cup;
+  c.fillStyle = "rgba(255,255,255,0.18)"; c.beginPath(); c.arc(cx, cy, CUP_R + 5, 0, TAU); c.fill();
+  c.fillStyle = "#050a14"; c.beginPath(); c.arc(cx, cy, CUP_R, 0, TAU); c.fill(); c.strokeStyle = "#a8d8ff"; c.lineWidth = 1.5; c.stroke();
+  if (state !== "sunk") { c.strokeStyle = "#e6f0ff"; c.lineWidth = 2; c.beginPath(); c.moveTo(cx + 2, cy); c.lineTo(cx + 2, cy - 40); c.stroke();
+    const wv = Math.sin(tt * 4) * 3; c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(cx + 2, cy - 40); c.quadraticCurveTo(cx + 14, cy - 36 + wv, cx + 26, cy - 34 + wv); c.lineTo(cx + 2, cy - 26); c.closePath(); c.fill();
+    c.fillStyle = "#fff"; c.font = "900 9px system-ui"; c.textAlign = "center"; c.fillText(String(hi + 1), cx + 11, cy - 31 + wv * 0.5); }
+}
+function drawScene(c, k, tt) {
+  const d = Math.min(3, devicePixelRatio || 1);
+  if (!courseCache || courseCache.k !== k || courseCache.d !== d) { // the still course, cached
+    const off = document.createElement("canvas"); off.width = Math.round(LW * k * d); off.height = Math.round(LH * k * d);
+    const oc = off.getContext("2d"); oc.setTransform(k * d, 0, 0, k * d, 0, 0); drawCourse(oc); courseCache = { cv: off, k, d };
+  }
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(courseCache.cv, 0, 0); c.restore();
+  c.save(); c.scale(k, k);
+  drawLive(c, tt);
+  // aim guide: dotted line forward + power bar
+  const a = aimVec();
+  if (a && state === "aim") {
+    const len = 40 + a.p * 150, col = a.p < 0.5 ? "#5dff9b" : a.p < 0.85 ? "#ffd25d" : "#ff5d7a";
+    c.fillStyle = col; for (let dd = 18; dd < len; dd += 11) { c.globalAlpha = 1 - dd / (len + 20); c.beginPath(); c.arc(ball.x + a.nx * dd, ball.y + a.ny * dd, 2.6, 0, TAU); c.fill(); } c.globalAlpha = 1;
+    c.strokeStyle = "rgba(255,255,255,0.35)"; c.lineWidth = 2; c.setLineDash([4, 5]); c.beginPath(); c.moveTo(aim.sx, aim.sy); c.lineTo(aim.x, aim.y); c.stroke(); c.setLineDash([]);
+    const bx = ball.x - 30, by = ball.y + 20; c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(bx, by, 60, 7); c.fillStyle = col; c.fillRect(bx, by, 60 * a.p, 7);
+  }
+  // your alien: rolls into the cup, then pops out to cheer
+  if (state === "sunk") {
+    if (strokes <= MAX_STROKES) { if (sinkT < 0.3) drawPlayer(c, cup[0], cup[1], tt, 1 - sinkT / 0.3, 0);
+      else if (sinkT > 0.55) drawPlayer(c, cup[0], cup[1] - 6, tt, Math.min(1, (sinkT - 0.55) * 4), Math.abs(Math.sin((sinkT - 0.55) * 9)) * 16); }
+  } else {
+    if (state === "aim" && !aim) { c.strokeStyle = `rgba(255,255,255,${0.35 + 0.25 * Math.sin(tt * 5)})`; c.lineWidth = 2; c.beginPath(); c.arc(ball.x, ball.y, BALL_R + 8, 0, TAU); c.stroke(); }
+    if (ball.air) { // mid-jump: a ring where the ball will come down, green if safe, red if it's off the course or a hazard
+      const A = ball.air, tl = (A.vz + Math.sqrt(A.vz * A.vz + 2 * JUMP.g * Math.max(0, A.z))) / JUMP.g;
+      const lx = ball.x + ball.vx * tl, ly = ball.y + ball.vy * tl, lt = tileAt(lx, ly), bad = !lt || lt === "." || lt === "~";
+      const col = bad ? "255,93,122" : "93,255,155", pr = BALL_R + 4 + Math.sin(tt * 12) * 2;
+      c.strokeStyle = `rgba(${col},0.9)`; c.lineWidth = 2.5; c.beginPath(); c.arc(lx, ly, pr, 0, TAU); c.stroke();
+      c.fillStyle = `rgba(${col},0.25)`; c.beginPath(); c.arc(lx, ly, pr, 0, TAU); c.fill();
+      if (bad) { c.beginPath(); c.moveTo(lx - 5, ly - 5); c.lineTo(lx + 5, ly + 5); c.moveTo(lx + 5, ly - 5); c.lineTo(lx - 5, ly + 5); c.stroke(); }
+    }
+    drawPlayer(c, ball.x, ball.y, tt, 1, 0, ball.air ? ball.air.z : 0);
+  }
+  for (const p of fx) { c.globalAlpha = Math.max(0, p.life / 0.8); c.fillStyle = p.col; c.fillRect(p.x - 2.5, p.y - 2.5, 5, 5); } c.globalAlpha = 1;
+  c.restore();
+}
+function drawPlayer(c, x, y, tt, scale, hop, z = 0) { // z = height in the air after a jump
+  if (scale <= 0.02) return;
+  const sp = Math.hypot(ball.vx, ball.vy), tilt = clamp(ball.vx / 900, -0.5, 0.5), sq = ball.squash * 1.5, sh = 1 / (1 + z / 60);
+  c.fillStyle = `rgba(0,0,0,${0.3 * sh})`; c.beginPath(); c.ellipse(x + 2 + z * 0.3, y + BALL_R * 0.9, BALL_R * scale * sh, BALL_R * 0.35 * scale * sh, 0, 0, TAU); c.fill();
+  c.save(); c.translate(x, y); const up = 1 + z / 110; c.scale(scale * up * (1 + sq * 0.3), scale * up * (1 - sq * 0.3));
+  CHARS.draw(c, SAVE.char, 0, -1, 10.5, tt * (sp > 20 ? 1.6 : 1), hop + z / up, tilt);
+  c.restore();
+}
+function draw(tt) { const d = Math.min(3, devicePixelRatio || 1); ctx.setTransform(d, 0, 0, d, 0, 0); drawScene(ctx, K, tt); }
+
+// ---------- speech bubble & sound ----------
+let bubbleT = 0;
+function say(html, secs = 3) { $("bubble").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
+let AC = null;
+function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
+function tone(f, dur, type = "sine", vol = 0.08, slideTo = 0, delay = 0) { if (!AC) return; const s = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, s); if (slideTo) o.frequency.exponentialRampToValueAtTime(f * slideTo, s + dur);
+  g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); o.connect(g).connect(AC.destination); o.start(s); o.stop(s + dur + 0.05); }
+
+// ============================================================
+//  MENUS
+// ============================================================
+let menuAnim = null, paused = true;
+function openMenu(html, anim = null) { paused = true; aim = null; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-world]")) worldIcon(c, +c.dataset.world); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); last = performance.now(); }
+const starStr = n => "★".repeat(n) + `<i>${"★".repeat(3 - n)}</i>`;
+function fitCanvas(cvs) { const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); } const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return [c, w, h]; }
+function worldIcon(cvs, w) { // a little patch of that world's green with its flag
+  const c = cvs.getContext("2d"), n = 120; cvs.width = cvs.height = n; const L = WORLDS[w].look;
+  const g = c.createLinearGradient(0, 0, 0, n); g.addColorStop(0, L.sky[0]); g.addColorStop(1, L.sky[1]); c.fillStyle = g; c.fillRect(0, 0, n, n);
+  c.fillStyle = L.green[0]; c.beginPath(); c.ellipse(n / 2, n * 0.66, n * 0.42, n * 0.22, 0, 0, TAU); c.fill(); c.strokeStyle = L.wall; c.lineWidth = 4; c.stroke();
+  c.fillStyle = "#050a14"; c.beginPath(); c.ellipse(n * 0.6, n * 0.64, 9, 5, 0, 0, TAU); c.fill();
+  c.strokeStyle = "#fff"; c.lineWidth = 3; c.beginPath(); c.moveTo(n * 0.6, n * 0.64); c.lineTo(n * 0.6, n * 0.2); c.stroke();
+  c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(n * 0.6, n * 0.2); c.lineTo(n * 0.85, n * 0.28); c.lineTo(n * 0.6, n * 0.36); c.fill();
+  c.fillStyle = "#fff"; c.font = "900 22px system-ui"; c.textAlign = "center"; c.fillText(String(w + 1), n * 0.3, n * 0.36);
+  if (!worldOpen(w)) { c.fillStyle = "rgba(3,6,14,0.65)"; c.fillRect(0, 0, n, n); c.font = "900 40px system-ui"; c.fillText("🔒", n / 2, n / 2 + 14); }
+}
+function titleMenu() {
+  const ch = CHARS.byId(SAVE.char);
+  openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Putt</h1>
+    <p>Mini golf across four alien worlds. <b>Pull back</b>, let go, and sink it in as few strokes as you can.</p>
+    ${WORLDS.map((w, i) => `<button class="big worldCard" data-act="world" data-arg="${i}" ${worldOpen(i) ? "" : "disabled"}><canvas data-world="${i}"></canvas>
+      <span>${i + 1} · ${w.name}<small>${worldOpen(i) ? `18 holes · <span class="stars">${worldStars(i)}/54 ★</span>` : `Finish ${WORLDS[i - 1].short} to unlock`}</small></span></button>`).join("")}
+    <button class="big" data-act="chars">Your alien: <b>${ch.name}</b> ›</button>
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim);
+}
+function titleAnim(tt) { // your alien rolls across a little green and drops in the cup
+  const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h);
+  c.fillStyle = "#2f7fa0"; c.beginPath(); c.roundRect(w * 0.06, h * 0.32, w * 0.88, h * 0.55, 30); c.fill(); c.strokeStyle = "#7fb8ff"; c.lineWidth = 4; c.stroke();
+  const T = tt % 3.4, k = Math.min(1, T / 1.8), e = 1 - (1 - k) * (1 - k), cx = w * 0.78, cy = h * 0.62;
+  c.fillStyle = "#050a14"; c.beginPath(); c.arc(cx, cy, 11, 0, TAU); c.fill();
+  c.strokeStyle = "#fff"; c.lineWidth = 2; c.beginPath(); c.moveTo(cx + 2, cy); c.lineTo(cx + 2, cy - 44); c.stroke(); c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(cx + 2, cy - 44); c.lineTo(cx + 24, cy - 37); c.lineTo(cx + 2, cy - 30); c.fill();
+  if (T < 1.85) CHARS.draw(c, SAVE.char, w * 0.16 + (cx - w * 0.16) * e, cy - 6 + Math.sin(e * PI) * -10, 16, tt * 2, 0, 0.2);
+  else if (T > 2.1) { CHARS.draw(c, SAVE.char, cx, cy - 8, 16, tt, Math.abs(Math.sin((T - 2.1) * 8)) * 22); c.fillStyle = "#ffd25d"; c.font = "800 15px system-ui"; c.textAlign = "center"; c.fillText("In the cup!", w * 0.4, h * 0.22); }
+}
+function charMenu() {
+  openMenu(`<p class="kicker">Choose your alien</p><h2>Who's putting?</h2>
+    <p>The First Contact crew from Alien Defense.</p>
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <p class="charDesc" id="charDesc">${CHARS.byId(SAVE.char).desc}</p>
+    <button class="big main" data-act="title">Done</button>`,
+    tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
+      CHARS.draw(c, cvs.dataset.char, w / 2, h * 0.55, w * 0.24, tt + w, on ? Math.abs(Math.sin(tt * 5)) * 6 : 0); } });
+}
+function worldMenu(w) {
+  const W0 = WORLDS[w];
+  openMenu(`<p class="kicker">World ${w + 1} of ${WORLDS.length}</p><h2>${W0.name}</h2>
+    <p>${W0.intro}</p>
+    <p class="score"><span class="stars">${worldStars(w)}/54 ★</span> · par ${W0.holes.reduce((a, h) => a + h.par, 0)}</p>
+    <div class="holes">${W0.holes.map((h, i) => `<button class="big ${holeOpen(w, i) && !SAVE.best[w][i] ? "main" : ""}" data-act="play" data-arg="${w}|${i}" ${holeOpen(w, i) ? "" : "disabled"}><span class="par">P${h.par}</span>${holeOpen(w, i) ? i + 1 : "🔒"}<small>${starStr(holeStars(w, i))}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`);
+}
+function resultMenu() {
+  const n = strokes, picked = n > MAX_STROKES, st = picked ? 0 : starsFrom(n, H.par), d = n - H.par;
+  // a picked-up hole doesn't count: no stars, and the next hole stays locked until you finish this one
+  const prev = SAVE.best[wi][hi]; if (!picked && (!prev || prev > MAX_STROKES || n < prev)) { SAVE.best[wi][hi] = n; save(); }
+  const done = SAVE.best[wi][hi] > 0 && SAVE.best[wi][hi] <= MAX_STROKES;
+  const next = !done ? null : hi + 1 < W.holes.length ? [wi, hi + 1] : wi + 1 < WORLDS.length && worldOpen(wi + 1) ? [wi + 1, 0] : null;
+  openMenu(`<p class="kicker">${W.short} · Hole ${hi + 1} · ${H.name} · par ${H.par}</p>
+    <h2>${picked ? "Picked up" : n === 1 ? "Hole in one!" : scoreName(d) + "!"}</h2>
+    <div class="bigStars">${starStr(st)}</div>
+    <p>${picked ? `${MAX_STROKES} strokes is the limit. <b>Sink it in under ${MAX_STROKES + 1}</b> to unlock the next hole.` : `${n} stroke${n === 1 ? "" : "s"}. ${st === 3 ? `${CHARS.byId(SAVE.char).name} is thrilled!` : `Par is ${H.par}. ${st === 2 ? "So close to three stars!" : "Bank off the walls to save strokes."}`}`}</p>
+    <p class="score">Best: ${finished(SAVE.best[wi][hi]) ? SAVE.best[wi][hi] : "-"} · ${W.short}: <span class="stars">${worldStars(wi)}/54 ★</span></p>
+    ${next ? `<button class="big main" data-act="play" data-arg="${next[0]}|${next[1]}">${next[0] !== wi ? `Next world: ${WORLDS[next[0]].short} ▶` : `Hole ${next[1] + 1} ▶`}</button>`
+      : wi + 1 === WORLDS.length && hi + 1 === W.holes.length ? `<p><b>You've played all 72 holes!</b> Go back for any missing stars.</p>` : ""}
+    <button class="big" data-act="play" data-arg="${wi}|${hi}">Play again</button>
+    <button class="big" data-act="world" data-arg="${wi}">All holes</button>`);
+}
+// How to play: short pages with demos
+const HOWTO = [
+  { title: "Pull back", lines: ["<b>Pull back</b> anywhere on the course", "<b>Let go</b> to putt the other way"], demo: demoPull },
+  { title: "Power", lines: ["<b>Longer pull</b> = harder putt", "<b class='g'>Green</b> soft · <b class='y'>yellow</b> · <b class='r'>red</b> full"], demo: demoPower },
+  { title: "Stars", lines: ["<b>Par</b> = strokes a good putt needs (<b class='c'>P3</b> on the hole list)", "<b>Par or better</b> = <b class='y'>★★★</b> · <b>par +1</b> = <b class='y'>★★</b>", "Sink it in <b>10 strokes or fewer</b> = <b class='y'>★</b>", "<b class='r'>Not in by 10</b> = no stars, next hole <b>stays locked</b>"], demo: demoSink },
+  { title: "Watch out", lines: ["<b class='r'>Hazards</b> cost <b>+1 stroke</b>", "<b>Sand</b> slows · <b>arrows</b> push · <b class='c'>portals</b> warp"], demo: demoHazard },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first", done = first ? "start" : back === "game" ? "resume" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); c.fillStyle = "#2f7fa0"; c.fillRect(0, 0, w, h); p.demo(c, tt, w, h); });
+}
+function finger(c, x, y, down) { c.fillStyle = down ? "rgba(79,209,255,0.4)" : "rgba(255,255,255,0.25)"; c.beginPath(); c.arc(x, y, 16, 0, TAU); c.fill(); c.fillStyle = down ? "#4fd1ff" : "#fff"; c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill(); }
+function label(c, text, x, y, col) { c.fillStyle = col; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText(text, x, y); }
+function dots(c, x, y, nx, ny, len, col) { c.fillStyle = col; for (let d = 18; d < len; d += 11) { c.globalAlpha = 1 - d / (len + 20); c.beginPath(); c.arc(x + nx * d, y + ny * d, 2.6, 0, TAU); c.fill(); } c.globalAlpha = 1; }
+const me = (c, x, y, tt, hop = 0) => CHARS.draw(c, SAVE.char, x, y, 13, tt, hop);
+function demoPull(c, tt, w, h) {
+  const T = tt % 3.6, bx = w * 0.3, by = h * 0.58, pull = clamp((T - 0.4) / 1, 0, 1);
+  const fx = w * 0.62 - pull * 70, fy = h * 0.3 + pull * 40; // the finger moves down-left; the putt goes up-right
+  if (T < 1.6) { dots(c, bx, by, 0.87, -0.5, 40 + pull * 110, pull < 0.5 ? "#5dff9b" : "#ffd25d"); me(c, bx, by, tt); finger(c, fx, fy, T > 0.3); label(c, "pull back...", w * 0.5, h - 14, "#fff"); }
+  else { const k = Math.min(1, (T - 1.6) / 1.2), e = 1 - (1 - k) ** 2; me(c, bx + 0.87 * e * 160, by - 0.5 * e * 160, tt * 2); label(c, "...let go!", w * 0.5, h - 14, "#5dff9b"); }
+}
+function demoPower(c, tt, w, h) {
+  const T = tt % 3, p = clamp(T / 2, 0, 1), col = p < 0.5 ? "#5dff9b" : p < 0.85 ? "#ffd25d" : "#ff5d7a", bx = w * 0.2, by = h * 0.5;
+  dots(c, bx, by, 1, 0, 40 + p * 150, col); me(c, bx, by, tt);
+  c.fillStyle = "rgba(0,0,0,0.5)"; c.fillRect(bx - 30, by + 24, 60, 8); c.fillStyle = col; c.fillRect(bx - 30, by + 24, 60 * p, 8);
+  label(c, p < 0.5 ? "soft" : p < 0.85 ? "medium" : "full power!", w * 0.5, h - 14, col);
+}
+function demoSink(c, tt, w, h) {
+  const T = tt % 3.4, k = Math.min(1, T / 1.8), wx = w * 0.62, cx = w * 0.86, cy = h * 0.72, bx0 = w * 0.12, by0 = h * 0.72;
+  c.strokeStyle = "#7fb8ff"; c.lineWidth = 6; c.beginPath(); c.moveTo(w * 0.05, 12); c.lineTo(w * 0.95, 12); c.stroke(); // top wall to bank off
+  c.fillStyle = "#050a14"; c.beginPath(); c.arc(cx, cy, 11, 0, TAU); c.fill();
+  let x, y; if (k < 0.5) { const m = k / 0.5; x = bx0 + (wx - bx0) * m; y = by0 + (24 - by0) * m; } else { const m = (k - 0.5) / 0.5; x = wx + (cx - wx) * m; y = 24 + (cy - 24) * m; }
+  if (T < 1.85) me(c, x, y, tt * 2); else { me(c, cx, cy - 8, tt, Math.abs(Math.sin(T * 8)) * 14); label(c, "★★★", w * 0.5, h * 0.45, "#ffd25d"); }
+  label(c, "bank it off the wall", w * 0.45, h - 14, "#fff");
+}
+function demoHazard(c, tt, w, h) {
+  const T = tt % 4, ts = 34, row = h * 0.5;
+  // a strip of tiles: sand, slope, pond, portal
+  const tiles = [["s", w * 0.14], [">", w * 0.38], ["~", w * 0.62], ["A", w * 0.86]];
+  for (const [ch, x] of tiles) { c.save(); c.translate(x - ts / 2, row - ts / 2);
+    if (ch === "s") { c.fillStyle = "#e8d29a"; c.fillRect(0, 0, ts, ts); }
+    else if (ch === ">") { c.fillStyle = "#4aa860"; c.fillRect(0, 0, ts, ts); c.fillStyle = "rgba(255,255,255,0.6)"; c.beginPath(); c.moveTo(26, 17); c.lineTo(12, 7); c.lineTo(12, 27); c.closePath(); c.fill(); }
+    else if (ch === "~") { c.fillStyle = "#1f6aa8"; c.fillRect(0, 0, ts, ts); c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 2; c.beginPath(); c.moveTo(5, 17); c.quadraticCurveTo(17, 9, 29, 17); c.stroke(); }
+    else { c.fillStyle = "#0a0614"; c.beginPath(); c.arc(ts / 2, ts / 2, 15, 0, TAU); c.fill(); c.strokeStyle = "#c77dff"; c.lineWidth = 3; c.beginPath(); c.arc(ts / 2, ts / 2, 10, tt * 3, tt * 3 + 4); c.stroke(); }
+    c.restore(); }
+  for (const [txt, x] of [["slows", w * 0.14], ["pushes", w * 0.38], ["+1 stroke", w * 0.62], ["warps", w * 0.86]]) label(c, txt, x, row + 36, "#fff");
+  const k = (T / 4) * 4, idx = Math.floor(k), x = tiles[Math.min(3, idx)][1];
+  me(c, x, row - 34 + Math.abs(Math.sin(tt * 6)) * -4, tt);
+}
+
+// ============================================================
+//  "NEW!" CARDS: the first time a hole has an object you haven't met, a card explains it before you putt
+// ============================================================
+const FEATURES = {
+  o: { title: "Bumper", lines: ["Purple <b>bumpers</b> kick the ball back <b>hard</b>", "<b>Bank</b> off them to reach the cup"] },
+  i: { title: "Ice patch", lines: ["Pale <b class='c'>ice</b> hardly slows the ball", "Putt <b>softer</b> than you think"] },
+  s: { title: "Sand trap", lines: ["<b class='y'>Sand</b> slows the ball right down", "Putt <b>harder</b> to get through it"] },
+  slope: { title: "Slope", lines: ["The ground tilts where the <b>arrows</b> point", "The ball <b>rolls downhill</b> that way"] },
+  wind: { title: "Wind stream", lines: ["Storm wind <b>pushes</b> the ball the way it blows", "Ride it, or putt <b>harder</b> against it"] },
+  well: { title: "Gravity well", lines: ["A tiny <b>black hole</b> that <b>pulls</b> the ball toward it", "The <b>dotted ring</b> shows its reach: it bends your putt"] },
+  portal: { title: "Portals", lines: ["Roll into <b>IN</b> and pop out of <b>OUT</b>", "Same colour = same pair · same speed, <b>same direction</b>"] },
+  mill: { title: "Windmill", lines: ["Spinning blades <b>knock</b> the ball away", "<b>Time</b> your putt through the gap"] },
+  hz_crack: { title: "Space crack", lines: ["A crack into <b>empty space</b>", "<b class='r'>+1 stroke</b>, back to where you putted"] },
+  hz_radiation: { title: "Radiation belt", lines: ["Purple <b>radiation</b> zaps the ball", "<b class='r'>+1 stroke</b>, back to where you putted"] },
+  hz_crystal: { title: "Crystal field", lines: ["Sharp red <b>crystals</b> stop the ball cold", "<b class='r'>+1 stroke</b>, back to where you putted"] },
+  hz_water: { title: "Pond", lines: ["<b class='c'>Splash!</b> The ball sinks", "<b class='r'>+1 stroke</b>, back to where you putted"] },
+  x: { title: "Asteroids", lines: ["Space <b>rocks</b> block the way", "<b>Bank</b> around them"] },
+  a: { title: "Orbiting moon", lines: ["A little <b>moon</b> circles round and round", "<b>Time</b> your putt to slip past it"] },
+  z: { title: "Patrol saucer", lines: ["A <b class='r'>saucer</b> slides back and forth", "Wait for the <b>gap</b>, then putt"] },
+  J: { title: "Launch pad", lines: ["Hit the <b class='c'>pad</b> fast and you <b>jump</b>", "Clear the gap. <b>Too hard</b> = lost in space!"] },
+  deck: { title: "Upper deck", lines: ["A <b>raised deck</b>: its edges are walls", "Climb the <b>ramp</b>: putt hard or roll back down"] },
+  H: { title: "Drop hole", lines: ["Roll into the <b>▼ hole</b> on the deck", "The dotted tube drops you out the <b>▲ ring</b>, rolling <b>up</b>"] },
+};
+function featuresOf() { // which objects this hole has, in the order they matter
+  const all = grid.flat().join(""), out = [];
+  if (all.includes("~")) out.push("hz_" + W.look.hz);
+  if (all.includes("o")) out.push("o");
+  if (all.includes("i")) out.push("i");
+  if (all.includes("s")) out.push("s");
+  if (/[<>^v]/.test(all)) out.push(wi === 1 ? "wind" : "slope");
+  if (all.includes("@")) out.push("well");
+  if (all.includes("A") || all.includes("D")) out.push("portal");
+  if (all.includes("W")) out.push("mill");
+  if (all.includes("x")) out.push("x");
+  if (all.includes("a")) out.push("a");
+  if (all.includes("z")) out.push("z");
+  if (all.includes("J")) out.push("J");
+  if (/[uQK]/.test(all)) out.push("deck");
+  if (all.includes("H")) out.push("H");
+  return out;
+}
+function featureMenu(list, i) {
+  const key = list[i], F = FEATURES[key], lastOne = i === list.length - 1;
+  if (!SAVE.seen.includes(key)) { SAVE.seen.push(key); save(); }
+  openMenu(`<p class="kicker">New on this hole${list.length > 1 ? ` · ${i + 1} of ${list.length}` : ""}</p><h2>${F.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${F.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <button class="big main" data-act="${lastOne ? "go" : "feat"}" data-arg="${i + 1}">${lastOne ? `Play hole ${hi + 1} ▶` : "Next ▶"}</button>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); featureDemo(c, key, tt, w, h); });
+  featList = list;
+}
+let featList = [];
+function featureDemo(c, key, tt, w, h) { // a 5 x 3 tile patch with the object in it and your alien showing what it does
+  const sc = Math.min(w / 200, h / 120);
+  c.fillStyle = W.look.sky[1]; c.fillRect(0, 0, w, h);
+  c.save(); c.translate((w - 200 * sc) / 2, (h - 120 * sc) / 2); c.scale(sc, sc);
+  const tiles = [["g", "g", "g", "g", "g"], ["g", "g", "g", "g", "g"], ["g", "g", "g", "g", "g"]];
+  const arrow = key === "wind" || key === "slope";
+  if (key === "i") tiles[1] = ["g", "i", "i", "i", "i"];
+  if (key === "s") tiles[1] = ["g", "g", "s", "s", "g"], tiles[0][2] = tiles[0][3] = tiles[2][2] = tiles[2][3] = "s";
+  if (arrow) for (const r of tiles) r[1] = r[2] = r[3] = ">";
+  if (key.startsWith("hz_")) tiles[0][3] = tiles[1][3] = tiles[2][3] = "~";
+  if (key === "J") for (const r of tiles) r[2] = r[3] = ".", tiles[1][1] = "J";
+  if (key === "deck") for (const r of tiles) r[2] = r[3] = r[4] = "u", tiles[1][1] = "r";
+  if (key === "H") for (const r of tiles) r[0] = r[1] = r[2] = "u", r[3] = ".", tiles[1][2] = "H", tiles[1][4] = "X";
+  if (key === "x") tiles[1][3] = "x";
+  tiles.forEach((r, y) => r.forEach((ch, x) => { if (ch !== ".") drawTile(c, ch, x * TILE, y * TILE, x, y, [1, 0]); }));
+  if (key === "deck" || key === "H") { c.fillStyle = "rgba(0,0,0,0.3)"; c.fillRect(key === "H" ? 120 : 70, 0, 9, 120); }
+  if (key === "wind") tiles.forEach((r, y) => r.forEach((ch, x) => { if (ch === ">") drawWind(c, ch, x, y, tt); }));
+  c.strokeStyle = W.look.wall; c.lineWidth = 4; c.strokeRect(0, 0, 200, 120);
+  const T = tt % 3.2, ease = k => 1 - (1 - k) * (1 - k);
+  let x = 20, y = 60, show = true, note = "";
+  if (key === "o") { const b = { x: 150, y: 60, flash: T > 0.9 && T < 1.2 ? 0.3 - (T - 0.9) : 0 }; drawBumper(c, b);
+    x = T < 0.9 ? 20 + (126 - 20) * (T / 0.9) : 126 - 106 * ease(Math.min(1, (T - 0.9) / 1.2)); note = T > 0.9 && T < 1.6 ? "boing!" : ""; }
+  else if (key === "i") { x = 20 + 165 * ease(Math.min(1, T / 2.4)); note = "wheee..."; }
+  else if (key === "s") { x = T < 0.6 ? 20 + 80 * (T / 0.6) : 100 + 14 * ease(Math.min(1, (T - 0.6) / 0.5)); note = T > 0.8 ? "stuck in the sand" : ""; }
+  else if (arrow) { const k = Math.min(1, T / 2.4); x = 30 + 150 * k * k; y = 60; note = key === "wind" ? "blown along" : "rolling downhill"; }
+  else if (key === "well") { const wl = { x: 100, y: 60 }; drawWell(c, wl, tt);
+    const k = Math.min(1, T / 2.6), a = -PI * 0.9 + k * PI * 2.6, r = 80 * (1 - k * 0.85); x = wl.x + Math.cos(a) * r; y = wl.y + Math.sin(a) * r * 0.55; note = "pulled in..."; }
+  else if (key === "portal") { const pin = { x: 60, y: 60, ch: "A", col: "#c77dff" }, pout = { x: 150, y: 60, ch: "B", col: "#c77dff" }; drawPortal(c, pin, tt); drawPortal(c, pout, tt);
+    if (T < 0.8) x = 15 + 45 * (T / 0.8); else if (T < 1.1) show = false; else { x = 150 + 35 * ease(Math.min(1, (T - 1.1) / 1)); } note = T > 0.8 ? "warp!" : ""; }
+  else if (key === "mill") { const m = { x: 100, y: 60 }; drawMill(c, m, tt * MILL.spin); x = 20 + 160 * Math.min(1, T / 2.6); y = 60 + (Math.abs(x - 100) < 30 ? Math.sin(tt * 6) * 6 : 0); note = "mind the blades"; }
+  else if (key.startsWith("hz_")) { if (T < 1.1) x = 20 + 110 * ease(T / 1.1); else if (T < 1.8) { show = false; if (T < 1.3) for (let k = 0; k < 6; k++) { c.fillStyle = "#fff"; c.fillRect(130 + Math.cos(k) * (T - 1.1) * 90, 60 + Math.sin(k) * (T - 1.1) * 90, 3, 3); } }
+    else x = 20; note = T > 1.1 && T < 2.4 ? "+1 stroke" : ""; }
+  let z = 0;
+  if (key === "x") { x = T < 0.8 ? 20 + 82 * (T / 0.8) : 102 - 80 * ease(Math.min(1, (T - 0.8) / 1.2)); y = 60 + (T > 0.8 ? -20 * ease(Math.min(1, (T - 0.8) / 1.2)) : 0); note = T > 0.8 && T < 1.4 ? "bonk" : ""; }
+  else if (key === "a") { const mo = { x: 100, y: 60, dir: 1, ph: 0 }, a = tt * MOON.spin; drawMoon(c, 100 + Math.cos(a) * MOON.orbit, 60 + Math.sin(a) * MOON.orbit, 100, 60); x = 20 + 165 * Math.min(1, T / 2.8); y = 104; note = "slip past the moon"; }
+  else if (key === "z") { const k = tt * SAUCER.speed; drawSaucer(c, 100 + Math.sin(k) * SAUCER.range, 60, tt, 100); x = 100; y = 112 - Math.min(1, T / 2.8) * 100; note = "wait for the gap"; }
+  else if (key === "J") { if (T < 0.5) x = 20 + 40 * (T / 0.5); else { const k = Math.min(1, (T - 0.5) / 0.9); x = 60 + 115 * k; z = Math.sin(k * PI) * 40; } note = T > 0.5 && T < 1.5 ? "jump!" : ""; }
+  else if (key === "deck") { x = 20 + 150 * ease(Math.min(1, T / 2.2)); note = x > 80 ? "up on the deck" : "up the ramp"; }
+  else if (key === "H") { if (T < 0.9) x = 20 + 80 * (T / 0.9); else if (T < 1.4) show = false; else x = 180 + Math.min(10, (T - 1.4) * 20); note = T > 0.9 ? "down the tube..." : ""; }
+  if (show) CHARS.draw(c, SAVE.char, x, y - 2, 11 * (1 + z / 110) * (key === "deck" && x > 80 ? 1.08 : 1), tt * 2, z);
+  if (note) { c.fillStyle = "#fff"; c.font = "800 12px system-ui"; c.textAlign = "center"; c.fillText(note, 100, 14); }
+  c.restore();
+}
+
+const ACT = {
+  feat: i => featureMenu(featList, +i),
+  go: () => { closeMenu(); if (H.tip) say(H.tip, 4); },
+  world: w => worldMenu(+w),
+  play: arg => { const [w, h] = String(arg).split("|").map(Number); pending = [w, h]; if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("first", 0); } else ACT.start(); },
+  start: () => { loadHole(pending[0], pending[1]); const fresh = featuresOf().filter(f => !SAVE.seen.includes(f));
+    if (fresh.length) featureMenu(fresh, 0); else closeMenu(); },
+  title: () => titleMenu(),
+  chars: () => charMenu(),
+  pick: id => { SAVE.char = id; save(); for (const b of $("box").querySelectorAll(".charBtn")) b.classList.toggle("on", b.dataset.arg === id); $("charDesc").textContent = CHARS.byId(id).desc; },
+  help: arg => { const [back, page] = String(arg).split("|"); helpMenu(back, +(page || 0)); },
+  resume: () => closeMenu(),
+};
+let pending = [0, 0];
+$("helpBtn").onclick = () => { audio(); if ($("overlay").classList.contains("hidden")) helpMenu("game", 0); };
+$("retryBtn").onclick = () => { audio(); loadHole(wi, hi); closeMenu(); };
+$("menuBtn").onclick = () => { audio(); worldMenu(wi); };
+
+// ============================================================
+//  LOOP
+// ============================================================
+function resize() {
+  const st = $("stage"), w = st.clientWidth, h = st.clientHeight, d = Math.min(3, devicePixelRatio || 1);
+  K = Math.max(0.3, Math.min(w / LW, h / LH));
+  cv.style.width = LW * K + "px"; cv.style.height = LH * K + "px"; cv.width = Math.round(LW * K * d); cv.height = Math.round(LH * K * d);
+}
+addEventListener("resize", resize); if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1);
+  last = now; // never let the clock run backwards or jump
+  if (!paused) { acc += dt; while (acc >= 1 / 60) { acc -= 1 / 60; update(1 / 60); } }
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
+  draw(now / 1000);
+  if (menuAnim) menuAnim(now / 1000);
+  requestAnimationFrame(frame);
+}
+// quick self-check of the maps: every hole needs exactly one tee and one cup, 9 x 16 tiles
+WORLDS.forEach((w, i) => w.holes.forEach((h, j) => { const all = h.map.join(""), bad = h.map.length !== ROWS || h.map.some(r => r.length !== COLS) || (all.match(/[TQ]/g) || []).length !== 1 || (all.match(/[CK]/g) || []).length !== 1 || (all.includes("H") && !all.includes("X"));
+  if (bad) console.warn(`Alien Putt map problem: world ${i + 1} hole ${j + 1} (${h.name})`); }));
+resize(); loadHole(0, 0); $("bubble").classList.remove("on"); bubbleT = 0;
+titleMenu();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
