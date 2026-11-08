@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Thirteen games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Fourteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -106,6 +106,8 @@ const GAMES = [
     desc: "Ten alien pins who taunt, panic and laugh at your gutter balls. Pick a ball, hook it, and bowl across four worlds." },
   { name: "Alien Lob", tag: "Artillery", color: "#ffd25d", href: "AlienLob/Alien-Lob.html", art: artLob,
     desc: "Lob goo across alien skylines in a turn-by-turn duel. Read the wind, feel each planet's gravity, and blast craters." },
+  { name: "Alien Rocks", tag: "Space shooter", color: "#4fd1ff", href: "AlienRocks/Alien-Rocks.html", art: artRocks,
+    desc: "Drift your saucer through neon rock fields. Split the rocks, dodge alien hunters, and take down each stage's mothership." },
 ];
 
 // ---------- shared little drawings ----------
@@ -133,6 +135,27 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artRocks(c, w, h, t) { // a neon saucer drifts and blasts a big rock, which splits in two
+  sky(c, w, h, "#081a36", "#01040b", 97);
+  const ng = c.createRadialGradient(w * 0.7, h * 0.35, 0, w * 0.7, h * 0.35, h * 0.9); ng.addColorStop(0, "rgba(120,120,255,0.18)"); ng.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = ng; c.fillRect(0, 0, w, h);
+  const neonStroke = (col, lw) => { c.strokeStyle = col; c.globalAlpha = 0.25; c.lineWidth = lw * 3.2; c.stroke(); c.globalAlpha = 1; c.lineWidth = lw; c.stroke(); };
+  const rock = (x, y, r, a, seed) => { c.beginPath(); for (let k = 0; k < 11; k++) { const f = 0.78 + 0.35 * Math.abs(Math.sin(seed * 7.1 + k * 2.3)), q = a + k / 11 * TAU; c.lineTo(x + Math.cos(q) * r * f, y + Math.sin(q) * r * f); }
+    c.closePath(); c.fillStyle = "rgba(120,210,255,0.1)"; c.fill(); c.lineJoin = "round"; neonStroke("#9fe8ff", 1.8); };
+  const T = t % 3.6, sx = w * 0.2, sy = h * 0.55 + Math.sin(t * 1.2) * 6, rx = w * 0.7, ry = h * 0.5, split = T > 1.4;
+  rock(w * 0.88, h * 0.18, h * 0.07, t * 0.5, 4); rock(w * 0.12, h * 0.2, h * 0.05, -t * 0.7, 9);
+  if (!split) rock(rx, ry, h * 0.2, t * 0.3, 1);
+  else { const k = Math.min(1, (T - 1.4) * 0.9); rock(rx + k * 14, ry - k * h * 0.22, h * 0.12, t, 2); rock(rx + k * 20, ry + k * h * 0.22, h * 0.12, -t, 3);
+    if (T < 1.9) { c.globalAlpha = 1 - (T - 1.4) * 2; c.strokeStyle = "#9fe8ff"; c.lineWidth = 2.5; c.beginPath(); c.arc(rx, ry, h * 0.12 + (T - 1.4) * h * 0.6, 0, TAU); c.stroke(); c.globalAlpha = 1; } }
+  // lasers
+  if (T < 1.4) { c.globalCompositeOperation = "lighter"; c.strokeStyle = "rgba(120,230,255,0.95)"; c.lineWidth = 2.6; c.lineCap = "round";
+    for (let k = 0; k < 3; k++) { const x = sx + 22 + ((T * 420 + k * 70) % Math.max(1, rx - sx - h * 0.2)); c.beginPath(); c.moveTo(x, sy); c.lineTo(x - 13, sy); c.stroke(); } c.globalCompositeOperation = "source-over"; }
+  // the saucer: a neon dart with an alien in the dome and an engine flame
+  c.save(); c.translate(sx, sy); const s = h * 0.012;
+  const fl = (14 + Math.sin(t * 40) * 3) * s; const g = c.createLinearGradient(-8 * s, 0, -8 * s - fl, 0); g.addColorStop(0, "rgba(255,240,180,0.95)"); g.addColorStop(1, "rgba(255,80,40,0)");
+  c.fillStyle = g; c.beginPath(); c.moveTo(-7 * s, -5 * s); c.lineTo(-8 * s - fl, 0); c.lineTo(-7 * s, 5 * s); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(17 * s, 0); c.lineTo(-10 * s, -11 * s); c.lineTo(-5 * s, 0); c.lineTo(-10 * s, 11 * s); c.closePath(); c.fillStyle = "rgba(10,20,40,0.85)"; c.fill(); neonStroke("#5dff9b", 1.8);
+  c.restore(); eyeAlien(c, sx, sy + 2, 6.5 * s, "#5dff9b", t);
+}
 function artLob(c, w, h, t) { // goo arcs over a tall tower, bent by the wind, and splats the alien on the far roof
   sky(c, w, h, "#123a32", "#081a16", 83);
   const T = t % 3.6, k = Math.min(1, T / 1.8), x0 = w * 0.1, y0 = h * 0.6, x1 = w * 0.88, y1 = h * 0.56;
