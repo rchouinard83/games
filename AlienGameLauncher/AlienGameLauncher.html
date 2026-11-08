@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Twelve games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Thirteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -104,6 +104,8 @@ const GAMES = [
     desc: "Swipe force beams across the arena to fence in the bouncing aliens. Lock down 75% without getting your beams broken." },
   { name: "Alien Bowling", tag: "Bowling", color: "#e8ff83", href: "AlienBowling/Alien-Bowling.html", art: artBowling,
     desc: "Ten alien pins who taunt, panic and laugh at your gutter balls. Pick a ball, hook it, and bowl across four worlds." },
+  { name: "Alien Lob", tag: "Artillery", color: "#ffd25d", href: "AlienLob/Alien-Lob.html", art: artLob,
+    desc: "Lob goo across alien skylines in a turn-by-turn duel. Read the wind, feel each planet's gravity, and blast craters." },
 ];
 
 // ---------- shared little drawings ----------
@@ -131,6 +133,29 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artLob(c, w, h, t) { // goo arcs over a tall tower, bent by the wind, and splats the alien on the far roof
+  sky(c, w, h, "#123a32", "#081a16", 83);
+  const T = t % 3.6, k = Math.min(1, T / 1.8), x0 = w * 0.1, y0 = h * 0.6, x1 = w * 0.88, y1 = h * 0.56;
+  const roofs = [[0, 0.66, 0.2], [0.2, 0.78, 0.14], [0.34, 0.42, 0.16], [0.5, 0.36, 0.14], [0.64, 0.72, 0.14], [0.78, 0.62, 0.22]];
+  for (const [x, y, bw] of roofs) { c.fillStyle = "#6c7f99"; c.fillRect(x * w, y * h, bw * w + 1, h); c.fillStyle = "rgba(255,233,160,0.75)";
+    for (let wy = y * h + 8; wy < h - 4; wy += 11) for (let wx = x * w + 5; wx < (x + bw) * w - 6; wx += 9) if ((wx * 7 + wy * 3) % 5 < 2) c.fillRect(wx, wy, 4, 5); }
+  // wind gauge
+  c.fillStyle = "rgba(6,12,28,0.75)"; c.beginPath(); c.roundRect(w / 2 - 40, 8, 80, 22, 8); c.fill();
+  c.strokeStyle = "#ffd25d"; c.fillStyle = "#ffd25d"; c.lineWidth = 3; c.beginPath(); c.moveTo(w / 2 - 14, 19); c.lineTo(w / 2 + 16, 19); c.stroke();
+  c.beginPath(); c.moveTo(w / 2 + 22, 19); c.lineTo(w / 2 + 14, 14); c.lineTo(w / 2 + 14, 24); c.closePath(); c.fill();
+  eyeAlien(c, x0, h * 0.66 - 12, 10, "#5dff9b", t);
+  const splat = T > 1.8;
+  eyeAlien(c, x1, h * 0.62 - 12 + (splat ? Math.sin(t * 30) * 2 : 0), 10, "#ff8f5d", t + 1);
+  if (!splat) { // the arc: a parabola pushed a little extra by the tailwind
+    c.fillStyle = "rgba(255,255,255,0.35)";
+    for (let i = 1; i < 16; i++) { const q = i / 16 * k, x = x0 + (x1 - x0) * q + w * 0.04 * q * q, y = y0 + (y1 - y0) * q - Math.sin(q * PI) * h * 0.55; c.beginPath(); c.arc(x, y, 1.6, 0, TAU); c.fill(); }
+    const x = x0 + (x1 - x0) * k + w * 0.04 * k * k - w * 0.04 * k, y = y0 + (y1 - y0) * k - Math.sin(k * PI) * h * 0.55;
+    c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); c.fillStyle = "rgba(255,255,255,0.7)"; c.beginPath(); c.arc(x + 2, y - 2, 2, 0, TAU); c.fill();
+  } else {
+    const r = Math.min(1, (T - 1.8) * 3) * 22; c.fillStyle = "rgba(255,210,93,0.6)"; c.beginPath(); c.arc(x1, y1 - 4, r, 0, TAU); c.fill();
+    c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("SPLAT!", w * 0.62, h * 0.24);
+  }
+}
 function artBowling(c, w, h, t) { // a ball rolls down the lane into ten taunting alien pins, which go flying
   sky(c, w, h, "#332449", "#101229", 71);
   const T = t % 4, far = h * 0.2, near = h, cx = w / 2, nearW = w * 0.32, farW = w * 0.12;
