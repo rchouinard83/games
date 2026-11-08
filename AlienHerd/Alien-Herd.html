@@ -66,7 +66,7 @@
     <div class="spacer"></div>
     <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
     <button class="hudBtn" id="fastBtn">▶▶</button>
-    <button class="hudBtn" id="pauseBtn">❚❚</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
   </div>
   <div id="stage"><canvas id="cv"></canvas></div>
   <div id="skills"></div>
@@ -344,7 +344,9 @@ let bubbleT = 0;
 function say(html, secs = 3) { $("bubble").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
 let AC = null;
 function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
-function blip(f, type = "triangle") { if (!AC) return; const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f;
+let soundOn = true; try { soundOn = localStorage.getItem("alienHerd.sound") !== "0"; } catch (e) {}
+const soundBtn = () => `<button class="big" data-act="sound">${soundOn ? "🔊 Sound: On" : "🔇 Sound: Off"}</button>`;
+function blip(f, type = "triangle") { if (!AC || !soundOn) return; const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.value = f;
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15); o.connect(g).connect(AC.destination); o.start(t); o.stop(t + 0.2); }
 
 // ---------- menus ----------
@@ -352,7 +354,17 @@ let menuAnim = null; // animation for the open menu (how-to demos)
 function openMenu(html, anim = null) { paused = true; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
   for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
   for (const c of $("box").querySelectorAll("canvas[data-skill]")) skillIcon(c, c.dataset.skill); }
-function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("pauseBtn").textContent = "❚❚"; last = performance.now(); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); last = performance.now(); }
+function pauseMenu() { // the in-game menu: the game waits while it's open
+  openMenu(`<p class="kicker">Paused · Mars cliffs</p><h2>Alien Herd</h2>
+    <div class="stats"><div>${saved}<small>Home</small></div><div>${NEED}<small>Needed</small></div><div>${lost}<small>Lost</small></div></div>
+    <button class="big main" data-act="resume">Resume ▶</button>
+    <button class="big" data-act="start">Restart level</button>
+    <button class="big" data-act="help" data-arg="game|0">How to play</button>
+    ${soundBtn()}
+    <button class="big" data-act="title">Main menu</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`);
+}
 const seenHelp = () => { try { return localStorage.getItem("alienHerd.seenHelp") === "1"; } catch (e) { return true; } };
 function titleMenu() {
   openMenu(`<p class="kicker">Mockup · Level 1 · Mars cliffs</p><h1>Alien Herd</h1>
@@ -360,6 +372,7 @@ function titleMenu() {
     <div class="list">${SKILLS.map(s => `<div><canvas data-skill="${s.id}"></canvas><span><b>${s.name}</b> · ${s.tip}</span></div>`).join("")}</div>
     <button class="big main" data-act="play">Start ▶</button>
     <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    ${soundBtn()}
     <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`);
 }
 function endMenu() {
@@ -379,7 +392,7 @@ const HOWTO = [
   { title: "Dig and bash", lines: ["<b class='y'>Digger</b> digs <b>down</b>", "<b class='y'>Basher</b> tunnels <b>sideways</b>", "<b>Grey steel</b> stops both"], demo: demoDigBash },
   { title: "Build and block", lines: ["<b class='c'>Builder</b> makes <b>stairs</b> over gaps", "<b class='p'>Blocker</b> <b>turns everyone back</b>"], demo: demoBuildBlock },
   { title: "Stay safe", lines: ["<b class='r'>Big falls</b> and <b class='o'>lava</b> are deadly", "<b class='c'>Jetpack</b> = <b>safe landing</b>"], demo: demoJet },
-  { title: "Bring them home", lines: [`Walk them into the <b class='g'>beam</b>`, `Save <b>${NEED} of ${TOTAL}</b> to win`, "<b>▶▶</b> faster · <b>❚❚</b> pause · <b>?</b> help"], demo: demoHome },
+  { title: "Bring them home", lines: [`Walk them into the <b class='g'>beam</b>`, `Save <b>${NEED} of ${TOTAL}</b> to win`, "<b>▶▶</b> faster · <b>Menu</b> pause · <b>?</b> help"], demo: demoHome },
 ];
 function helpMenu(back, page = 0) {
   const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
@@ -482,8 +495,11 @@ const ACT = {
   title: () => titleMenu(),
   end: () => endMenu(),
   resume: () => closeMenu(),
+  sound: () => { soundOn = !soundOn; try { localStorage.setItem("alienHerd.sound", soundOn ? "1" : "0"); } catch (e) {}
+    for (const b of $("box").querySelectorAll("[data-act='sound']")) b.textContent = soundOn ? "🔊 Sound: On" : "🔇 Sound: Off"; blip(660); },
 };
-$("pauseBtn").onclick = () => { if (over) return; paused = !paused; $("pauseBtn").textContent = paused ? "▶" : "❚❚"; if (!paused) last = performance.now(); };
+$("menuBtn").onclick = () => { audio(); if (!$("overlay").classList.contains("hidden")) return; if (over) endMenu(); else pauseMenu(); };
+addEventListener("blur", () => { if (!over && $("overlay").classList.contains("hidden")) pauseMenu(); }); // switching apps pauses the game
 $("helpBtn").onclick = () => { audio(); if (over || !$("overlay").classList.contains("hidden")) return; helpMenu("game", 0); };
 $("fastBtn").onclick = () => { fast = !fast; $("fastBtn").classList.toggle("on", fast); $("fastBtn").textContent = fast ? "2×" : "▶▶"; };
 
