@@ -108,12 +108,16 @@
   dt { color: var(--dim); font-size: 13px; }
   dd { margin: 0; font: 700 15px ui-monospace, monospace; }
   .settings { display: grid; gap: 8px; }
+  .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
   .settings label { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  #soft-drop {
-    width: 100%; min-height: 52px; margin-top: 8px; font-size: 17px;
+  #play-controls { margin-top: 8px; }
+  #play-controls button {
+    width: 100%; min-height: 56px; padding: 4px; font-size: 20px;
     border-color: #5386a6; background: #183456; touch-action: none; user-select: none;
   }
-  #soft-drop:active { background: #24527a; }
+  #play-controls button:active { background: #24527a; }
+  #arrow-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  #control-mode { grid-column: 1 / -1; min-height: 40px; }
   [hidden] { display: none !important; }
   .menu-layout { grid-template-columns: minmax(0, 450px); justify-content: center; gap: 0; }
   main:has(.menu-layout) header { justify-content: center; text-align: center; }
@@ -203,7 +207,7 @@
     .lab:not(.menu-layout) { grid-template-rows: auto 1fr; }
     .chamber {
       grid-area: 1 / 2 / 3 / 3; align-self: start; margin: 0;
-      width: clamp(176px, min(calc(100vw - 112px), calc((100dvh - 169px) / 2)), 258px);
+      width: clamp(176px, min(calc(100vw - 112px), calc((100dvh - 177px) / 2)), 258px);
     }
     .lab:not(.menu-layout) .panel { padding: 8px; }
     .lab:not(.menu-layout) .queen-art { margin: 2px auto; max-width: 94px; }
@@ -212,15 +216,15 @@
     .hud .tag { letter-spacing: .07em; }
     .hud dl { margin-bottom: 8px; }
     .hud dl div { padding: 6px 0; }
-    .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
     .hud button { padding: 3px; min-height: 36px; font-size: clamp(10px, 2.8vw, 13px); }
     .menu-layout { grid-template-columns: minmax(0, 450px); }
     .menu-layout .queen-art { max-width: 110px; }
   }
   @media (max-width: 670px) and (max-height: 620px) {
     .lab:not(.menu-layout) .queen-art { max-width: 74px; }
-    .hud .settings { gap: 5px; }
-    .hud button { min-height: 32px; }
+    .hud dl div { padding: 4px 0; }
+    #next { padding: 6px 0 8px; }
+    .hud button, .hud #control-mode { min-height: 32px; }
   }
   #fullscreen[aria-pressed="true"] { border-color: var(--cyan); }
   @media (orientation: landscape) {
@@ -258,15 +262,14 @@
       grid-area: 1 / 3 / 3 / 4; align-self: center; justify-self: center;
       width: min(100%, 330px); padding: clamp(6px, 2dvh, 16px);
     }
-    .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
     .hud button { min-height: 36px; padding: 4px; }
     .hud dl { margin-bottom: 8px; }
     .hud dl div { padding: 5px 0; }
-    #soft-drop {
+    #play-controls {
       grid-area: 3 / 3; justify-self: center;
-      width: min(100%, 330px); min-height: clamp(44px, 14dvh, 90px); margin: 0;
-      font-size: clamp(14px, 3dvh, 24px);
+      width: min(100%, 330px); margin: 0;
     }
+    #play-controls button { min-height: clamp(56px, 15dvh, 92px); font-size: clamp(19px, 4dvh, 26px); }
   }
   @media (orientation: landscape) and (max-height: 500px) {
     .hud dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; }
@@ -310,13 +313,26 @@
     .menu .settings label { min-height: 40px; }
     .menu select { min-height: 36px; }
     .lab:not(.menu-layout) #queen-line { display: none; }
-    .hud .settings button { min-height: 29px; font-size: 11px; }
+    .hud .settings button { min-height: 28px; font-size: 11px; }
+    .hud #control-mode { min-height: 32px; }
+    .hud > .tag, #next { display: inline-flex; vertical-align: middle; }
+    .hud > .tag { font-size: 9px; letter-spacing: .04em; }
+    #next { padding: 0 0 3px; }
+    #next .piece { width: 22px; height: 21px; }
     .hud dl { margin-bottom: 4px; }
     .hud dl div { padding: 3px 0; }
     #guide-menu:not([hidden]) { grid-template-columns: minmax(135px, 42%) minmax(0, 1fr); }
     #guide-title { font-size: 24px; }
     #guide-copy { font-size: 13px; line-height: 1.25; }
     #guide-menu .menu-actions { margin-top: 3px; }
+  }
+  @media (orientation: landscape) and (max-height: 260px) {
+    .hud { padding: 5px; }
+    .hud .settings { gap: 2px; }
+    .hud .settings button { min-height: 24px; padding: 2px; }
+    .hud #control-mode { min-height: 28px; }
+    .hud dl { margin-bottom: 2px; }
+    .hud dl div { padding: 2px 0; }
   }
 </style>
 </head>
@@ -377,7 +393,15 @@
           <button id="action" type="button">Start mission</button>
         </div>
       </div>
-      <button id="soft-drop" type="button"><span aria-hidden="true">↓</span> Soft Drop</button>
+      <div id="play-controls" aria-label="Capsule controls">
+        <button id="soft-drop" type="button" data-drop><span aria-hidden="true">↓</span> Soft Drop</button>
+        <div id="arrow-controls" hidden>
+          <button type="button" data-move="left" aria-label="Move left">←</button>
+          <button type="button" data-move="cw" aria-label="Rotate clockwise">↻</button>
+          <button type="button" data-drop aria-label="Soft drop">↓</button>
+          <button type="button" data-move="right" aria-label="Move right">→</button>
+        </div>
+      </div>
     </section>
     <section class="panel hud" id="hud" aria-label="Mission data" hidden>
       <p class="tag">Next capsule</p><div id="next" aria-label="Next capsule">—</div>
@@ -391,6 +415,7 @@
         <button id="restart" type="button" disabled>Restart</button>
         <button id="main-menu" type="button">Menu</button>
         <button id="fullscreen" type="button" aria-label="Enter fullscreen" aria-pressed="false" hidden>Expand</button>
+        <button id="control-mode" type="button" aria-label="Show arrow controls">Show arrows</button>
       </div>
     </section>
   </div>
@@ -934,7 +959,6 @@ byId("action").addEventListener("click", () => {
 });
 byId("pause").addEventListener("click", togglePause);
 byId("restart").addEventListener("click", () => start(true));
-const softDrop = byId("soft-drop");
 let dropTimer;
 
 function stopSoftDrop() {
@@ -946,18 +970,51 @@ function repeatSoftDrop() {
   dropTimer = setTimeout(repeatSoftDrop, 80);
 }
 
-softDrop.addEventListener("pointerdown", event => {
-  if (!event.isPrimary || event.button !== 0) return;
-  softDrop.setPointerCapture(event.pointerId);
-  command("down");
-  dropTimer = setTimeout(repeatSoftDrop, 220);
-});
-for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
-  softDrop.addEventListener(event, stopSoftDrop);
+for (const button of document.querySelectorAll("[data-drop]")) {
+  button.addEventListener("pointerdown", event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    button.setPointerCapture(event.pointerId);
+    command("down");
+    stopSoftDrop();
+    dropTimer = setTimeout(repeatSoftDrop, 220);
+  });
+  for (const event of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    button.addEventListener(event, stopSoftDrop);
+  }
+  button.addEventListener("click", event => {
+    if (event.detail === 0) command("down");
+  });
 }
-softDrop.addEventListener("click", event => {
-  if (event.detail === 0) command("down");
+for (const button of document.querySelectorAll("[data-move]")) {
+  button.addEventListener("click", () => command(button.dataset.move));
+}
+
+const controlMode = byId("control-mode");
+let showArrows = false;
+try {
+  showArrows = localStorage.getItem("dralien-controls") === "arrows";
+} catch {
+  // Default to Soft Drop when storage is unavailable.
+}
+
+function renderControlMode() {
+  byId("soft-drop").hidden = showArrows;
+  byId("arrow-controls").hidden = !showArrows;
+  controlMode.textContent = showArrows ? "Show Soft Drop" : "Show arrows";
+  controlMode.setAttribute("aria-label", showArrows ? "Show Soft Drop button" : "Show arrow controls");
+}
+
+controlMode.addEventListener("click", () => {
+  stopSoftDrop();
+  showArrows = !showArrows;
+  renderControlMode();
+  try {
+    localStorage.setItem("dralien-controls", showArrows ? "arrows" : "drop");
+  } catch {
+    // The selection still applies to this session.
+  }
 });
+renderControlMode();
 window.addEventListener("blur", stopSoftDrop);
 const playScreen = document.querySelector("main");
 let gesture;
