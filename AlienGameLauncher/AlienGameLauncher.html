@@ -29,7 +29,7 @@
   .card { display: flex; flex-direction: column; background: rgba(14, 21, 48, 0.88); border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
     color: inherit; text-decoration: none; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
   .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--c); box-shadow: 0 10px 30px -10px var(--c); outline: none; }
-  .card canvas, .card img.clip { width: 100%; height: 170px; display: block; background: #0a1024; object-fit: cover; }
+  .card canvas { width: 100%; height: 170px; display: block; background: #0a1024; object-fit: cover; }
   .info { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
   .info h2 { font-size: 21px; display: flex; align-items: center; gap: 8px; }
   .info h2 .tag { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 2px 7px; }
@@ -259,14 +259,18 @@ grid.innerHTML = GAMES.map((g, i) => `<a class="card" href="${ROOT + g.href}" st
   <div class="info"><h2>${g.name} <span class="tag">${g.tag}</span></h2><p>${g.desc}</p><span class="play">Play ▶</span></div></a>`).join("");
 const canvases = [...grid.querySelectorAll("canvas[data-i]")];
 
-// Recorded gameplay is stored as a JPEG film strip (all frames in one image) and played back here on a canvas,
-// the same way the Alien Launch preview is drawn. Plain JPEG + canvas animates on every phone and tablet.
+// Recorded gameplay uses a JPEG film strip. Draw the original animation until the frames are ready.
 for (const g of GAMES) if (g.film) {
-  const f = g.film, img = new Image(); img.decoding = "async"; img.src = f.src; f.img = img;
+  const f = g.film, img = new Image(), fallback = g.art;
+  img.decoding = "async";
+  img.addEventListener("load", () => { if (reduce) requestAnimationFrame(frame); });
+  img.src = f.src;
   f.total = f.ms.reduce((a, b) => a + b, 0);
   g.art = (c, w, h, t) => {
-    c.fillStyle = "#0a1024"; c.fillRect(0, 0, w, h);
-    if (!img.complete || !img.naturalWidth) return; // still loading
+    if (!img.complete || !img.naturalWidth) {
+      fallback(c, w, h, t);
+      return;
+    }
     let ms = (t * 1000) % f.total, i = 0;
     while (i < f.n - 1 && ms >= f.ms[i]) ms -= f.ms[i++];
     const sx = (i % f.cols) * f.fw, sy = Math.floor(i / f.cols) * f.fh;
