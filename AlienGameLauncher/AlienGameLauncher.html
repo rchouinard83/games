@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Seven games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Eight games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -94,6 +94,8 @@ const GAMES = [
     desc: "A crowd of little aliens walks blindly forward. Give them jobs (dig, bash, build, block) to guide them home." },
   { name: "Alien Breakout", tag: "Brick breaker", color: "#65f6cd", href: "AlienBreakout/Alien-Breakout.html", art: artBreakout,
     desc: "Bounce an energy ball through prison cells to rescue the crew. Chain hits and earn three stars." },
+  { name: "Orbit Guard", tag: "Arcade defense", color: "#74eed5", href: "OrbitGuard/Orbit-Guard.html", art: artOrbitGuard,
+    desc: "Lead your shots, chain interceptor blasts, and keep the cities alive across four planetary sectors." },
 ];
 
 // ---------- shared little drawings ----------
@@ -525,6 +527,35 @@ function artBreakout(c, w, h, t) {
   c.fillStyle = "#65f6cd"; c.fillRect(paddleX - 12, paddleY + 3, 24, 2);
   c.save(); c.shadowColor = "#ffd25d"; c.shadowBlur = 12; c.fillStyle = "#fff1ad";
   c.beginPath(); c.arc(ballX, ballY, 5, 0, TAU); c.fill(); c.restore();
+}
+
+function artOrbitGuard(c,w,h,t) {
+  sky(c,w,h,"#0b142c","#244a62",43);
+  const ground=h*.84, tx=w*.37, ty=h*.43, phase=(t%2.8)/2.8;
+  c.fillStyle="#102334"; c.fillRect(0,ground,w,h-ground);
+  c.strokeStyle="#6bd9cb"; c.beginPath(); c.moveTo(0,ground); c.lineTo(w,ground); c.stroke();
+  for(const x of [w*.16,w*.32,w*.83])for(let i=-2;i<=2;i++){
+    const height=10+((i+2)*11)%22;
+    c.fillStyle="#193d52"; c.fillRect(x+i*8,ground-height,6,height);
+    c.fillStyle="#89f4df"; c.fillRect(x+i*8+2,ground-height+3,2,3);
+  }
+  for(let i=0;i<3;i++){
+    if(phase>.53+i*.09)continue;
+    const x=tx+i*w*.13-8+phase*12,y=ty-29+i*7+phase*48;
+    c.strokeStyle="#ff916c"; c.lineWidth=2; c.beginPath(); c.moveTo(x-7,y-18); c.lineTo(x,y); c.stroke();
+    c.fillStyle="#ffe6b1"; c.beginPath(); c.arc(x,y,3,0,TAU); c.fill();
+  }
+  c.fillStyle="#76efdc"; c.fillRect(w*.5-9,ground-8,18,8);
+  if(phase<.45){
+    const k=phase/.45,x=w*.5+(tx-w*.5)*k,y=ground+(ty-ground)*k;
+    c.strokeStyle="#76efdc"; c.lineWidth=2; c.beginPath(); c.moveTo(x+6,y+13); c.lineTo(x,y); c.stroke();
+  }
+  for(let i=0;i<2;i++){
+    const age=phase-.45-i*.15;
+    if(age<0||age>.44)continue;
+    c.beginPath(); c.arc(tx+i*w*.13,ty+i*8,Math.min(30,age*105),0,TAU);
+    c.strokeStyle=`rgba(${i?"255,199,108":"141,255,230"},${1-age/.44})`; c.lineWidth=2; c.stroke();
+  }
 }
 
 // ---------- build the cards ----------
