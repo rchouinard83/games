@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Orbit Guard</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui,sans-serif; background:#080e1c; color:#eff8ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100dvh; padding:clamp(12px,3vw,24px); background:radial-gradient(ellipse at 50% 0%,#1c3850,transparent 68%); }
+  main { max-width:690px; margin:auto; }
+  .tag,small { color:#a9c2d5; font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.12em; }
+  h1 { margin:4px 0; font-size:clamp(2.4rem,8vw,3.8rem); line-height:1; letter-spacing:-.055em; }
+  h1 span { color:#74eed5; }
+  .intro { margin:8px 0 14px; color:#bdcfdf; }
+  .hud { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-bottom:7px; }
+  .hud div { background:#122336; border:1px solid #31495c; border-radius:10px; padding:7px 9px; }
+  small { display:block; letter-spacing:.06em; }
+  strong { font-size:clamp(1rem,4vw,1.28rem); font-variant-numeric:tabular-nums; }
+  .arena { position:relative; overflow:hidden; border:1px solid #3c6477; border-radius:14px; box-shadow:0 16px 46px #0008; }
+  canvas { display:block; width:100%; height:auto; background:#101d34; touch-action:none; cursor:crosshair; }
+  .overlay { position:absolute; inset:0; display:grid; place-items:center; padding:10px; background:#050d1bad; }
+  .panel { width:min(100%,365px); max-height:100%; overflow:auto; padding:16px; border:1px solid #476c81; border-radius:12px; background:#132539; }
+  [hidden] { display:none !important; }
+  h2 { margin:0 0 5px; font-size:clamp(1.2rem,5vw,1.55rem); }
+  .panel p,.status { color:#d1e4ef; font-size:.9rem; line-height:1.4; }
+  .panel p { margin:8px 0 12px; }
+  button { min-height:44px; padding:8px 14px; background:#1a354d; color:#eff8ff; border:1px solid #4e7587; border-radius:9px; font:inherit; font-size:.9rem; font-weight:800; cursor:pointer; }
+  button.primary { color:#062820; background:#74eed5; border-color:#74eed5; }
+  .status { min-height:1.3em; margin:8px 0; }
+  .controls { display:flex; flex-wrap:wrap; gap:7px; }
+  .choices { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  .choices button { padding:6px; }
+  button:disabled { opacity:.45; }
+  .arcade { display:inline-block; margin-top:8px; color:#a5eee2; font-weight:750; }
+  .mission { color:#b0eadf; font-weight:750; margin:0 0 6px; font-size:.87rem; }
+  .guide { padding:10px 12px; }
+  .guide .step { margin:0 0 3px; color:#a9c2d5; font-size:.66rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+  .guide svg { display:block; width:100%; height:clamp(76px,26vw,125px); background:#0c192d; border:1px solid #355369; border-radius:8px; }
+  .guide .instruction { margin:6px 0 7px; font-weight:750; }
+  .guide .choices { margin-bottom:0; }
+  @media (max-width:360px) {
+    .guide { padding:8px 10px; }
+    .guide h2 { font-size:1.12rem; }
+    .guide svg { height:66px; }
+    .guide .instruction { font-size:.81rem; line-height:1.25; }
+    .guide button { min-height:40px; }
+  }
+  .stars { color:#ffd777; letter-spacing:.12em; }
+</style>
+</head>
+<body>
+<main>
+  <div class="tag">Alien Arcade · Planetary Defense</div>
+  <h1>Orbit <span>Guard</span></h1>
+  <p class="intro">Lead the shot. Chain the blast. Save the cities.</p>
+  <div class="hud">
+    <div><small>Wave</small><strong id="wave">1 / 3</strong></div>
+    <div><small>Shots</small><strong id="shots">10</strong></div>
+    <div><small>Cities</small><strong id="cities">3 / 3</strong></div>
+    <div><small>Score</small><strong id="score">0</strong></div>
+  </div>
+  <p id="mission" class="mission"></p>
+  <div class="arena">
+    <canvas id="sky" width="600" height="480" aria-label="Orbit Guard skyline and interceptor battlefield"></canvas>
+    <section class="overlay" id="overlay" aria-label="Game menu"><div class="panel" id="panel"></div></section>
+  </div>
+  <p class="status" id="status" role="status">Three cities are counting on you.</p>
+  <div class="controls" id="controls" hidden><button id="pause">Pause</button><button data-act="start">Restart</button></div>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const canvas = $("sky"), c = canvas.getContext("2d");
+const W = 600, H = 480, GROUND = 417, LAUNCH_X = W / 2, LAUNCH_Y = GROUND - 10;
+const WAVES = [
+  { shots: 13, packs: 4, every: 4.7, speed: 47, probes: false },
+  { shots: 16, packs: 5, every: 4.1, speed: 55, probes: true },
+  { shots: 19, packs: 6, every: 3.6, speed: 65, probes: true },
+];
+const SECTORS = [
+  {name:"The Oort Gate", tag:"Ice meteors", missions:["First Contact","Frozen Relay","Ice Barrage"], sky:["#0b142c","#244a62","#102537"], moon:["#a4d9ef","#284e66"]},
+  {name:"Jupiter Storm", tag:"Fast probes", missions:["Storm Line","Red Eye","Probe Swarm"], sky:["#19142c","#553852","#24203c"], moon:["#efc697","#79445a"]},
+  {name:"Mars, the Red Wall", tag:"Armored meteors", missions:["Dust Warning","Iron Sky","Red Siege"], sky:["#20132a","#6a3b42","#361c2e"], moon:["#ffad84","#85434a"]},
+  {name:"Earth, Final Stand", tag:"Mixed barrages", missions:["Blue Horizon","Orbital Breach","Final Stand"], sky:["#081936","#275471","#102c41"], moon:["#7edccc","#2d5982"]},
+];
+const MISSIONS = SECTORS.flatMap((sector, si) => sector.missions.map((name, mi) => ({name, sector, si, mi})));
+const MODES = [
+  {name:"Easy", hp:3, shots:3, speed:.86, spacing:1.12, blast:1.15, reload:.18},
+  {name:"Normal", hp:2, shots:0, speed:1.12, spacing:.82, blast:1, reload:.34},
+  {name:"Hard", hp:1, shots:-2, speed:1.28, spacing:.73, blast:.88, reload:.42},
+];
+const ARCADE = '<a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
+const starsText = n => "★".repeat(n) + "☆".repeat(3-n);
+const FLAKES = Array.from({length:60}, (_, i) => [(i * 137 + 29) % W, (i * 71 + 19) % GROUND]);
+const CITY_X = [105, 220, 492];
+const BLAST_LIFE = .67;
+const INTERCEPTOR_SPEED = 525;
+const KEY = "orbitGuard.campaign.v1";
+let wave, ammo, cities, score, threats, shots, blasts, queue, phase, clock, blastId, readyAt;
+let mission = 0, mode = 1, records = {}, sound = true, audio, helpBack;
+let mark = null, last = performance.now();
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY));
+  records = saved?.records ?? {};
+  mode = MODES[saved?.mode] ? saved.mode : 1;
+  sound = saved?.sound ?? true;
+} catch {}
+const level = () => MISSIONS[mission];
+const settings = () => MODES[mode];
+const best = i => records[mode]?.[i] ?? {stars:0,score:0};
+const unlocked = i => i === 0 || best(i-1).stars > 0;
+function save() { try { localStorage.setItem(KEY,JSON.stringify({records,mode,sound})); } catch {} }
+function wakeAudio() {
+  if (!sound) return;
+  try {
+    audio ??= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume().catch(() => {});
+  } catch {}
+}
+function tone(hz) {
+  if (!sound || audio?.state !== "running") return;
+  const o=audio.createOscillator(), g=audio.createGain(), now=audio.currentTime;
+  o.type="triangle"; o.frequency.value=hz; g.gain.setValueAtTime(.04,now);
+  g.gain.exponentialRampToValueAtTime(.001,now+.12);
+  o.connect(g).connect(audio.destination); o.start(now); o.stop(now+.12);
+}
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi,v));
+const aliveCount = () => cities.filter(city => city.hp > 0).length;
+
+function hud() {
+  $("mission").textContent = `${level().sector.name} · ${level().name} · ${settings().name}`;
+  $("wave").textContent = `${wave + 1} / ${WAVES.length}`;
+  $("shots").textContent = ammo;
+  $("cities").textContent = `${aliveCount()} / 3`;
+  $("score").textContent = score.toLocaleString();
+}
+function message(text) { $("status").textContent = text; }
+function menu(name, body) {
+  phase = name;
+  $("overlay").hidden = false; $("controls").hidden = true;
+  $("panel").classList.toggle("guide", name === "help");
+  $("panel").innerHTML = body;
+}
+function title() {
+  menu("title", `<h2>Planetary Defense</h2><p>Four sectors. Twelve missions. Keep the cities lit.</p>
+  <div class="choices"><button class="primary" data-act="sectors">Play</button><button data-act="help">How to play</button>
+  <button data-act="difficulty">Difficulty: ${settings().name}</button><button data-act="sound">Sound: ${sound?"On":"Off"}</button></div>${ARCADE}`);
+}
+const GUIDE = [
+  { title: "Lead the shot", copy: "<b>Tap ahead</b> of the target. Let the launcher reload.", diagram: `
+    <path d="M57 15l75 62" stroke="#ff9a72" stroke-width="2" stroke-dasharray="5 5"/>
+    <path d="M44 6l30 25" stroke="#ff9a72" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="74" cy="31" r="5" fill="#ffe5ae"/>
+    <path d="M234 120l-92-40" stroke="#74eed5" stroke-width="3" stroke-dasharray="5 4"/>
+    <circle cx="137" cy="76" r="13" fill="none" stroke="#74eed5" stroke-width="2"/>
+    <path d="M137 58v7m0 22v7m-18-18h7m22 0h7" stroke="#74eed5" stroke-width="2"/>
+    <path d="M224 122h20l-4-8h-12z" fill="#74eed5"/>
+    <text x="156" y="69">Tap here</text>` },
+  { title: "Chain the blast", copy: "<b>Close hits</b> can chain. <b>Armor</b> takes two blasts.", diagram: `
+    <circle cx="87" cy="64" r="36" fill="#74eed520" stroke="#74eed5" stroke-width="3"/>
+    <circle cx="143" cy="60" r="28" fill="#ffd77720" stroke="#ffd777" stroke-width="3"/>
+    <circle cx="187" cy="68" r="22" fill="#ffd77712" stroke="#ffd777" stroke-width="2" stroke-dasharray="4 3"/>
+    <circle cx="87" cy="64" r="4" fill="#c6fff4"/>
+    <circle cx="143" cy="60" r="4" fill="#ffe5ae"/>
+    <circle cx="187" cy="68" r="4" fill="#ffe5ae"/>
+    <text x="231" y="68" fill="#ffd777" style="font-size:20px">×3</text>` },
+  { title: "Save the cities", copy: "<b>Survive three waves.</b> Each city standing earns a star.", diagram: `
+    <path d="M35 101h250" stroke="#74eed5" stroke-width="2"/>
+    <path d="M53 100V80h12V64h11v17h10v19m55 0V80h12V64h11v17h10v19m55 0V80h12V64h11v17h10v19" fill="#2d5c71" stroke="#8ee4dc" stroke-width="2"/>
+    <text x="57" y="51" fill="#ffd777" style="font-size:24px">★</text>
+    <text x="145" y="51" fill="#ffd777" style="font-size:24px">★</text>
+    <text x="233" y="51" fill="#ffd777" style="font-size:24px">★</text>` },
+];
+let guidePage = 0;
+function help(page = 0) {
+  guidePage = page;
+  const lesson = GUIDE[page], lastPage = page === GUIDE.length - 1;
+  menu("help", `<p class="step">How to play · ${page + 1} of ${GUIDE.length}</p>
+    <h2>${lesson.title}</h2>
+    <svg viewBox="0 0 320 130" aria-hidden="true" fill="#d9eef7" font-family="system-ui" font-size="14" font-weight="800">${lesson.diagram}</svg>
+    <p class="instruction">${lesson.copy}</p>
+    <div class="choices"><button data-act="${page ? "helpPrev" : "helpBack"}">Back</button>
+    <button class="primary" data-act="${lastPage ? "helpBack" : "helpNext"}">${lastPage ? "Done" : "Next →"}</button></div>`);
+}
+function difficulty() {
+  menu("difficulty", `<h2>Difficulty</h2><p>Each difficulty saves its own scores, stars, and unlocks.</p>
+  <div class="choices">${MODES.map((m,i)=>`<button data-act="setMode" data-index="${i}" class="${i===mode?"primary":""}">${m.name}<small>${m.hp} shields per city</small></button>`).join("")}</div>
+  <button data-act="title">Back</button>`);
+}
+function sectors() {
+  menu("sectors", `<h2>Choose a sector</h2><p>${settings().name} campaign</p><div class="choices">${SECTORS.map((sector,si)=>{
+    const i=si*3, stars=sector.missions.reduce((sum,_,j)=>sum+best(i+j).stars,0);
+    return `<button data-act="sector" data-index="${si}" ${unlocked(i)?"":"disabled"}>${sector.name}<small>${unlocked(i)?stars+" / 9 stars":"Locked"}</small></button>`;
+  }).join("")}</div><button data-act="title">Back</button><br>${ARCADE}`);
+}
+function missions(si) {
+  const sector=SECTORS[si];
+  menu("missions", `<h2>${sector.name}</h2><p>${sector.tag} · ${settings().name}</p><div class="choices">${sector.missions.map((name,mi)=>{
+    const i=si*3+mi, record=best(i);
+    return `<button data-act="start" data-index="${i}" ${unlocked(i)?"":"disabled"}>${mi+1}. ${name}<small>${unlocked(i)?starsText(record.stars)+" · "+record.score.toLocaleString():"Locked"}</small></button>`;
+  }).join("")}</div><button data-act="sectors">Back</button><br>${ARCADE}`);
+}
+function reset(index=mission) {
+  if (!MISSIONS[index] || !unlocked(index)) return;
+  mission=index; wave=0; score=0;
+  cities=CITY_X.map(x=>({x,hp:settings().hp}));
+  beginWave();
+}
+function beginWave() {
+  const spec=WAVES[wave], {si,mi}=level(), config=settings();
+  const packs=spec.packs+mi+(si>=2?1:0);
+  const interval=spec.every*config.spacing*(1-si*.025-mi*.025);
+  const speed=(spec.speed+si*4+mi*3)*config.speed;
+  const spread=mode === 0 ? 26 : 33 + si * 2 + mode * 2;
+  ammo=spec.shots+mi*2+(si>=2?8:0)+config.shots;
+  clock=blastId=readyAt=0; mark=null;
+  threats=[]; shots=[]; blasts=[]; queue=[];
+  const targets = cities.filter(city => city.hp > 0);
+  for (let i = 0; i < packs; i++) {
+    const targetIndex = (i + wave) % targets.length;
+    const primary = targets[targetIndex];
+    const flank = mode !== 0 && targets.length > 1 && (i > 0 || wave > 0 || si > 0 || mi > 0);
+    const flankTarget = targets[(targetIndex + (i % 2 ? 1 : targets.length - 1)) % targets.length];
+    const count = i % 3 === 2 || (wave === 2 && i % 2 === 0) ? 4 : 3;
+    for (let j = 0; j < count; j++) {
+      const flanker = flank && j === count - 1;
+      const target = flanker ? flankTarget : primary;
+      const entrySide = (i % 2 ? 1 : -1) * (flanker ? -1 : 1);
+      const from = clamp(target.x + entrySide * 90, 60, W - 60);
+      queue.push({ at: 0.8 + i * interval + j * .38,
+        x: clamp(from + (flanker ? 0 : (j - (count - 1) / 2) * spread), 12, W - 12),
+        target, speed: speed + j * 2 + (flanker ? 5 : 0),
+        probe: (wave >= 1 || si >= 1) && j === count - 1,
+        armored: si >= 2 && j === 0 && (i + wave + mi) % (si === 3 ? 2 : 3) === 0 });
+    }
+  }
+  phase = "play";
+  $("overlay").hidden = true; $("controls").hidden = false;
+  last = performance.now(); hud();
+  message(`Wave ${wave + 1} · ${ammo} interceptors. Lead your shots.`);
+}
+function fire(x,y) {
+  if (phase !== "play" || y >= GROUND || clock < readyAt) return;
+  if (!ammo) { message("Out of interceptors. The cities must hold until the next wave."); return; }
+  const dx = x - LAUNCH_X, dy = y - LAUNCH_Y, distance = Math.hypot(dx,dy);
+  shots.push({ x:LAUNCH_X, y:LAUNCH_Y, tx:x, ty:y, vx:dx / Math.max(1,distance) * INTERCEPTOR_SPEED, vy:dy / Math.max(1,distance) * INTERCEPTOR_SPEED });
+  ammo--; readyAt=clock+settings().reload; tone(310); hud();
+}
+function burst(x,y,chain = 0) { blasts.push({ x,y,age:0,chain,id:blastId++ }); }
+function radius(blast) {
+  const reach = blast.chain ? Math.max(14, 29 - (blast.chain - 1) * 6) : 48;
+  return reach * settings().blast * Math.min(1, blast.age / .24);
+}
+function endWave() {
+  if (wave === WAVES.length - 1 || aliveCount() === 0) { finish(); return; }
+  score += ammo * 12;
+  hud();
+  menu("between", `<h2>Wave ${wave + 1} cleared</h2><p>${aliveCount()} cities standing · ${ammo} unused shots · Score ${score.toLocaleString()}</p>
+    <button class="primary" data-act="next">Next wave</button> <button data-act="start">Restart</button>`);
+}
+function finish() {
+  const stars=aliveCount(), old=best(mission);
+  if (stars) {
+    score+=stars*250+ammo*12;
+    (records[mode]??={})[mission]={stars:Math.max(stars,old.stars),score:Math.max(score,old.score)};
+    save();
+  }
+  const next=stars && mission+1<MISSIONS.length;
+  hud(); tone(stars?700:115); message(stars?"The cities held.":"All cities lost.");
+  menu("results", `<h2>${stars?(next?"Mission complete":"Campaign complete"):"Defense lost"}</h2>
+    <p><b class="stars" aria-label="${stars} of 3 stars">${starsText(stars)}</b><br>Score ${score.toLocaleString()} · Best ${best(mission).score.toLocaleString()}</p>
+    <div class="choices">${next?`<button class="primary" data-act="advance">${level().mi===2?"Next sector":"Next mission"}</button>`:""}
+    <button data-act="start">Play again</button><button data-act="missions">Missions</button></div>${ARCADE}`);
+}
+function update(dt) {
+  clock += dt;
+  while (queue.length && queue[0].at <= clock) {
+    const spawn = queue.shift();
+    const target = spawn.target.hp ? spawn.target : cities.find(city => city.hp > 0);
+    const x = spawn.x, y = -8, speed = spawn.speed * (spawn.probe ? 1.22 : 1);
+    const dx = target.x - x, dy = GROUND - y, distance = Math.hypot(dx,dy);
+    threats.push({x,y,vx:dx / distance * speed,vy:dy / distance * speed,target,probe:spawn.probe,armor:spawn.armored?2:1,hitBy:new Set()});
+  }
+  for (let i = shots.length - 1; i >= 0; i--) {
+    const shot = shots[i];
+    if (Math.hypot(shot.tx-shot.x,shot.ty-shot.y) <= INTERCEPTOR_SPEED * dt) {
+      burst(shot.tx,shot.ty); shots.splice(i,1);
+    } else { shot.x += shot.vx * dt; shot.y += shot.vy * dt; }
+  }
+  for (const blast of blasts) blast.age += dt;
+  blasts = blasts.filter(blast => blast.age < BLAST_LIFE);
+  for (let i = threats.length - 1; i >= 0; i--) {
+    const enemy = threats[i];
+    enemy.x += enemy.vx * dt; enemy.y += enemy.vy * dt;
+    const hit = blasts.find(blast => !enemy.hitBy.has(blast.id) && Math.hypot(enemy.x-blast.x,enemy.y-blast.y) < radius(blast));
+    if (hit) {
+      enemy.hitBy.add(hit.id);
+      if (--enemy.armor > 0) tone(205);
+      else {
+        const depth = hit.chain + 1;
+        score += (enemy.probe ? 140 : 100) * Math.min(depth,4);
+        tone(410 + Math.min(depth,4)*65); burst(enemy.x,enemy.y,depth); threats.splice(i,1);
+        if (depth > 1) message(`Chain ×${Math.min(depth,4)}!`);
+        hud(); continue;
+      }
+    }
+    if (enemy.y >= GROUND) {
+      threats.splice(i,1);
+      enemy.target.hp = Math.max(0,enemy.target.hp - 1);
+      message(enemy.target.hp ? "City shields took a hit." : "A city went dark.");
+      hud();
+      if (!aliveCount()) { finish(); return; }
+    }
+  }
+  if (!queue.length && !threats.length) endWave();
+}
+function draw() {
+  const sector=level().sector;
+  const sky=c.createLinearGradient(0,0,0,H);
+  sky.addColorStop(0,sector.sky[0]); sky.addColorStop(.8,sector.sky[1]); sky.addColorStop(1,sector.sky[2]);
+  c.fillStyle=sky; c.fillRect(0,0,W,H);
+  c.fillStyle="#a9c5dd";
+  for (const [x,y] of FLAKES) c.fillRect(x,y,1.3,1.3);
+  c.beginPath(); c.arc(456,91,53,0,Math.PI*2);
+  const moon=c.createRadialGradient(437,75,2,456,91,53);
+  moon.addColorStop(0,sector.moon[0]); moon.addColorStop(1,sector.moon[1]); c.fillStyle=moon; c.fill();
+  c.fillStyle="#193c50";
+  for(let i=0;i<30;i++){const h=12+(i*19)%50;c.fillRect(i*21,GROUND-h,17,h);}
+  c.fillStyle="#102334";c.fillRect(0,GROUND,W,H-GROUND);
+  c.strokeStyle="#6bd9cb";c.lineWidth=2;
+  c.beginPath();c.moveTo(0,GROUND);c.lineTo(W,GROUND);c.stroke();
+  for(const city of cities) {
+    for(let i=-2;i<=2;i++){
+      const x=city.x+i*13,h=18+((i+2)*13)%28;
+      c.fillStyle=city.hp?"#18374b":"#1c2634";c.fillRect(x-5,GROUND-h,10,h);
+      c.fillStyle=city.hp===settings().hp?"#89f4df":city.hp?"#ffd486":"#495465";
+      for(let y=GROUND-h+4;y<GROUND-2;y+=7)c.fillRect(x-2,y,4,2);
+    }
+    for(let k=0;k<settings().hp;k++){c.fillStyle=k<city.hp?"#77eed2":"#3a5165";c.fillRect(city.x-settings().hp*6+k*12,GROUND+10,9,3);}
+  }
+  c.fillStyle="#467d94";c.beginPath();c.roundRect(LAUNCH_X-17,GROUND-12,34,16,4);c.fill();
+  c.fillStyle="#b5f8eb";c.fillRect(LAUNCH_X-4,GROUND-23,8,13);
+  const charge=ammo ? clamp(1-(readyAt-clock)/settings().reload,0,1) : 0;
+  c.fillStyle="#344b62"; c.fillRect(LAUNCH_X-18,GROUND+10,36,3);
+  c.fillStyle="#74eed5"; c.fillRect(LAUNCH_X-18,GROUND+10,36*charge,3);
+  for(const threat of threats) {
+    c.strokeStyle=threat.probe?"#e7a4ff":"#ff916c";c.lineWidth=2.6;c.beginPath();
+    c.moveTo(threat.x-threat.vx*.54,threat.y-threat.vy*.54);c.lineTo(threat.x,threat.y);c.stroke();
+    c.fillStyle=threat.probe?"#f6d5ff":"#ffe6b1";c.beginPath();c.arc(threat.x,threat.y,threat.probe?4.7:4,0,Math.PI*2);c.fill();
+    if (threat.armor>1) {
+      c.strokeStyle="#ffde77"; c.lineWidth=1.5; c.beginPath(); c.arc(threat.x,threat.y,8,0,Math.PI*2); c.stroke();
+    }
+  }
+  for(const shot of shots) {
+    c.strokeStyle="#76efdc";c.lineWidth=2;c.beginPath();c.moveTo(shot.x-shot.vx*.048,shot.y-shot.vy*.048);c.lineTo(shot.x,shot.y);c.stroke();
+    c.strokeStyle="#81b6be";c.strokeRect(shot.tx-3,shot.ty-3,6,6);
+  }
+  for(const blast of blasts) {
+    const r=radius(blast), opacity=Math.max(0,1-blast.age/BLAST_LIFE);
+    c.beginPath();c.arc(blast.x,blast.y,r,0,Math.PI*2);
+    c.fillStyle=`rgba(100,255,219,${opacity*.15})`;c.fill();
+    c.strokeStyle=`rgba(${blast.chain?"255,199,108":"141,255,230"},${opacity})`;c.lineWidth=2.5;c.stroke();
+  }
+  if (mark && phase==="play") {
+    c.strokeStyle="#a8d4df";c.lineWidth=1;
+    c.beginPath();c.arc(mark.x,mark.y,8,0,Math.PI*2);c.stroke();
+  }
+}
+function position(e) {
+  const rect=canvas.getBoundingClientRect();
+  return {x:clamp((e.clientX-rect.left)*W/rect.width,0,W),y:clamp((e.clientY-rect.top)*H/rect.height,0,H)};
+}
+canvas.addEventListener("pointerdown", e => {
+  if (e.button !== 0 || !e.isPrimary) return;
+  wakeAudio(); const {x,y}=position(e); fire(x,y);
+});
+canvas.addEventListener("pointermove",e => {if(e.pointerType==="mouse")mark=position(e);});
+canvas.addEventListener("pointerleave",()=>{mark=null;});
+function pauseMenu() {
+  menu("pause", `<h2>Paused</h2><div class="choices"><button class="primary" data-act="resume">Resume</button>
+  <button data-act="start">Restart mission</button><button data-act="help">How to play</button><button data-act="missions">Missions</button></div>${ARCADE}`);
+}
+function pause() { if(phase==="play")pauseMenu(); }
+function resume() { phase="play";$("overlay").hidden=true;$("controls").hidden=false;last=performance.now(); }
+$("pause").onclick=pause;
+document.addEventListener("click",e=>{
+  const button=e.target.closest("button[data-act]");
+  if(!button || button.disabled)return;
+  wakeAudio();
+  const index=Number(button.dataset.index);
+  switch(button.dataset.act){
+    case "start": reset(button.dataset.index===undefined?mission:index); break;
+    case "title": title(); break;
+    case "sectors": sectors(); break;
+    case "sector": missions(index); break;
+    case "missions": missions(level().si); break;
+    case "advance": reset(mission+1); break;
+    case "difficulty": difficulty(); break;
+    case "setMode": mode=index;save();reset(0);title();break;
+    case "sound": sound=!sound;save();wakeAudio();title();break;
+    case "help": helpBack=phase;help();break;
+    case "helpPrev": help(guidePage - 1); break;
+    case "helpNext": help(guidePage + 1); break;
+    case "helpBack": if(helpBack==="pause")pauseMenu();else title();break;
+    case "next": if(phase==="between"){wave++;beginWave();}break;
+    case "resume": if(phase==="pause")resume();break;
+  }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!e.repeat){if(phase==="pause")resume();else pause();}});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)pause();});
+reset();title();
+function frame(now) {
+  const dt=clamp((now-last)/1000,0,.04);last=now;
+  if(phase==="play")update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
