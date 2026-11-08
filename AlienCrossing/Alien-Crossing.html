@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#060c1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Alien Crossing">
+<link rel="apple-touch-icon" href="../AlienGameLauncher/icons/apple-touch-icon.png">
+<title>Alien Crossing</title>
+<style>
+  :root { --bg: #060c1c; --panel: #0e1a30; --line: #2a3e66; --ink: #e6f0ff; --dim: #93a6c9; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; padding: calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left)); gap: 4px; }
+  #hud { display: flex; gap: 5px; align-items: stretch; width: 100%; max-width: 760px; margin: 0 auto; }
+  .chip { background: rgba(14,26,48,0.9); border: 1px solid var(--line); border-radius: 11px; padding: 3px 8px 4px; font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
+  .chip small { display: block; font-size: 9px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hHearts { color: var(--bad); letter-spacing: -1px; } #hHearts i { color: #2a3556; font-style: normal; }
+  .meter { width: 58px; height: 7px; margin-top: 4px; border-radius: 4px; background: #1a2546; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #5dff9b, #ffd25d); border-radius: 4px; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(14,26,48,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 11px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; min-width: 40px; }
+  @media (max-width: 420px) { #gemChip { display: none; } .chip { padding: 3px 6px 4px; } .meter { width: 46px; } .hudBtn { padding: 0 8px; min-width: 36px; } }
+  #stage { flex: 1; min-height: 0; width: 100%; position: relative; }
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 12px; touch-action: none; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(3,6,14,0.78); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 430px; max-height: calc(100% - 16px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 42px; line-height: 1.02; background: linear-gradient(90deg, #5dff9b, #ffd25d 50%, #4fd1ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 26px; margin-bottom: 4px; }
+  #box p { color: #d6e2f5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  #titleArt { width: 100%; height: 160px; display: block; border-radius: 12px; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17284a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .stageCard { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .stageCard canvas { width: 56px; height: 56px; flex: none; border-radius: 12px; }
+  .stageCard span { flex: 1; min-width: 0; }
+  .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .levels .big { margin: 0; padding: 10px 0 8px; font-size: 20px; }
+  .levels .big small { font-size: 11px; color: var(--gold); }
+  .levels .big small i, .bigStars i { color: #2a3e66; font-style: normal; }
+  .stars { color: var(--gold); }
+  .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; }
+  .score { font-size: 15px; color: var(--dim); font-weight: 700; }
+  .facts { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 4px 0 8px; }
+  .facts span { background: #0a1428; border: 1px solid #2a3e66; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 800; color: var(--accent); }
+  .chars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+  .charBtn { background: #0a1428; border: 2px solid #2a3e66; border-radius: 14px; padding: 6px 4px 8px; color: var(--ink); font: inherit; font-weight: 800; font-size: 14px; }
+  .charBtn.on { border-color: var(--good); background: #10301f; }
+  .charBtn canvas { width: 100%; aspect-ratio: 1; display: block; }
+  #howCv { width: 100%; height: 190px; display: block; border-radius: 12px; background: #0a1428; border: 1px solid #2a3e66; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 17px; font-weight: 650; line-height: 1.3; padding: 7px 12px; background: #0a1428; border: 1px solid #2a3e66; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; } .how b.c { color: var(--accent); } .how b.y { color: var(--gold); } .how b.g { color: var(--good); } .how b.r { color: var(--bad); } .how b.p { color: #ff8bd0; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3e66; }
+  .dots i.on { background: var(--accent); }
+  #fsSheet { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: rgba(3,6,14,0.6); padding: 12px; }
+  #fsSheet .sheet { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); text-align: left; }
+  #fsSheet h3 { font-size: 19px; margin-bottom: 6px; } #fsSheet p { font-size: 14px; color: #d6e2f5; line-height: 1.4; margin: 4px 0 8px; }
+  #fsSheet ol { list-style: none; display: grid; gap: 8px; margin: 0 0 10px; } #fsSheet li { background: #0a1428; border-radius: 10px; padding: 8px 10px; font-size: 14px; line-height: 1.35; } #fsSheet li b { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small id="hStage">Oort</small><span id="hLevel">Level 1</span></div>
+    <div class="chip"><small>Shields</small><span id="hHearts">♥♥♥</span></div>
+    <div class="chip"><small>Distance</small><div class="meter"><i id="hProg"></i></div></div>
+    <div class="chip" id="gemChip"><small>Gems</small><span id="hGems">0</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="fsBtn" aria-label="Full screen" aria-pressed="false"></button>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN CROSSING — hop your alien across busy space lanes to the landing pad at the top.
+//  The playfield is 9 tiles wide (40 units each). Rows go upward from row 0 (start) to row N (the pad).
+//  Swipe to hop (tap = hop forward). Traffic hurts, hazard rivers must be crossed on drifting platforms.
+//  The view always fills the screen at the same zoom: wider screens just show more of the lanes at the sides.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const T = 40, COLS = 9, PW = COLS * T, VIEW_H = 640;
+const HOP_TIME = 0.13, MAX_HEARTS = 3, INVULN = 1.2, LEVELS = 8;
+const CYCLE_MIN = 1700; // every lane's traffic loops over at least this many units, wider than any screen
+
+// ============================================================
+//  THE CAST: Stage 1 "First Contact" aliens from Alien Defense (attacker-design.html)
+// ============================================================
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15, desc: "Little wobbling slime drop. Squishy and bouncy.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95, desc: "Big round three-eyed bruiser. Built like a bowling ball.",
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+// ============================================================
+//  STAGES: each world has its own kinds of lanes, and one special twist.
+//  mix = how often each lane type turns up. Lane types:
+//   road  = traffic (touch it and you lose a shield)       river = hazard you cross on drifting platforms
+//   rail  = one very fast thing, with a warning light first ice = slippery: you slide one more tile (Oort)
+//   wind  = gusts push you sideways (Jupiter)
+// ============================================================
+const STAGES = [
+  { name: "The Oort Gate", short: "Oort", color: "#7fb8ff", sky: "#081a36", mix: { road: 0.34, river: 0.3, ice: 0.22, rail: 0.14 },
+    ground: ["#3c6e94", "#33607f"], road: "#14233f", river: "#03060f", twist: "Slippery ice",
+    names: { road: "comets", river: "ice floes over a space crack", rail: "meteor streaks", ice: "slippery ice" },
+    intro: "Dodge <b>comets</b>, ride <b>ice floes</b> over the space crack, and watch out: <b>ice</b> makes you slide." },
+  { name: "Jupiter Storm", short: "Jupiter", color: "#ffb84d", sky: "#2a1306", mix: { road: 0.3, river: 0.3, wind: 0.28, rail: 0.12 },
+    ground: ["#a8723f", "#946436"], road: "#4a2a14", river: "#c2581e", twist: "Wind gusts",
+    names: { road: "cloud skiffs", river: "cloud rafts over the gas river", rail: "storm fronts", wind: "wind gusts" },
+    intro: "Hop over <b>cloud skiffs</b> and ride <b>cloud rafts</b>. <b>Gusts</b> blow you sideways: watch the arrows!" },
+  { name: "Mars, the Red Wall", short: "Mars", color: "#ff8f5d", sky: "#2a0a08", mix: { road: 0.36, river: 0.3, rail: 0.22, safe: 0.12 },
+    ground: ["#a0503a", "#8c4632"], road: "#3a1a14", river: "#ff6a2a", twist: "Sand worms",
+    names: { road: "rovers", river: "rock rafts on lava", rail: "sand worms" },
+    intro: "Dodge <b>rovers</b>, ride <b>rock rafts</b> across the lava, and wait for the <b>sand worm</b> warning lights." },
+  { name: "Earth, Final Stand", short: "Earth", color: "#5dff9b", sky: "#06201a", mix: { road: 0.42, river: 0.3, rail: 0.2, safe: 0.08 },
+    ground: ["#3f8f52", "#367d47"], road: "#26303e", river: "#1f6aa8", twist: "Rush hour",
+    names: { road: "hover cars", river: "barges on the canal", rail: "maglev trains" },
+    intro: "Rush hour: <b>hover cars</b>, <b>canal barges</b> and super-fast <b>maglev trains</b>. Home is just across." },
+];
+
+// ---------- save ----------
+const KEY = "alienCrossing.v1";
+let SAVE = { best: STAGES.map(() => Array(LEVELS).fill(0)), gems: STAGES.map(() => Array(LEVELS).fill(0)), char: "blip", seenHelp: false, sound: true };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.best)) {
+  SAVE.best = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => clamp(+((s.best[i] || [])[l]) || 0, 0, 3)));
+  SAVE.gems = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => +(((s.gems || [])[i] || [])[l]) || 0));
+  SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "blip"; SAVE.seenHelp = !!s.seenHelp; SAVE.sound = s.sound !== false; } } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
+const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every level for testing
+const stageOpen = s => TEST_ALL || s === 0 || SAVE.best[s - 1].every(n => n > 0);
+const levelOpen = (s, l) => TEST_ALL || (l === 0 ? stageOpen(s) : SAVE.best[s][l - 1] > 0);
+const stageStars = s => SAVE.best[s].reduce((a, n) => a + n, 0);
+
+// ============================================================
+//  BUILDING A LEVEL: a stack of lanes, with a safe strip every few hazards (a checkpoint)
+// ============================================================
+function seeded(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+const mod = (a, n) => ((a % n) + n) % n;
+function genLevel(s, l) {
+  const st = STAGES[s], R = seeded(s * 1009 + l * 97 + 31), N = 16 + l * 3 + s * 2, lanes = [];
+  const spd = (lo, hi) => (lo + R() * (hi - lo)) * (1 + l * 0.07 + s * 0.06);
+  const pick = () => { let r = R(), acc = 0; for (const [k, w] of Object.entries(st.mix)) { acc += w; if (r < acc) return k; } return "road"; };
+  const safeLane = (rest = true) => { const blocks = new Set(), n = R() < 0.6 ? 1 + Math.floor(R() * 3) : 0;
+    while (blocks.size < n) { const c = Math.floor(R() * COLS); if (c !== 4) blocks.add(c); }
+    let gem = -1; if (R() < 0.55) { do { gem = Math.floor(R() * COLS); } while (blocks.has(gem)); }
+    return { type: "safe", rest, blocks, gem, heart: false }; };
+  const traffic = (type, dir) => { // cars, platforms, or one fast thing
+    const lane = { type, dir, objs: [], t: R() * 10 };
+    // the fast one: clearly faster than traffic, but slow enough to see and react to (about 1.5-2 s across a phone screen)
+    if (type === "rail") { lane.speed = dir * (270 + s * 20 + l * 10); lane.len = 6; lane.period = 7.5 - Math.min(2, l * 0.2) + R() * 2.5; lane.phase = R() * lane.period; return lane; }
+    const isRiver = type === "river";
+    lane.speed = dir * (isRiver ? spd(28, 52) : spd(38, 78));
+    let x = 0;
+    while (x < CYCLE_MIN) {
+      const len = isRiver ? Math.max(2, 4 - Math.floor(l / 3) - (R() < 0.4 ? 1 : 0)) : (R() < 0.18 + l * 0.03 ? 2 + (s >= 2 && R() < 0.3 ? 1 : 0) : 1);
+      const gap = isRiver ? (1.4 + R() * 1.6) * T : Math.max(2.2, 4.6 - l * 0.25 - s * 0.2 + R() * 2.2) * T;
+      lane.objs.push({ x0: x + len * T / 2, len, kind: Math.floor(R() * 3) }); x += len * T + gap;
+    }
+    lane.cycle = x; return lane;
+  };
+  let run = 0, riverDir = R() < 0.5 ? 1 : -1, heartPlaced = l < 3;
+  for (let r = 0; r <= N; r++) {
+    if (r === 0) { lanes.push({ type: "start", rest: true, blocks: new Set(), gem: -1 }); continue; }
+    if (r === N) { lanes.push({ type: "goal", rest: true, blocks: new Set(), gem: -1 }); continue; }
+    if (run >= 3 + Math.floor(l / 3) || (run >= 2 && R() < 0.22) || r === N - 1) {
+      const sl = safeLane(); if (!heartPlaced && r > N / 2) { heartPlaced = true; sl.heart = true; let c; do { c = Math.floor(R() * COLS); } while (sl.blocks.has(c) || c === sl.gem); sl.heartCol = c; }
+      lanes.push(sl); run = 0; continue; }
+    let type = pick();
+    if (type === "safe") { lanes.push(safeLane(false)); run = 0; continue; }
+    if (type === "ice") { lanes.push({ type: "ice", rest: false, blocks: new Set(), gem: R() < 0.4 ? Math.floor(R() * COLS) : -1 }); continue; } // ice doesn't count as a hazard
+    if (type === "wind") { lanes.push({ type: "wind", rest: false, blocks: new Set(), gem: -1, dir: R() < 0.5 ? 1 : -1, period: 1.7 - Math.min(0.5, l * 0.05), t: R() * 1.5 }); run++; continue; }
+    let dir = R() < 0.5 ? 1 : -1; if (type === "river") { riverDir = -riverDir; dir = riverDir; }
+    lanes.push(traffic(type, dir)); run++;
+  }
+  return { lanes, N };
+}
+
+// ============================================================
+//  PLAYING
+// ============================================================
+let si = 0, li = 0, S = STAGES[0], lanes = [], N = 1, state = "play", endT = 0, resultShown = false, t = 0, shake = 0;
+let me = null, gems = 0, gemsTotal = 0, fx = [], pops = [], banner = null, camY = 0, queued = null;
+const rowY = r => -r * T - T / 2;                 // the centre of a row, in world units (up is negative)
+const colX = c => c * T + T / 2;
+const nearestCol = x => clamp(Math.round((x - T / 2) / T), 0, COLS - 1);
+const laneSpan = lane => lane.cycle;
+function objX(lane, o) { return PW / 2 - lane.cycle / 2 + mod(o.x0 + lane.speed * lane.t, lane.cycle); } // where a car / platform is now
+// the fast thing: offscreen most of the time, then one quick pass right across the whole view
+function railRun(lane) { const L = lane.len * T, dist = VW + L * 2 + 40; return { L, dist, run: Math.min(dist / Math.abs(lane.speed), lane.period - 2.2) }; }
+function railX(lane) {
+  const { L, dist, run } = railRun(lane), k = mod(lane.t + lane.phase, lane.period); if (k < lane.period - run) return null;
+  const f = (k - (lane.period - run)) / run, dir = Math.sign(lane.speed), from = dir > 0 ? PW / 2 - VW / 2 - L / 2 - 20 : PW / 2 + VW / 2 + L / 2 + 20;
+  return from + dir * dist * f;
+}
+const railWarn = lane => { const { run } = railRun(lane), k = mod(lane.t + lane.phase, lane.period); return k > lane.period - run - 1.5 && k < lane.period - run * 0.3; }; // lights flash before it comes
+function loadLevel(s, l) {
+  si = s; li = l; S = STAGES[s]; const g = genLevel(s, l); lanes = g.lanes; N = g.N;
+  gems = 0; gemsTotal = lanes.filter(ln => ln.gem >= 0).length; fx = []; pops = []; shake = 0; queued = null;
+  me = { col: 4, row: 0, x: colX(4), hearts: MAX_HEARTS, inv: 0, hop: null, face: 0, checkpoint: 0, best: 0, dead: 0, deadKind: "", squash: 0 };
+  camY = rowY(0) - viewH() * 0.72; state = "play"; endT = 0; resultShown = false;
+  banner = { text: `${S.short.toUpperCase()} · LEVEL ${l + 1}`, sub: `${N} lanes to the landing pad`, t: 2.2 };
+  hud(true);
+}
+// moving: dx/dy in tiles (dy = +1 is forward/up)
+function tryHop(dx, dy) {
+  if (paused || state !== "play" || me.dead > 0) return;
+  if (me.hop) { queued = [dx, dy]; return; }
+  let row = me.row + dy, x = me.x;
+  if (row < 0 || row > N) { bump(); return; }
+  const target = lanes[row], onRiverNow = lanes[me.row].type === "river";
+  if (dx && onRiverNow) { x = me.x + dx * T; if (x < 8 || x > PW - 8) { bump(); return; } } // sideways along a platform: one tile from where you are
+  else if (dx) { const c = nearestCol(me.x) + dx; if (c < 0 || c >= COLS) { bump(); return; } x = colX(c); } // sideways: one whole tile
+  if (target.type !== "river") x = colX(nearestCol(x)); // land on a tile, except when hopping onto a moving platform
+  if (target.blocks && target.blocks.has(nearestCol(x))) { bump(); return; }
+  me.hop = { x0: me.x, r0: me.row, x1: x, r1: row, t: 0, slide: false }; me.face = dx; me.lastDir = [dx, dy];
+  tone(dy > 0 ? 520 : 440, 0.06, "triangle", 0.05, 1.25);
+  if (onRiverNow && dx === 0) {} // hopping off a platform: keep your x
+}
+function bump() { me.squash = 0.2; tone(160, 0.06, "square", 0.04); }
+function landed() {
+  const lane = lanes[me.row];
+  me.best = Math.max(me.best, me.row);
+  if (lane.rest) me.checkpoint = me.row;
+  if (lane.gem >= 0 && nearestCol(me.x) === lane.gem && lane.type !== "river") { lane.gem = -2; gems++; pops.push({ x: me.x, y: rowY(me.row) - 20, text: "+GEM", col: "#ffd25d", t: 0 }); [880, 1320].forEach((f, i) => tone(f, 0.1, "triangle", 0.06, 0, i * 0.06)); }
+  if (lane.heart && nearestCol(me.x) === lane.heartCol) { lane.heart = false; me.hearts = Math.min(MAX_HEARTS, me.hearts + 1); pops.push({ x: me.x, y: rowY(me.row) - 20, text: "+1 ♥", col: "#ff5d7a", t: 0 }); tone(990, 0.2, "sine", 0.07, 1.3); }
+  if (lane.type === "goal") { win(); return; }
+  if (lane.type === "ice" && me.lastDir && !me.slid) { // slippery! slide one more tile the same way, if there's room
+    const [dx, dy] = me.lastDir, row = me.row + dy, c = nearestCol(me.x) + dx;
+    if (row >= 0 && row <= N && c >= 0 && c < COLS && !(lanes[row].blocks && lanes[row].blocks.has(c))) {
+      me.slid = true; me.hop = { x0: me.x, r0: me.row, x1: colX(c), r1: row, t: 0, slide: true }; tone(700, 0.12, "sine", 0.04, 0.7); return; }
+  }
+  me.slid = false;
+  if (queued) { const q = queued; queued = null; tryHop(q[0], q[1]); }
+}
+function hurt(kind) {
+  if (me.inv > 0 || me.dead > 0 || state !== "play") return;
+  me.hearts--; me.dead = 0.7; me.deadKind = kind; me.hop = null; queued = null; shake = 0.35; hud(true);
+  const x = me.x, y = rowY(me.row), col = kind === "splash" ? (S.short === "Mars" ? "#ffb84d" : S.short === "Jupiter" ? "#ff9a4a" : "#9fe8ff") : CHARS.byId(SAVE.char).color;
+  for (let k = 0; k < 22; k++) { const a = Math.random() * TAU, v = 40 + Math.random() * 160; fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 300, life: 0.7, max: 0.7, col, r: 2 + Math.random() * 2 }); }
+  tone(kind === "splash" ? 300 : 140, 0.35, kind === "splash" ? "sine" : "sawtooth", 0.08, 0.4);
+  pops.push({ x, y: y - 26, text: kind === "splash" ? "SPLASH!" : kind === "swept" ? "SWEPT AWAY!" : "SPLAT!", col: "#ff5d7a", t: 0 });
+  if (me.hearts <= 0) { state = "lost"; endT = 0; banner = { text: "OUT OF SHIELDS", t: 2 }; }
+}
+function respawn() { // back to your last safe strip
+  me.row = me.checkpoint; let c = 4; const ln = lanes[me.row]; while (ln.blocks && ln.blocks.has(c)) c = (c + 1) % COLS;
+  me.col = c; me.x = colX(c); me.inv = INVULN; me.dead = 0;
+  camY = rowY(me.row) - viewH() * 0.68;
+}
+function win() {
+  state = "won"; endT = 0; banner = { text: "MADE IT!", sub: `${me.hearts} shield${me.hearts === 1 ? "" : "s"} left · ${gems}/${gemsTotal} gems`, t: 2.4 };
+  for (let k = 0; k < 40; k++) { const a = Math.random() * TAU, v = 60 + Math.random() * 200; fx.push({ x: me.x, y: rowY(me.row), vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, g: 200, life: 1.1, max: 1.1, col: k % 2 ? "#ffd25d" : "#5dff9b", r: 2.5 }); }
+  [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.2, "triangle", 0.08, 0, i * 0.09));
+}
+function update(dt) {
+  t += dt; shake = Math.max(0, shake - dt);
+  for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.g || 0) * dt; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); }
+  for (let i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; if (pops[i].t > 1) pops.splice(i, 1); }
+  if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
+  if (paused || !me) return;
+  for (const ln of lanes) if (ln.t !== undefined) ln.t += dt;
+  for (const ln of lanes) if (ln.type === "rail") { const w = railWarn(ln); if (w && !ln.warned && Math.abs(lanes.indexOf(ln) - me.row) < 8) tone(1200, 0.08, "square", 0.025); ln.warned = w; }
+  // the camera keeps you in the lower part of the screen, with plenty of lanes ahead in view
+  const goal = rowY(me.row) - viewH() * 0.68; camY += (goal - camY) * Math.min(1, dt * 5);
+  if (state !== "play") { endT += dt; if (endT > 1.9 && !resultShown) { resultShown = true; resultMenu(); } return; }
+  me.inv = Math.max(0, me.inv - dt); me.squash = Math.max(0, me.squash - dt);
+  if (me.dead > 0) { me.dead -= dt; if (me.dead <= 0 && state === "play") respawn(); return; }
+  if (me.hop) { const h = me.hop; h.t += dt / (h.slide ? HOP_TIME * 1.3 : HOP_TIME);
+    me.x = h.x0 + (h.x1 - h.x0) * Math.min(1, h.t);
+    if (lanes[h.r1].type === "river" && h.r1 === h.r0) me.x += lanes[h.r1].speed * dt; // sideways hops on a platform still drift with it
+    if (h.t >= 1) { me.row = h.r1; me.x = h.x1 + (lanes[h.r1].type === "river" ? 0 : 0); me.hop = null; me.squash = 0.12; landed(); } }
+  if (state !== "play") return;
+  const lane = lanes[me.row], y = rowY(me.row);
+  if (!me.hop) {
+    if (lane.type === "river") { // you have to be on a platform, and it carries you
+      const on = lane.objs.some(o => Math.abs(me.x - objX(lane, o)) < o.len * T / 2 - 3);
+      if (!on) hurt("splash"); else { me.x += lane.speed * dt; if (me.x < 6 || me.x > PW - 6) hurt("swept"); }
+    }
+    if (lane.type === "wind") { lane.gust = mod(lane.t, lane.period); if (lane.gust < dt && me.dead <= 0) { // a gust shoves you one tile
+      const c = nearestCol(me.x) + lane.dir; if (c >= 0 && c < COLS) { me.hop = { x0: me.x, r0: me.row, x1: colX(c), r1: me.row, t: 0, slide: true }; tone(260, 0.2, "sine", 0.05, 0.6); } } }
+  }
+  // traffic: checked during hops too, at your current position
+  const hx = me.x, hr = me.hop ? (me.hop.t < 0.5 ? me.hop.r0 : me.hop.r1) : me.row, hl = lanes[hr];
+  if (hl.type === "road") { for (const o of hl.objs) if (Math.abs(hx - objX(hl, o)) < o.len * T / 2 + 9) { hurt("splat"); break; } }
+  if (hl.type === "rail") { const rx = railX(hl); if (rx !== null && Math.abs(hx - rx) < hl.len * T / 2 + 6) hurt("splat"); }
+  hud();
+}
+
+// ---------- input: swipe in any direction to hop, tap to hop forward ----------
+let swipe = null;
+cv.addEventListener("pointerdown", e => { audio(); if (paused) return; swipe = { x: e.clientX, y: e.clientY, id: e.pointerId, done: false }; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener("pointermove", e => { if (!swipe || swipe.id !== e.pointerId || swipe.done) return; const dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+  if (Math.hypot(dx, dy) > 26) { swipe.done = true; if (Math.abs(dx) > Math.abs(dy)) tryHop(Math.sign(dx), 0); else tryHop(0, -Math.sign(dy)); } }); // hop as soon as the swipe is clear: feels instant
+cv.addEventListener("pointerup", e => { if (!swipe || swipe.id !== e.pointerId) return; if (!swipe.done) tryHop(0, 1); swipe = null; });
+cv.addEventListener("pointercancel", () => { swipe = null; });
+addEventListener("keydown", e => {
+  const k = { ArrowUp: [0, 1], KeyW: [0, 1], ArrowDown: [0, -1], KeyS: [0, -1], ArrowLeft: [-1, 0], KeyA: [-1, 0], ArrowRight: [1, 0], KeyD: [1, 0], Space: [0, 1] }[e.code];
+  if (k && !paused) { e.preventDefault(); audio(); if (!e.repeat) tryHop(k[0], k[1]); }
+  if (e.code === "Escape" && !e.repeat) { if (!paused && state === "play") pauseMenu(); else if (paused && menuName === "pause") closeMenu(); }
+});
+
+let lastHud = "";
+function hud(force) {
+  if (!me) return;
+  const key = `${si}|${li}|${me.hearts}|${me.best}|${gems}`; if (!force && key === lastHud) return; lastHud = key;
+  $("hStage").textContent = S.short; $("hLevel").textContent = `Level ${li + 1}`;
+  $("hHearts").innerHTML = "♥".repeat(Math.max(0, me.hearts)) + `<i>${"♥".repeat(MAX_HEARTS - Math.max(0, me.hearts))}</i>`;
+  $("hProg").style.width = `${me.best / N * 100}%`; $("hGems").textContent = `${gems}/${gemsTotal}`;
+}
+
+// ============================================================
+//  DRAWING
+// ============================================================
+let cssW = 360, cssH = 640, K = 1, VW = 360;
+const viewH = () => cssH / K;
+function hashN(a, b) { const n = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return n - Math.floor(n); }
+function drawLaneBg(c, ln, r, x0, x1, tt) {
+  const y = -(r + 1) * T, st = S;
+  if (ln.type === "start" || ln.type === "safe" || ln.type === "goal") {
+    c.fillStyle = r % 2 ? st.ground[0] : st.ground[1]; c.fillRect(x0, y, x1 - x0, T);
+    for (let x = Math.floor(x0 / 20) * 20; x < x1; x += 20) { const h = hashN(x, r); if (h > 0.55) { c.fillStyle = "rgba(255,255,255,0.08)"; c.fillRect(x + h * 10, y + 8 + h * 20, 3, 3); } else if (h < 0.15) { c.fillStyle = "rgba(0,0,0,0.12)"; c.fillRect(x + 6, y + 6 + h * 100, 5, 2); } }
+    if (ln.type === "goal") { // the landing pad and your ride home
+      c.fillStyle = "#1a2a4a"; c.fillRect(0, y + 4, PW, T - 8); c.strokeStyle = "#5dff9b"; c.lineWidth = 2; c.setLineDash([8, 6]); c.strokeRect(2, y + 5, PW - 4, T - 10); c.setLineDash([]);
+      const bx = PW / 2, by = y - 28 + Math.sin(tt * 2) * 3, bg = c.createLinearGradient(0, by, 0, y + T); bg.addColorStop(0, "rgba(93,255,155,0.45)"); bg.addColorStop(1, "rgba(93,255,155,0.05)");
+      c.fillStyle = bg; c.beginPath(); c.moveTo(bx - 20, by + 6); c.lineTo(bx + 20, by + 6); c.lineTo(bx + 60, y + T); c.lineTo(bx - 60, y + T); c.closePath(); c.fill();
+      c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(bx, by, 56, 14, 0, 0, TAU); c.fill(); c.fillStyle = "rgba(190,235,255,0.7)"; c.beginPath(); c.ellipse(bx, by - 6, 22, 15, 0, PI, TAU); c.fill();
+      for (let k = -4; k <= 4; k++) { c.fillStyle = (Math.floor(tt * 6) + k) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(bx + k * 11, by + 3, 2.4, 0, TAU); c.fill(); }
+    }
+    if (ln.blocks) for (const col of ln.blocks) drawBlock(c, colX(col), y + T / 2, r * 7 + col);
+    if (ln.gem >= 0) drawGem(c, colX(ln.gem), y + T / 2, tt);
+    if (ln.heart) drawHeart(c, colX(ln.heartCol), y + T / 2, tt);
+    return;
+  }
+  if (ln.type === "road" || ln.type === "rail") {
+    c.fillStyle = st.road; c.fillRect(x0, y, x1 - x0, T);
+    c.fillStyle = "rgba(255,255,255,0.06)"; c.fillRect(x0, y, x1 - x0, 2); c.fillRect(x0, y + T - 2, x1 - x0, 2);
+    if (ln.type === "road" && lanes[r + 1] && lanes[r + 1].type === "road") { c.fillStyle = "rgba(255,255,255,0.3)"; for (let x = Math.floor(x0 / 40) * 40; x < x1; x += 40) c.fillRect(x + 8, y - 1, 20, 2); }
+    if (ln.type === "rail") { // tracks with warning lights at the edges of the playfield
+      c.fillStyle = "rgba(255,255,255,0.18)"; c.fillRect(x0, y + 11, x1 - x0, 3); c.fillRect(x0, y + T - 14, x1 - x0, 3);
+      for (let x = Math.floor(x0 / 16) * 16; x < x1; x += 16) { c.fillStyle = "rgba(255,255,255,0.08)"; c.fillRect(x, y + 8, 6, T - 16); }
+      const on = railWarn(ln) && Math.floor(tt * 6) % 2;
+      for (const px of [-8, PW + 8]) { c.fillStyle = "#2a3446"; c.fillRect(px - 3, y + 4, 6, T - 8); c.fillStyle = on ? "#ff5d7a" : "#4a2030"; c.beginPath(); c.arc(px, y + 10, 5, 0, TAU); c.fill();
+        if (on) { c.fillStyle = "rgba(255,93,122,0.25)"; c.beginPath(); c.arc(px, y + 10, 12, 0, TAU); c.fill(); } }
+      if (on) { c.fillStyle = "rgba(255,93,122,0.08)"; c.fillRect(x0, y, x1 - x0, T); }
+    }
+    return;
+  }
+  if (ln.type === "river") {
+    c.fillStyle = st.river; c.fillRect(x0, y, x1 - x0, T);
+    if (S.short === "Oort") { for (let k = 0; k < 14; k++) { const sx = mod(hashN(k, r) * 900 + tt * 6, x1 - x0) + x0; c.fillStyle = "rgba(255,255,255,0.6)"; c.fillRect(sx, y + hashN(r, k) * T, 1.5, 1.5); } c.strokeStyle = "rgba(160,210,255,0.35)"; c.lineWidth = 1; c.strokeRect(x0, y + 1, x1 - x0, T - 2); }
+    else { c.strokeStyle = S.short === "Earth" ? "rgba(255,255,255,0.25)" : "rgba(255,230,140,0.4)"; c.lineWidth = 1.5;
+      for (let k = 0; k < 2; k++) { c.beginPath(); for (let x = x0; x <= x1; x += 12) c.lineTo(x, y + 12 + k * 16 + Math.sin(x * 0.06 + tt * 2 * Math.sign(ln.speed) + k * 2) * 2.5); c.stroke(); }
+      if (S.short === "Mars") for (let k = 0; k < 4; k++) { const bx = mod(hashN(k, r) * 700 + tt * 10, x1 - x0) + x0; c.fillStyle = "rgba(255,230,120,0.55)"; c.beginPath(); c.arc(bx, y + T / 2 + Math.sin(tt * 3 + k) * 8, 2, 0, TAU); c.fill(); } }
+    return;
+  }
+  if (ln.type === "ice") {
+    const g = c.createLinearGradient(0, y, 0, y + T); g.addColorStop(0, "#cfeeff"); g.addColorStop(1, "#9fd2f0"); c.fillStyle = g; c.fillRect(x0, y, x1 - x0, T);
+    c.strokeStyle = "rgba(255,255,255,0.75)"; c.lineWidth = 1.5; for (let x = Math.floor(x0 / 46) * 46; x < x1; x += 46) { c.beginPath(); c.moveTo(x + 6, y + 30); c.lineTo(x + 20, y + 16); c.moveTo(x + 24, y + 34); c.lineTo(x + 36, y + 22); c.stroke(); }
+    if (ln.gem >= 0) drawGem(c, colX(ln.gem), y + T / 2, tt);
+    return;
+  }
+  if (ln.type === "wind") {
+    c.fillStyle = "#c08a50"; c.fillRect(x0, y, x1 - x0, T);
+    const k = mod(ln.t, ln.period) / ln.period, warn = k > 0.7; // arrows speed up and brighten just before the gust
+    c.fillStyle = warn ? "rgba(255,255,255,0.75)" : "rgba(255,240,210,0.35)";
+    for (let x = Math.floor(x0 / 40) * 40; x < x1 + 40; x += 40) { const ax = x + mod(tt * (warn ? 120 : 30) * ln.dir, 40);
+      c.beginPath(); c.moveTo(ax + 8 * ln.dir, y + T / 2); c.lineTo(ax - 4 * ln.dir, y + T / 2 - 7); c.lineTo(ax - 4 * ln.dir, y + T / 2 + 7); c.closePath(); c.fill(); }
+  }
+}
+function drawBlock(c, x, y, seed) { // things on safe ground you can't hop into
+  const k = S.short;
+  if (k === "Oort") { c.fillStyle = "#e0f4ff"; c.beginPath(); c.moveTo(x - 13, y + 14); c.lineTo(x - 4, y - 16); c.lineTo(x + 2, y + 2); c.lineTo(x + 8, y - 12); c.lineTo(x + 14, y + 14); c.closePath(); c.fill(); c.fillStyle = "rgba(120,180,230,0.6)"; c.fillRect(x - 6, y + 4, 12, 8); }
+  else if (k === "Jupiter") { c.fillStyle = "#f2d7b0"; for (const [dx, dy, r] of [[-7, 4, 9], [6, 3, 10], [0, -6, 10]]) { c.beginPath(); c.arc(x + dx, y + dy, r, 0, TAU); c.fill(); } }
+  else if (k === "Mars") { const g = c.createLinearGradient(x - 6, 0, x + 6, 0); g.addColorStop(0, "#ff5d7a"); g.addColorStop(0.5, "#ffd0d8"); g.addColorStop(1, "#a01a3a"); c.fillStyle = g;
+    for (const dx of [-8, 0, 8]) { c.beginPath(); c.moveTo(x + dx - 5, y + 14); c.lineTo(x + dx, y - 12 - hashN(seed, dx) * 6); c.lineTo(x + dx + 5, y + 14); c.closePath(); c.fill(); } }
+  else { c.fillStyle = "#5a3a20"; c.fillRect(x - 3, y, 6, 14); c.fillStyle = "#2f8a4a"; c.beginPath(); c.arc(x, y - 4, 14, 0, TAU); c.fill(); c.fillStyle = "#c77dff"; c.beginPath(); c.arc(x - 5, y - 8, 3, 0, TAU); c.arc(x + 6, y - 2, 3, 0, TAU); c.fill(); } // an alien tree with purple fruit
+}
+function drawGem(c, x, y, tt) { const b = Math.sin(tt * 4) * 2; c.fillStyle = "rgba(255,210,93,0.3)"; c.beginPath(); c.arc(x, y + b, 11, 0, TAU); c.fill();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.moveTo(x, y - 9 + b); c.lineTo(x + 7, y + b); c.lineTo(x, y + 9 + b); c.lineTo(x - 7, y + b); c.closePath(); c.fill(); c.fillStyle = "#fff6c8"; c.beginPath(); c.moveTo(x, y - 9 + b); c.lineTo(x + 3, y + b); c.lineTo(x, y + b); c.closePath(); c.fill(); }
+function drawHeart(c, x, y, tt) { const s = 1 + Math.sin(tt * 5) * 0.08; c.save(); c.translate(x, y); c.scale(s, s); c.fillStyle = "rgba(255,93,122,0.3)"; c.beginPath(); c.arc(0, 0, 13, 0, TAU); c.fill();
+  c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(0, 8); c.bezierCurveTo(-13, -1, -6, -12, 0, -4); c.bezierCurveTo(6, -12, 13, -1, 0, 8); c.fill(); c.restore(); }
+// the traffic and platforms, one look per world
+function drawThing(c, ln, o, x, y, tt) {
+  const w = o.len * T - 6, dir = Math.sign(ln.speed) || 1, k = S.short;
+  c.save(); c.translate(x, y);
+  if (ln.type === "river") {
+    if (k === "Oort") { c.fillStyle = "#e6f6ff"; c.beginPath(); c.moveTo(-w / 2, -8); c.lineTo(-w / 2 + 8, -15); c.lineTo(w / 2 - 6, -14); c.lineTo(w / 2, -4); c.lineTo(w / 2 - 4, 14); c.lineTo(-w / 2 + 6, 15); c.closePath(); c.fill();
+      c.fillStyle = "rgba(140,200,240,0.6)"; c.fillRect(-w / 2 + 6, 6, w - 14, 5); }
+    else if (k === "Jupiter") { c.fillStyle = "#fff0dc"; for (let i = 0; i <= o.len * 2; i++) { const px = -w / 2 + 8 + i * (w - 16) / (o.len * 2); c.beginPath(); c.arc(px, Math.sin(i * 2) * 3, 11, 0, TAU); c.fill(); } c.fillStyle = "rgba(200,140,90,0.35)"; c.fillRect(-w / 2 + 4, 6, w - 8, 6); }
+    else if (k === "Mars") { c.fillStyle = "#6a3a2a"; c.beginPath(); c.roundRect(-w / 2, -14, w, 28, 9); c.fill(); c.fillStyle = "#8a5038"; c.beginPath(); c.roundRect(-w / 2 + 3, -14, w - 6, 10, 5); c.fill();
+      c.fillStyle = "rgba(255,180,80,0.6)"; c.fillRect(-w / 2, 11, w, 3); }
+    else { c.fillStyle = "#8a5a30"; c.beginPath(); c.roundRect(-w / 2, -14, w, 28, 6); c.fill(); c.fillStyle = "#a8743c"; for (let i = 0; i < o.len * 2; i++) c.fillRect(-w / 2 + 4 + i * (w - 8) / (o.len * 2), -12, (w - 8) / (o.len * 2) - 3, 24); c.fillStyle = "#ff5d7a"; c.fillRect(-w / 2, -2, w, 3); }
+    c.restore(); return;
+  }
+  if (ln.type === "rail") { // the fast one
+    const L = ln.len * T;
+    if (k === "Oort") { const g = c.createLinearGradient(-dir * L / 2, 0, dir * L / 2, 0); g.addColorStop(0, "rgba(255,120,60,0)"); g.addColorStop(1, "rgba(255,200,120,0.9)"); c.fillStyle = g; c.beginPath(); c.moveTo(-dir * L / 2, -6); c.lineTo(dir * (L / 2 - 20), -16); c.lineTo(dir * (L / 2 - 20), 16); c.lineTo(-dir * L / 2, 6); c.fill();
+      c.fillStyle = "#8a7a6a"; c.beginPath(); c.arc(dir * (L / 2 - 18), 0, 18, 0, TAU); c.fill(); c.fillStyle = "#5a4a3a"; c.beginPath(); c.arc(dir * (L / 2 - 22), -5, 5, 0, TAU); c.fill(); }
+    else if (k === "Jupiter") { c.fillStyle = "#3a2a3a"; for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(-L / 2 + i * L / 8, Math.sin(i * 1.7 + tt * 6) * 4, 18, 0, TAU); c.fill(); }
+      c.strokeStyle = "#fff6a0"; c.lineWidth = 2.5; c.beginPath(); let lx = -L / 2; c.moveTo(lx, -6); for (let i = 0; i < 10; i++) { lx += L / 10; c.lineTo(lx, (i % 2 ? -8 : 8) + Math.sin(tt * 40 + i) * 3); } c.stroke(); }
+    else if (k === "Mars") { for (let i = 0; i < 8; i++) { const px = dir * (L / 2 - 16 - i * (L - 20) / 8); c.fillStyle = i % 2 ? "#c8a070" : "#b08858"; c.beginPath(); c.arc(px, Math.sin(i + tt * 12) * 3, 16 - i * 0.6, 0, TAU); c.fill(); }
+      c.fillStyle = "#3a1408"; c.beginPath(); c.arc(dir * (L / 2 - 6), 0, 10, 0, TAU); c.fill(); c.fillStyle = "#fff"; for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(dir * (L / 2 - 2), i * 4); c.lineTo(dir * (L / 2 - 8), i * 4 + 2); c.lineTo(dir * (L / 2 - 2), i * 4 + 3); c.fill(); } }
+    else { c.fillStyle = "#e6ecf6"; c.beginPath(); c.roundRect(-L / 2, -15, L, 30, 14); c.fill(); c.fillStyle = "#4fd1ff"; for (let i = 0; i < 12; i++) c.fillRect(-L / 2 + 20 + i * (L - 40) / 12, -8, (L - 40) / 12 - 6, 8); c.fillStyle = "#ff5d7a"; c.fillRect(-L / 2, 6, L, 3); }
+    c.restore(); return;
+  }
+  // road traffic. Every vehicle's body fills exactly the space that hurts, so you can see where it starts and ends:
+  // windshield + yellow headlights (with a beam) at the FRONT, red tail lights at the BACK.
+  const hw = w / 2, f = dir; // f = which way the front points
+  const body = { Oort: ["#d6ecff", "#a8cdee", "#bfe0ff"], Jupiter: ["#b07ad8", "#9a62c8", "#c48ae6"], Mars: ["#e6d6b8", "#d2bc92", "#c8d0dc"], Earth: ["#ff5d7a", "#ffd25d", "#4fd1ff"] }[k][o.kind];
+  c.fillStyle = "rgba(255,240,170,0.18)"; c.beginPath(); c.moveTo(f * hw, -8); c.lineTo(f * (hw + 22), -15); c.lineTo(f * (hw + 22), 15); c.lineTo(f * hw, 8); c.closePath(); c.fill(); // headlight beam ahead
+  c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(0, 15, hw, 4, 0, 0, TAU); c.fill(); // shadow
+  if (k === "Mars") { c.fillStyle = "#2a2622"; const n = Math.max(2, o.len * 2 + 1); for (let i = 0; i < n; i++) { const wx = -hw + 7 + i * (w - 14) / (n - 1); c.beginPath(); c.ellipse(wx, -13, 5, 3, 0, 0, TAU); c.ellipse(wx, 13, 5, 3, 0, 0, TAU); c.fill(); } } // rover wheels
+  if (k === "Earth") { c.fillStyle = "rgba(79,209,255,0.35)"; c.beginPath(); c.ellipse(0, 12, hw - 4, 4, 0, 0, TAU); c.fill(); } // hover glow
+  // the body (a cab and a cargo box for longer trucks)
+  c.fillStyle = body; c.beginPath(); c.roundRect(-hw, -12, w, 24, k === "Jupiter" ? 12 : 7); c.fill();
+  c.strokeStyle = "rgba(0,0,0,0.35)"; c.lineWidth = 1.5; c.stroke();
+  if (o.len >= 2) { c.fillStyle = "rgba(0,0,0,0.12)"; c.fillRect(f > 0 ? -hw + 3 : -hw + 26, -9, w - 29, 18); c.strokeStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.moveTo(f * (hw - 24), -12); c.lineTo(f * (hw - 24), 12); c.stroke(); } // cargo box behind the cab
+  c.fillStyle = "rgba(255,255,255,0.28)"; c.fillRect(-hw + 4, -10, w - 8, 3); // roof shine
+  c.fillStyle = "#1a2a44"; c.beginPath(); c.roundRect(f > 0 ? hw - 16 : -hw + 5, -8, 11, 16, 3); c.fill(); // windshield
+  c.fillStyle = "rgba(190,235,255,0.55)"; c.fillRect(f > 0 ? hw - 14 : -hw + 7, -6, 3, 6);
+  c.fillStyle = "#fff6b0"; c.beginPath(); c.arc(f * (hw - 2), -8, 2.6, 0, TAU); c.arc(f * (hw - 2), 8, 2.6, 0, TAU); c.fill(); // headlights
+  c.fillStyle = "#ff3a5a"; c.fillRect(f > 0 ? -hw : hw - 3, -10, 3, 5); c.fillRect(f > 0 ? -hw : hw - 3, 5, 3, 5); // tail lights
+  if (k === "Oort") { c.fillStyle = "rgba(140,210,255,0.7)"; c.beginPath(); c.moveTo(-f * hw, -5); c.lineTo(-f * (hw + 7 + Math.random() * 3), 0); c.lineTo(-f * hw, 5); c.closePath(); c.fill(); } // little thruster
+  if (k === "Jupiter") { c.strokeStyle = "#e6ecff"; c.lineWidth = 2; const pa = tt * 30; c.beginPath(); c.moveTo(-f * (hw + 3), Math.sin(pa) * 10); c.lineTo(-f * (hw + 3), -Math.sin(pa) * 10); c.stroke(); } // propeller at the back
+  if (k === "Mars") { c.strokeStyle = "#e6ecff"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-f * (hw - 8), -4); c.lineTo(-f * (hw - 8), -16); c.stroke(); c.beginPath(); c.arc(-f * (hw - 8), -17, 3.5, PI, TAU); c.stroke(); } // antenna dish at the back
+  c.restore();
+}
+function drawPlayer(c, tt) {
+  if (me.dead > 0 && me.deadKind !== "splat") return; // fell in: gone until respawn
+  if (me.inv > 0 && Math.floor(tt * 14) % 2) return;
+  let x = me.x, r = me.row, lift = 0;
+  if (me.hop) { const h = me.hop, k = Math.min(1, h.t); r = h.r0 + (h.r1 - h.r0) * k; lift = h.slide ? 0 : Math.sin(k * PI) * 14; }
+  const y = -r * T - T / 2;
+  c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(x, y + 12, 11 - lift * 0.25, 4, 0, 0, TAU); c.fill();
+  const sq = me.dead > 0 ? 0.6 : me.squash * 2;
+  c.save(); c.translate(x, y + 12); c.scale(1 + sq * 0.6, 1 - sq * 0.6); CHARS.draw(c, SAVE.char, 0, -12, 12.5, tt * (me.hop ? 2 : 1), lift, me.face * 0.15, me.dead > 0 ? 1 : 0); c.restore();
+}
+function draw(tt) {
+  const d = Math.min(3, devicePixelRatio || 1);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!me) return;
+  const vh = viewH(), sh = shake > 0 ? shake * 10 : 0, ox = (Math.random() - 0.5) * sh, oy = (Math.random() - 0.5) * sh;
+  const left = PW / 2 - VW / 2, x0 = left - 2, x1 = left + VW + 2;
+  ctx.setTransform(K * d, 0, 0, K * d, (-left + ox) * K * d, (-camY + oy) * K * d);
+  ctx.fillStyle = S.sky; ctx.fillRect(x0, camY - 2, VW + 4, vh + 4); // beyond the finish: space
+  for (let k = 0; k < 60; k++) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(left + hashN(k, 1) * VW, camY + hashN(k, 2) * vh * 0.6 + (camY * 0.3) % 40, 1.5, 1.5); }
+  ctx.fillStyle = S.ground[1]; ctx.fillRect(x0, 0, x1 - x0, Math.max(0, camY + vh)); // solid ground below the start
+  const rTop = Math.min(N, Math.ceil(-camY / T) + 1), rBot = Math.max(0, Math.floor(-(camY + vh) / T) - 1);
+  for (let r = rBot; r <= rTop; r++) drawLaneBg(ctx, lanes[r], r, x0, x1, tt);
+  ctx.fillStyle = "rgba(4,8,20,0.55)"; ctx.fillRect(x0, camY, -x0, vh); ctx.fillRect(PW, camY, x1 - PW, vh); // dim the sides: you can't hop out there
+  ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, camY); ctx.lineTo(0, camY + vh); ctx.moveTo(PW, camY); ctx.lineTo(PW, camY + vh); ctx.stroke();
+  for (let r = rBot; r <= rTop; r++) { const ln = lanes[r], y = -r * T - T / 2; // platforms first, then you, then traffic over the top
+    if (ln.type === "river") for (const o of ln.objs) { const x = objX(ln, o); if (x > x0 - 100 && x < x1 + 100) drawThing(ctx, ln, o, x, y, tt); } }
+  drawPlayer(ctx, tt);
+  for (let r = rBot; r <= rTop; r++) { const ln = lanes[r], y = -r * T - T / 2;
+    if (ln.type === "road") for (const o of ln.objs) { const x = objX(ln, o); if (x > x0 - 100 && x < x1 + 100) drawThing(ctx, ln, o, x, y, tt); }
+    if (ln.type === "rail") { const x = railX(ln); if (x !== null) drawThing(ctx, ln, { len: ln.len }, x, y, tt); } }
+  for (const p of fx) { ctx.globalAlpha = clamp(p.life / p.max, 0, 1); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1;
+  for (const p of pops) { ctx.globalAlpha = 1 - p.t; ctx.fillStyle = p.col; ctx.font = "900 14px system-ui"; ctx.textAlign = "center"; ctx.fillText(p.text, p.x, p.y - p.t * 24); } ctx.globalAlpha = 1;
+  // screen-space: the banner
+  ctx.setTransform(K * d, 0, 0, K * d, 0, 0);
+  if (banner) { const a = clamp(Math.min(banner.t * 2, 1), 0, 1), cx = VW / 2; ctx.globalAlpha = a; ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(6,12,28,0.7)"; ctx.beginPath(); ctx.roundRect(cx - 150, vh * 0.3 - 30, 300, banner.sub ? 62 : 44, 14); ctx.fill();
+    ctx.font = "900 24px system-ui"; ctx.fillStyle = S.color; ctx.fillText(banner.text, cx, vh * 0.3); if (banner.sub) { ctx.font = "700 13px system-ui"; ctx.fillStyle = "#d6e2f5"; ctx.fillText(banner.sub, cx, vh * 0.3 + 22); } ctx.globalAlpha = 1; }
+  if (si === 0 && li === 0 && me.best < 2 && state === "play" && !paused) { ctx.fillStyle = "rgba(230,240,255,0.75)"; ctx.font = "800 13px system-ui"; ctx.textAlign = "center"; ctx.fillText("swipe to hop · tap = hop forward", VW / 2, vh - 16); }
+}
+function resize() {
+  const st = $("stage"), d = Math.min(3, devicePixelRatio || 1);
+  cssW = Math.max(1, st.clientWidth); cssH = Math.max(1, st.clientHeight); cv.width = Math.round(cssW * d); cv.height = Math.round(cssH * d);
+  K = Math.min(cssH / VIEW_H, cssW / (PW + 20)); // show ~16 rows; never let the 9-tile playfield get cut off
+  K = Math.max(K, cssW / 1400);
+  VW = cssW / K;
+}
+addEventListener("resize", resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe($("stage"));
+addEventListener("blur", () => { if (!paused && state === "play") pauseMenu(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && !paused && state === "play") pauseMenu(); });
+
+// ============================================================
+//  SOUND (iPhone-proof start-up, like Alien Bowling)
+// ============================================================
+let AC = null, keepAlive = null;
+function silentClipURL() { const n = 800, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, s) => { for (let i = 0; i < s.length; i++) b[o + i] = s.charCodeAt(i); };
+  w(0, "RIFF"); v.setUint32(4, 36 + n, true); w(8, "WAVE"); w(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, "data"); v.setUint32(40, n, true); b.fill(128, 44);
+  return URL.createObjectURL(new Blob([b], { type: "audio/wav" })); }
+function audio() {
+  const C = window.AudioContext || window.webkitAudioContext;
+  if (!AC && C) { try { AC = new C(); const s = AC.createBufferSource(); s.buffer = AC.createBuffer(1, 1, 22050); s.connect(AC.destination); s.start(0); } catch (e) {} }
+  if (!AC) return;
+  try { if (navigator.audioSession && navigator.audioSession.type !== "playback") navigator.audioSession.type = "playback"; } catch (e) {}
+  if (AC.state !== "running") AC.resume().catch(() => {});
+  if (SAVE.sound && !navigator.audioSession) { if (!keepAlive) { try { keepAlive = new Audio(silentClipURL()); keepAlive.loop = true; keepAlive.setAttribute("playsinline", ""); } catch (e) {} }
+    if (keepAlive && keepAlive.paused) keepAlive.play().catch(() => {}); }
+}
+for (const ev of ["touchend", "click"]) document.addEventListener(ev, audio, { passive: true });
+function tone(f, dur, type = "sine", vol = 0.08, slideTo = 0, delay = 0) { if (!AC || !SAVE.sound) return; const s = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, s); if (slideTo) o.frequency.exponentialRampToValueAtTime(f * slideTo, s + dur);
+  g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); o.connect(g).connect(AC.destination); o.start(s); o.stop(s + dur + 0.05); }
+
+// ============================================================
+//  MENUS
+// ============================================================
+let menuAnim = null, paused = true, menuName = "";
+function openMenu(html, anim = null, name = "") { paused = true; menuName = name; swipe = null; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const c of $("box").querySelectorAll("canvas[data-stage]")) stageIcon(c, +c.dataset.stage); }
+function closeMenu() { paused = false; menuAnim = null; menuName = ""; $("overlay").classList.add("hidden"); last = performance.now(); }
+const starStr = n => "★".repeat(n) + `<i>${"★".repeat(3 - n)}</i>`;
+const soundBtn = () => `<button class="big" data-act="sound">${SAVE.sound ? "🔊 Sound: On" : "🔇 Sound: Off"}</button>`;
+function fitCanvas(cvs) { const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); } const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return [c, w, h]; }
+// a little scene for menus and demos: lanes drawn with the real lane art, in a sandbox stage
+function miniScene(c, w, h, tt, stageIdx, rows, playerAt) {
+  const keep = S; S = STAGES[stageIdx]; const sc = h / (rows.length * T); c.save(); c.scale(sc, sc); c.translate(w / sc / 2 - PW / 2, rows.length * T);
+  const x0 = PW / 2 - w / sc / 2 - 4, x1 = PW / 2 + w / sc / 2 + 4;
+  rows.forEach((ln, r) => drawLaneBg(c, ln, r, x0, x1, tt));
+  rows.forEach((ln, r) => { if (ln.type === "river") for (const o of ln.objs) drawThing(c, ln, o, objX(ln, o), -r * T - T / 2, tt); });
+  if (playerAt) { const [x, r, lift] = playerAt; c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.ellipse(x, -r * T - 8, 10, 4, 0, 0, TAU); c.fill(); CHARS.draw(c, SAVE.char, x, -r * T - T / 2 - 1, 12.5, tt * 2, lift || 0); }
+  rows.forEach((ln, r) => { if (ln.type === "road") for (const o of ln.objs) drawThing(c, ln, o, objX(ln, o), -r * T - T / 2, tt); if (ln.type === "rail") { const x = railX(ln); if (x !== null) drawThing(c, ln, { len: ln.len }, x, -r * T - T / 2, tt); } });
+  c.restore(); S = keep;
+}
+const demoLane = (type, speed, objs, extra = {}) => Object.assign({ type, speed, objs: objs.map(([x0, len]) => ({ x0, len, kind: 0 })), cycle: 900, t: 0, blocks: new Set(), gem: -1, rest: type === "safe" }, extra);
+function stageIcon(cvs, s) {
+  const c = cvs.getContext("2d"), n = 112; cvs.width = cvs.height = n;
+  const rows = [demoLane("safe", 0, []), demoLane("road", 60, [[400, 1], [600, 2]]), demoLane("river", -40, [[350, 3], [600, 2]]), demoLane("safe", 0, [])];
+  rows.forEach(r => r.t = 2); miniScene(c, n, n, 1.5, s, rows, [PW / 2, 0]);
+  if (!stageOpen(s)) { c.fillStyle = "rgba(3,6,14,0.65)"; c.fillRect(0, 0, n, n); c.font = "900 38px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 13); }
+}
+const TITLE_ROWS = [demoLane("safe", 0, []), demoLane("road", 70, [[100, 1], [380, 2], [640, 1]]), demoLane("road", -95, [[200, 1], [520, 1]]), demoLane("safe", 0, []), demoLane("river", 45, [[150, 3], [450, 2], [700, 3]]), demoLane("goal", 0, [])];
+function titleMenu() {
+  const ch = CHARS.byId(SAVE.char);
+  openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Crossing</h1>
+    <p><b>Hop</b> across busy space lanes, ride drifting platforms over hazards, and reach the <b>landing pad</b> to fly home.</p>
+    ${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
+      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}
+    <button class="big" data-act="chars">Your alien: <b>${ch.name}</b> ›</button>
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    ${soundBtn()}
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, tt => {
+      const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); for (const r of TITLE_ROWS) r.t = tt;
+      const k = (tt % 6) / 6, row = Math.min(5, Math.floor(k * 7)); miniScene(c, w, h, tt, 3, TITLE_ROWS, [PW / 2, row === 4 ? 4 : row === 5 ? 5 : row, Math.abs(Math.sin(tt * 7)) * 6]); }, "title");
+}
+function charMenu() {
+  openMenu(`<p class="kicker">Choose your alien</p><h2>Who's crossing?</h2>
+    <p>The First Contact crew from Alien Defense.</p>
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <button class="big main" data-act="title">Done</button>`,
+    tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
+      CHARS.draw(c, cvs.dataset.char, w / 2, h * 0.55, w * 0.24, tt + w, on ? Math.abs(Math.sin(tt * 7)) * 8 : 0); } }, "chars");
+}
+function stageMenu(s) {
+  const st = STAGES[s];
+  openMenu(`<p class="kicker">Stage ${s + 1} of ${STAGES.length}</p><h2>${st.name}</h2>
+    <p>${st.intro}</p>
+    <div class="facts"><span>${st.twist}</span><span>${Object.values(st.names).slice(0, 2).join(" · ")}</span></div>
+    <p class="score"><span class="stars">${stageStars(s)}/24 ★</span></p>
+    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !SAVE.best[s][i] ? "main" : ""}" data-act="play" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStr(SAVE.best[s][i])}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`, null, "stage");
+}
+function resultMenu() {
+  if (state === "won") {
+    const st = clamp(me.hearts, 1, 3);
+    if (st > SAVE.best[si][li]) SAVE.best[si][li] = st; if (gems > SAVE.gems[si][li]) SAVE.gems[si][li] = gems; save();
+    const next = li + 1 < LEVELS ? [si, li + 1] : si + 1 < STAGES.length && stageOpen(si + 1) ? [si + 1, 0] : null;
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>Made it home!</h2>
+      <div class="bigStars">${starStr(st)}</div>
+      <p>Shields left <b>${me.hearts}/${MAX_HEARTS}</b> · Gems <b>${gems}/${gemsTotal}</b><br>${st === 3 ? `${CHARS.byId(SAVE.char).name} didn't get a scratch!` : st === 2 ? "Cross without getting hit for three stars." : "Lose only one shield for two stars."}</p>
+      <p class="score">${S.short}: <span class="stars">${stageStars(si)}/24 ★</span></p>
+      ${next ? `<button class="big main" data-act="play" data-arg="${next[0]}|${next[1]}">${next[0] !== si ? `Next stage: ${STAGES[next[0]].short} ▶` : `Level ${next[1] + 1} ▶`}</button>`
+        : si + 1 === STAGES.length && li + 1 === LEVELS ? `<p><b>Every crossing done!</b> Go back for any missing stars.</p>` : ""}
+      <button class="big" data-act="play" data-arg="${si}|${li}">Play again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
+  } else {
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>Out of shields!</h2>
+      <p>You got ${Math.round(me.best / N * 100)}% of the way. Tip: wait on a <b>safe strip</b> and watch the traffic pattern before you go.</p>
+      <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
+  }
+}
+function pauseMenu() {
+  openMenu(`<p class="kicker">Paused</p><h2>${S.short} · Level ${li + 1}</h2>
+    <p>Shields <b>${me.hearts}/${MAX_HEARTS}</b> · Gems <b>${gems}/${gemsTotal}</b> · ${Math.round(me.best / N * 100)}% across</p>
+    <button class="big main" data-act="resume">Resume ▶</button>
+    <button class="big" data-act="play" data-arg="${si}|${li}">Restart level</button>
+    <button class="big" data-act="help" data-arg="game|0">How to play</button>
+    <button class="big" data-act="stage" data-arg="${si}">All levels</button>
+    ${soundBtn()}
+    <button class="big" data-act="title">Main menu</button>`, null, "pause");
+}
+// How to play: short pages with live demos
+const HOWTO = [
+  { title: "Hop", lines: ["<b>Swipe</b> up, down, left or right to hop one tile", "<b>Tap</b> anywhere = hop forward", "Reach the <b class='g'>landing pad</b> at the top"], demo: demoHop },
+  { title: "Traffic", lines: ["Anything driving along a lane <b class='r'>hurts</b>", "Watch for gaps, then <b>go</b>", "<b class='r'>Red lights</b> flash before a super-fast one"], demo: demoTraffic },
+  { title: "Hazard rivers", lines: ["You can't stand in the hazard", "<b>Ride the platforms</b>: they carry you along", "Don't get carried off the edge!"], demo: demoRiver },
+  { title: "World twists", lines: ["<b class='c'>Oort ice</b>: you slide one more tile", "<b class='y'>Jupiter gusts</b>: arrows speed up, then you're blown sideways", "<b>Mars</b> sand worms · <b>Earth</b> maglev trains"], demo: demoTwists },
+  { title: "Shields and stars", lines: ["You have <b class='r'>3 shields ♥</b>. Get hit = back to the last <b>safe strip</b>", "Grab <b class='y'>gems</b> and the odd <b class='r'>♥</b> on the way", "No hits = <b class='y'>★★★</b> · one hit = <b class='y'>★★</b> · made it = <b class='y'>★</b>"], demo: demoStars },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first", done = first ? "start" : back === "game" ? "resume" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); c.fillStyle = "#0a1428"; c.fillRect(0, 0, w, h); p.demo(c, tt, w, h); }, "help");
+}
+function label(c, text, x, y, col) { c.fillStyle = col; c.font = "800 13px system-ui"; c.textAlign = "center"; c.fillText(text, x, y); c.lineWidth = 3; }
+function finger(c, x, y, down) { c.fillStyle = down ? "rgba(79,209,255,0.35)" : "rgba(255,255,255,0.22)"; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill(); c.fillStyle = down ? "#4fd1ff" : "#fff"; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
+const HOP_ROWS = [demoLane("start", 0, []), demoLane("safe", 0, []), demoLane("safe", 0, []), demoLane("goal", 0, [])];
+function demoHop(c, tt, w, h) {
+  const T2 = tt % 4, step = Math.min(3, Math.floor(T2 / 0.9)), k = (T2 % 0.9) / 0.9, lift = k < 0.3 ? Math.sin(k / 0.3 * PI) * 10 : 0;
+  miniScene(c, w, h, tt, 3, HOP_ROWS, [PW / 2, step + (k < 0.3 && step < 3 ? k / 0.3 : 0) - (k < 0.3 ? 0 : 0), lift]);
+  const fy = h * 0.78 - (k < 0.3 ? k / 0.3 * 40 : 40); if (step < 3) finger(c, w * 0.82, fy, k < 0.3); label(c, step < 3 ? "swipe up" : "landing pad!", w * 0.82, h - 8, step < 3 ? "#e6f0ff" : "#5dff9b");
+}
+const TRAFFIC_ROWS = [demoLane("safe", 0, []), demoLane("road", 90, [[100, 1], [420, 2], [700, 1]]), demoLane("rail", 300, [], { len: 6, period: 4.5, phase: 0 }), demoLane("safe", 0, [])];
+function demoTraffic(c, tt, w, h) { for (const r of TRAFFIC_ROWS) r.t = tt; miniScene(c, w, h, tt, 3, TRAFFIC_ROWS, [PW / 2, 0]); if (railWarn(TRAFFIC_ROWS[2])) label(c, "warning lights!", w / 2, 16, "#ff5d7a"); }
+const RIVER_ROWS = [demoLane("safe", 0, []), demoLane("river", 40, [[300, 3], [560, 3], [820, 2]]), demoLane("river", -50, [[250, 2], [520, 3], [780, 2]]), demoLane("safe", 0, [])];
+function demoRiver(c, tt, w, h) {
+  for (const r of RIVER_ROWS) r.t = tt; const ln = RIVER_ROWS[1], o = ln.objs[0], x = objX(ln, o);
+  miniScene(c, w, h, tt, 1, RIVER_ROWS, [clamp(x, 20, PW - 20), 1]); label(c, "ride it!", w / 2, 16, "#ffd25d");
+}
+function demoTwists(c, tt, w, h) {
+  const half = w / 2;
+  c.save(); c.beginPath(); c.rect(0, 0, half - 2, h); c.clip(); const ice = [demoLane("safe", 0, []), { type: "ice", blocks: new Set(), gem: -1 }, demoLane("safe", 0, [])];
+  const k = (tt % 2.4) / 2.4, x = PW / 2 - 60 + Math.min(1, k * 2.2) * 80; miniScene(c, half - 2, h, tt, 0, ice, [x, 1]); c.restore(); label(c, "slide!", half / 2, h - 8, "#9fe8ff");
+  c.save(); c.translate(half + 2, 0); c.beginPath(); c.rect(0, 0, half - 2, h); c.clip(); const wind = [demoLane("safe", 0, []), { type: "wind", blocks: new Set(), gem: -1, dir: 1, period: 2.4, t: tt }, demoLane("safe", 0, [])];
+  const g = mod(tt, 2.4), wx = PW / 2 - 40 + (g < 0.25 ? g / 0.25 * 40 : 40) - (g > 2.2 ? 40 : 0); miniScene(c, half - 2, h, tt, 1, wind, [wx, 1]); c.restore(); label(c, "whoosh!", half * 1.5, h - 8, "#ffd25d");
+}
+function demoStars(c, tt, w, h) {
+  [["♥♥♥", "★★★"], ["♥♥", "★★"], ["♥", "★"]].forEach(([a, b], i) => { const y = h * (0.28 + i * 0.25);
+    c.font = "800 18px system-ui"; c.textAlign = "left"; c.fillStyle = "#ff5d7a"; c.fillText(a, w * 0.2, y); c.fillStyle = "#ffd25d"; c.fillText(b, w * 0.6, y); });
+  label(c, "shields left at the pad → stars", w / 2, h - 10, "#93a6c9");
+}
+
+const ACT = {
+  title: () => titleMenu(),
+  stage: s => stageMenu(+s),
+  chars: () => charMenu(),
+  pick: id => { SAVE.char = id; save(); charMenu(); },
+  play: a => { const [s, l] = a.split("|").map(Number); loadLevel(s, l); closeMenu(); },
+  start: () => { SAVE.seenHelp = true; save(); loadLevel(0, 0); closeMenu(); },
+  resume: () => closeMenu(),
+  help: a => { const [back, page] = a.split("|"); helpMenu(back, +page || 0); },
+  sound: () => { SAVE.sound = !SAVE.sound; save(); if (!SAVE.sound && keepAlive) keepAlive.pause(); else audio();
+    for (const b of $("box").querySelectorAll("[data-act='sound']")) b.textContent = SAVE.sound ? "🔊 Sound: On" : "🔇 Sound: Off"; tone(520, 0.1, "triangle", 0.07); },
+};
+$("menuBtn").onclick = () => { audio(); if (state === "play" && !paused) pauseMenu(); else if (paused && menuName === "pause") closeMenu(); else titleMenu(); };
+$("helpBtn").onclick = () => { audio(); helpMenu(state === "play" && !paused ? "game" : "title", 0); };
+
+// ---------- full screen (like Dr Alien). iPhones can't, so there the button explains Add to Home Screen. ----------
+(() => {
+  const btn = $("fsBtn"), root = document.documentElement, req = root.requestFullscreen || root.webkitRequestFullscreen;
+  const can = !!(req && (document.fullscreenEnabled || document.webkitFullscreenEnabled));
+  const ICON = on => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${on ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"}"/></svg>`;
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if (!can) {
+    if (standalone) { btn.hidden = true; return; }
+    btn.innerHTML = ICON(false);
+    btn.onclick = () => {
+      const chrome = /CriOS/.test(navigator.userAgent), other = /FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent), el = document.createElement("div"); el.id = "fsSheet";
+      el.innerHTML = `<div class="sheet"><h3>Full screen on iPhone</h3><p>Apple doesn't let iPhone browsers fill the screen with a web page. This works:</p><ol>
+        ${other ? `<li>Open this page in <b>Safari</b>, tap <b>Share</b> (□↑), then <b>Add to Home Screen</b>.</li>` : `<li>Tap <b>Share</b> (□↑)${chrome ? " at the right of the address bar" : ""}, then <b>Add to Home Screen</b>.</li>`}
+        <li>Open <b>Alien Crossing</b> from its new icon: it fills the whole screen like an app.</li>
+        ${!chrome && !other ? `<li>Quick option: tap <b>aA</b> in the address bar, then <b>Hide Toolbar</b>.</li>` : ""}</ol>
+        <button class="big main" type="button">Got it</button></div>`;
+      el.addEventListener("click", e => { if (e.target === el || e.target.tagName === "BUTTON") el.remove(); }); document.body.appendChild(el);
+    };
+    return;
+  }
+  const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const sync = () => { const on = isFull(); btn.innerHTML = ICON(on); btn.setAttribute("aria-label", on ? "Exit full screen" : "Full screen"); btn.setAttribute("aria-pressed", String(on)); setTimeout(resize, 120); };
+  btn.onclick = () => { audio(); const r = isFull() ? (document.exitFullscreen || document.webkitExitFullscreen).call(document) : req.call(root); if (r && r.catch) r.catch(() => {}); };
+  document.addEventListener("fullscreenchange", sync); document.addEventListener("webkitfullscreenchange", sync); sync();
+})();
+
+// ============================================================
+//  MAIN LOOP: fixed 1/60 s steps
+// ============================================================
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1);
+  last = now;
+  acc += dt; let n = 0;
+  while (acc >= 1 / 60 && n < 6) { update(1 / 60); acc -= 1 / 60; n++; }
+  if (n === 6) acc = 0;
+  if (menuAnim) menuAnim(now / 1000);
+  draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+resize();
+loadLevel(0, 0); banner = null;
+if (SAVE.seenHelp) titleMenu(); else helpMenu("first", 0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
