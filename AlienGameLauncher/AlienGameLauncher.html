@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Nine games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Ten games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -98,6 +98,8 @@ const GAMES = [
     desc: "Lead your shots, chain interceptor blasts, and keep the cities alive across four planetary sectors." },
   { name: "Alien Snacks", tag: "Physics puzzle", color: "#ff8bd0", href: "AlienSnacks/Alien-Snacks.html", art: artSnacks,
     desc: "Swipe to cut the ropes and swing each snack into a hungry alien's mouth. Bubbles, puffers and crystals on every world." },
+  { name: "Alien Putt", tag: "Mini golf", color: "#7fb8ff", href: "AlienPutt/Alien-Putt.html", art: artPutt,
+    desc: "Pull back and putt your alien through 72 holes on four worlds: ice, wind, gravity wells, sand, portals and windmills." },
 ];
 
 // ---------- shared little drawings ----------
@@ -125,6 +127,28 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artPutt(c, w, h, t) { // an alien rolls off a bumper and drops into the cup, then hops to cheer
+  sky(c, w, h, "#14284a", "#060c1c", 57);
+  const x0 = w * 0.08, y0 = h * 0.16, cw = w * 0.84, ch = h * 0.7;
+  c.save(); c.shadowColor = "#7fb8ff"; c.shadowBlur = 16; c.fillStyle = "#3c94b4"; c.beginPath(); c.roundRect(x0, y0, cw, ch, 14); c.fill(); c.restore();
+  c.fillStyle = "rgba(255,255,255,0.05)"; for (let x = 0; x < cw; x += 24) for (let y = 0; y < ch; y += 24) if (((x + y) / 24) % 2 === 0) c.fillRect(x0 + x, y0 + y, 24, 24);
+  c.strokeStyle = "#7fb8ff"; c.lineWidth = 5; c.beginPath(); c.roundRect(x0, y0, cw, ch, 14); c.stroke();
+  const bx = w * 0.5, by = h * 0.32, cx = w * 0.8, cy = h * 0.66, sx = w * 0.18, sy = h * 0.7;
+  // the bumper
+  c.fillStyle = "rgba(199,125,255,0.35)"; c.beginPath(); c.arc(bx, by, 17, 0, TAU); c.fill(); c.fillStyle = "#a24ad8"; c.beginPath(); c.arc(bx, by, 12, 0, TAU); c.fill();
+  // the cup and flag
+  c.fillStyle = "#050a14"; c.beginPath(); c.arc(cx, cy, 9, 0, TAU); c.fill();
+  c.strokeStyle = "#e6f0ff"; c.lineWidth = 2; c.beginPath(); c.moveTo(cx + 2, cy); c.lineTo(cx + 2, cy - 38); c.stroke();
+  const wv = Math.sin(t * 4) * 2; c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(cx + 2, cy - 38); c.lineTo(cx + 22, cy - 32 + wv); c.lineTo(cx + 2, cy - 25); c.closePath(); c.fill();
+  // the putt: aim dots, roll to the bumper, bank down into the cup
+  const T = t % 4.2;
+  let x = sx, y = sy;
+  if (T < 0.9) { c.fillStyle = "#ffd25d"; for (let d = 14; d < 14 + T * 90; d += 10) { const k = d / Math.hypot(bx - sx, by - sy); c.globalAlpha = 1 - d / 120; c.beginPath(); c.arc(sx + (bx - sx) * k, sy + (by - sy) * k, 2.2, 0, TAU); c.fill(); } c.globalAlpha = 1; }
+  else if (T < 1.6) { const k = (T - 0.9) / 0.7; x = sx + (bx - 18 - sx) * k; y = sy + (by + 10 - sy) * k; }
+  else if (T < 2.5) { const k = (T - 1.6) / 0.9, e = 1 - (1 - k) * (1 - k); x = bx - 18 + (cx - bx + 18) * e; y = by + 10 + (cy - by - 10) * e; }
+  if (T < 2.5) eyeAlien(c, x, y - 4, 9, "#5dff9b", t * 2);
+  else { const hop = Math.abs(Math.sin((T - 2.5) * 7)) * 14; eyeAlien(c, cx, cy - 10 - hop, 9, "#5dff9b", t); c.fillStyle = "#ffd25d"; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText("Hole in one!", w * 0.5, h * 0.12 + 4); }
+}
 function artSnacks(c, w, h, t) { // a snack swings on a rope, a swipe cuts it, and it drops into Blip's mouth
   sky(c, w, h, "#14284a", "#060c1c", 41);
   const T = t % 3.6, px = w * 0.38, py = 14, L = h * 0.42, cutAt = 1.7, ax = w * 0.62, ay = h - 40;
