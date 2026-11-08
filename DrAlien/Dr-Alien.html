@@ -108,6 +108,13 @@
     touch-action: manipulation;
   }
   button { cursor: pointer; }
+  /* "Back to Alien Arcade" link, styled like the other buttons */
+  a.arcade { display: flex; align-items: center; justify-content: center; min-height: 38px; padding: 7px 10px; border-radius: 8px; border: 1px solid #42537b;
+    background: #1a2748; color: var(--ink); font-size: 13px; font-weight: 700; text-decoration: none; touch-action: manipulation; }
+  a.arcade:hover { border-color: var(--cyan); }
+  a.arcade:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  .menu a.arcade { min-height: 52px; font-size: 16px; }
+  .overlay a.arcade { margin-top: 2px; }
   button:hover:not(:disabled), select:hover { border-color: var(--cyan); }
   button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
   button:disabled { opacity: .45; cursor: default; }
@@ -304,7 +311,7 @@
     #guide-menu, #settings-menu { grid-column: 1 / -1; }
     #guide-menu { padding: 8px 12px; }
     .menu .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 20px; margin: 8px 0; }
-    .menu button { min-height: 44px; }
+    .menu button, .menu a.arcade { min-height: 44px; }
     .demo { --tile: clamp(18px, 8dvh, 35px); margin: 6px 0; padding: 4px 0; }
     #guide-menu:not([hidden]) {
       display: grid; grid-template-columns: minmax(145px, 1fr) 1fr;
@@ -322,6 +329,7 @@
     .menu .menu-actions { margin-top: 8px; gap: 5px; }
     #menu .menu-actions:has(#resume-game:not([hidden])) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     #menu .menu-actions > .menu-row { grid-column: 1 / -1; gap: 5px; }
+    #menu .menu-actions > a.arcade { grid-column: 1 / -1; }
     .menu .settings label { min-height: 40px; }
     .menu select { min-height: 36px; }
     .lab:not(.menu-layout) #queen-line { display: none; }
@@ -371,6 +379,7 @@
           <button id="open-guide" type="button">How to play</button>
           <button id="open-settings" type="button">Settings</button>
         </div>
+        <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
       </div>
     </section>
     <section class="panel menu" id="settings-menu" aria-labelledby="settings-title" hidden>
@@ -404,6 +413,7 @@
           <h2 id="overlay-title">Contain the breach</h2>
           <p class="muted" id="overlay-copy">Match four or more of one color in a row or column. Clear every spore.</p>
           <button id="action" type="button">Start mission</button>
+          <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
         </div>
       </div>
       <div id="play-controls" aria-label="Capsule controls">
