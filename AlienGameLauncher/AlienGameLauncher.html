@@ -60,7 +60,7 @@
 <main>
   <header>
     <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
-    <div><h1>Alien Arcade</h1><p>Seventeen games from the same galaxy. Pick one and play.</p></div>
+    <div><h1>Alien Arcade</h1><p>Eighteen games from the same galaxy. Pick one and play.</p></div>
     <button id="install" type="button" aria-label="Add Alien Arcade to your home screen">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M12 7v7m-3-3 3 3 3-3"/></svg>
       <span>Add<span class="long"> to Home Screen</span></span></button>
@@ -114,6 +114,8 @@ const GAMES = [
     desc: "Aim the saucer cannon and drop balls through the pegs. Hit every orange pod to free the trapped aliens, and use your alien's power." },
   { name: "Alien Pop", tag: "Bubble shooter", color: "#ff8bd0", href: "AlienPop/Alien-Pop.html", art: artPop,
     desc: "Fire goo bubbles, match three to pop them, and free the aliens trapped in the bubble wall before it creeps down on you." },
+  { name: "Alien Slopes", tag: "Downhill snowboard", color: "#7fe8ff", href: "AlienSlopes/Alien-Slopes.html", art: artSlopes,
+    desc: "Board down alien mountains, slip through the slalom gates, spin off ramps, and stay ahead of the Frost Gobbler rolling after you." },
 ];
 
 // ---------- shared little drawings ----------
@@ -141,6 +143,28 @@ function sky(c, w, h, a, b, seed) {
 }
 
 // ---------- one animated preview per game ----------
+function artSlopes(c, w, h, t) { // an alien carves down between pines, leaving tracks, with the Frost Gobbler bouncing behind
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#d8e6f4"); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  const pine = (x, y, k) => { c.fillStyle = "rgba(20,30,70,0.18)"; c.beginPath(); c.ellipse(x, y, 11 * k, 3 * k, 0, 0, TAU); c.fill(); c.fillStyle = "#6b4a2e"; c.fillRect(x - 2 * k, y - 6 * k, 4 * k, 6 * k);
+    for (let i = 0; i < 3; i++) { const yb = y - 4 * k - i * 9 * k, hw = (13 - i * 3.5) * k; c.fillStyle = "#2f7d4f"; c.beginPath(); c.moveTo(x, yb - 15 * k); c.lineTo(x + hw, yb); c.lineTo(x - hw, yb); c.fill();
+      c.fillStyle = "#f4f8ff"; c.beginPath(); c.moveTo(x, yb - 15 * k); c.lineTo(x + hw * 0.4, yb - 9 * k); c.lineTo(x - hw * 0.4, yb - 9 * k); c.fill(); } };
+  const scroll = t * 110;
+  for (let k = 0; k < 12; k++) { const y = ((k * 47 - scroll) % (h + 100) + h + 100) % (h + 100) - 20, side = k % 2 ? 1 : -1, x = w / 2 + side * (w * 0.28 + ((k * 37) % 23)); pine(x, y, 0.9); }
+  const flagY = ((200 - scroll) % (h + 100) + h + 100) % (h + 100) - 20;
+  for (const sx of [-1, 1]) { const fx = w / 2 + sx * 30; c.strokeStyle = "#1c2440"; c.lineWidth = 2; c.beginPath(); c.moveTo(fx, flagY); c.lineTo(fx, flagY - 26); c.stroke(); c.fillStyle = "#ff3d5e"; c.beginPath(); c.moveTo(fx, flagY - 26); c.lineTo(fx + sx * 12, flagY - 22); c.lineTo(fx, flagY - 18); c.fill(); }
+  const px = tt => w / 2 + Math.sin(tt * 1.7) * w * 0.12, py = h * 0.62;
+  c.strokeStyle = "rgba(120,140,190,0.4)"; c.lineWidth = 1.5; c.beginPath(); for (let k = 0; k < 40; k++) { const x = px(t - k * 0.03), y = py - k * 3.3; k ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke();
+  // Frost Gobbler
+  const gx = px(t - 0.7), gy = h * 0.24 - Math.abs(Math.sin(t * 6)) * 4, r = 15;
+  c.fillStyle = "#d8eeff"; c.beginPath(); for (let i = 0; i <= 20; i++) { const a = i / 20 * TAU, rr = r * (i % 2 ? 1.1 : 0.95); i ? c.lineTo(gx + Math.cos(a) * rr, gy + Math.sin(a) * rr) : c.moveTo(gx + Math.cos(a) * rr, gy + Math.sin(a) * rr); } c.fill();
+  for (const sx of [-1, 1]) { c.fillStyle = "#fff"; c.beginPath(); c.arc(gx + sx * 5, gy - 5, 3.4, 0, TAU); c.fill(); c.fillStyle = "#c0143c"; c.beginPath(); c.arc(gx + sx * 4.6, gy - 4, 1.6, 0, TAU); c.fill(); }
+  c.fillStyle = "#2a0a3a"; c.beginPath(); c.ellipse(gx, gy + 5, 8, 3 + Math.abs(Math.sin(t * 4)) * 3, 0, 0, TAU); c.fill();
+  // rider on a board
+  const x = px(t), d = Math.cos(t * 1.7) * 0.8;
+  c.save(); c.translate(x, py); c.fillStyle = "rgba(20,30,70,0.22)"; c.beginPath(); c.ellipse(0, 1, 13, 4, 0, 0, TAU); c.fill();
+  c.save(); c.scale(1, 0.72); c.rotate(PI / 2 - d); c.fillStyle = "#7fe8ff"; c.beginPath(); c.ellipse(0, 0, 15, 4.5, 0, 0, TAU); c.fill(); c.restore();
+  c.rotate(d * 0.3); eyeAlien(c, 0, -10, 9, "#5dff9b", t); c.restore();
+}
 function artPop(c, w, h, t) { // a bubble flies up, makes a match, and the group pops, freeing a trapped alien
   sky(c, w, h, "#1a1440", "#06061a", 127);
   const cols = ["#5dff9b", "#ffe35d", "#ff8bd0", "#7ab8ff", "#ff8f5d", "#ff5d7a"], r = Math.min(15, w / 22), T = t % 3.6, popNow = T > 1.3;
