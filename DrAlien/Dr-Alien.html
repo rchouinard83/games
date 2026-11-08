@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dr. Alien · Hive Containment</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #070b16;
+    --panel: #0e1530;
+    --line: #2a3a66;
+    --ink: #e6ecff;
+    --dim: #a3afd0;
+    --mint: #5dff9b;
+    --cyan: #4fd1ff;
+    font-family: system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink);
+    background: radial-gradient(ellipse at 50% 0, #1b2751, transparent 64%), var(--bg);
+  }
+  main { max-width: 970px; margin: auto; padding: 22px 20px; }
+  header { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1, h2, p { margin: 0; }
+  h1 { font-size: clamp(36px, 6vw, 59px); line-height: 1; letter-spacing: -.055em; }
+  .tag {
+    color: var(--cyan); font: 700 11px/1.4 ui-monospace, monospace;
+    text-transform: uppercase; letter-spacing: .17em;
+  }
+  .lab { display: grid; grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr); gap: 18px; align-items: start; }
+  .panel {
+    padding: 16px; border: 1px solid var(--line); border-radius: 16px;
+    background: linear-gradient(155deg, #151f3b, var(--panel) 75%); min-width: 0;
+  }
+  .queen-art {
+    display: block; width: 100%; max-width: 210px; margin: 10px auto;
+    background: radial-gradient(circle, #512237 0%, #1b1a34 46%, transparent 70%);
+  }
+  .queen h2 { margin: 6px 0; font-size: 22px; letter-spacing: -.04em; }
+  .muted { color: var(--dim); font-size: 13px; line-height: 1.5; }
+  .chamber { width: clamp(210px, min(35vw, calc((100dvh - 195px) / 2)), 282px); margin: auto; }
+  .chamber-label { display: flex; justify-content: space-between; margin: 0 4px 7px; gap: 6px; }
+  .chamber-label span:last-child { color: var(--mint); }
+  .tank {
+    position: relative; padding: 6px; border-radius: 16px; border: 1px solid #52648e;
+    background: #161e35; box-shadow: 0 0 30px #4fd1ff13, inset 0 0 10px #4fd1ff30;
+  }
+  #board {
+    overflow: hidden; border-radius: 10px; display: grid; grid-template-columns: repeat(8, 1fr);
+    background: #080f20; border: 1px solid #2b4468;
+  }
+  .cell {
+    display: grid; place-items: center; position: relative; aspect-ratio: 1;
+    border-right: 1px solid #15233a; border-bottom: 1px solid #15233a;
+  }
+  .cell:nth-child(4), .cell:nth-child(5) { background: #4fd1ff18; }
+  .piece {
+    width: 85%; height: 85%; border-radius: 42%; display: grid; place-items: center;
+    background: linear-gradient(145deg, #ffffffa8, transparent 45%), var(--color);
+    color: #101329; font: 900 clamp(10px, 2.1vw, 18px)/1 system-ui, sans-serif;
+    box-shadow: inset 0 -4px #0004, 0 0 7px color-mix(in srgb, var(--color) 38%, transparent);
+  }
+  .red { --color: #ff5d7a; }
+  .yellow { --color: #ffd25d; }
+  .blue { --color: #4fd1ff; }
+  .right { border-radius: 42% 12% 12% 42%; width: 100%; margin-left: 12%; }
+  .left { border-radius: 12% 42% 42% 12%; width: 100%; margin-right: 12%; }
+  .down { border-radius: 42% 42% 12% 12%; height: 100%; margin-top: 12%; }
+  .up { border-radius: 12% 12% 42% 42%; height: 100%; margin-bottom: 12%; }
+  .spore {
+    border-radius: 25% 50% 26% 50%; border: 2px solid var(--color);
+    background: color-mix(in srgb, var(--color) 24%, #0b1022); color: var(--color);
+    box-shadow: inset 0 0 7px #0009;
+  }
+  .clearing { filter: brightness(2); opacity: .55; }
+  .overlay {
+    position: absolute; inset: 7px; display: grid; place-content: center; text-align: center;
+    border-radius: 10px; background: #080f20d9; padding: 12px; gap: 12px;
+  }
+  .overlay h2 { font-size: 24px; letter-spacing: -.035em; }
+  .overlay[hidden] { display: none; }
+  button, select {
+    min-height: 38px; padding: 7px 10px; border-radius: 8px; border: 1px solid #42537b;
+    background: #1a2748; color: var(--ink); font: inherit; font-size: 13px; font-weight: 700;
+    touch-action: manipulation;
+  }
+  button { cursor: pointer; }
+  button:hover:not(:disabled), select:hover { border-color: var(--cyan); }
+  button:focus-visible, select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  button:disabled { opacity: .45; cursor: default; }
+  #action { color: #071a17; background: var(--mint); border-color: var(--mint); }
+  #next { display: flex; padding: 10px 3px 13px; }
+  #next .piece { width: 30px; height: 29px; margin: 0; }
+  dl { margin: 0 0 14px; border-top: 1px solid var(--line); }
+  dl div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  dt { color: var(--dim); font-size: 13px; }
+  dd { margin: 0; font: 700 15px ui-monospace, monospace; }
+  .settings { display: grid; gap: 8px; }
+  .settings label { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .commands { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 9px; }
+  .commands button { font-size: 19px; min-height: 44px; }
+  .legend { margin-top: 13px; font-size: 12px; }
+  [hidden] { display: none !important; }
+  .menu-layout { grid-template-columns: minmax(160px, 240px) minmax(0, 440px); justify-content: center; }
+  .menu h2 { font-size: 26px; margin: 4px 0 8px; }
+  .menu .settings { margin: 15px 0; }
+  .menu-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #play, #resume-game { color: #071a17; background: var(--mint); border-color: var(--mint); }
+  .menu details { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; font-weight: 700; }
+  .menu details p { margin-top: 8px; }
+  .menu input { accent-color: var(--mint); width: 18px; height: 18px; }
+  @media (max-width: 670px) {
+    main { padding: 10px 8px; }
+    header { align-items: start; margin-bottom: 10px; }
+    .lab { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+    .lab:not(.menu-layout) { grid-template-rows: auto 1fr; }
+    .chamber {
+      grid-area: 1 / 2 / 3 / 3; align-self: start; margin: 0;
+      width: clamp(176px, min(calc(100vw - 112px), calc((100dvh - 169px) / 2)), 258px);
+    }
+    .lab:not(.menu-layout) .panel { padding: 8px; }
+    .lab:not(.menu-layout) .queen-art { margin: 2px auto; max-width: 94px; }
+    .lab:not(.menu-layout) .queen h2 { font-size: 14px; }
+    .lab:not(.menu-layout) #queen-line, .legend { display: none; }
+    .commands { gap: 3px; margin-top: 6px; }
+    .commands button { padding: 0; min-height: 44px; }
+    .hud .tag { letter-spacing: .07em; }
+    .hud dl { margin-bottom: 8px; }
+    .hud dl div { padding: 6px 0; }
+    .hud button { padding: 4px; min-height: 36px; }
+    .menu-layout { grid-template-columns: minmax(0, 440px); }
+    .menu .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+    .menu select { min-height: 34px; padding: 4px; }
+    .menu-layout .queen {
+      display: grid; grid-template-columns: 96px 1fr; grid-template-rows: auto auto auto;
+      align-content: center; column-gap: 12px; padding: 8px 12px;
+    }
+    .menu-layout .queen-art { grid-area: 1 / 1 / 4 / 2; align-self: center; margin: 0; }
+    .menu-layout .queen h2 { margin: 2px 0; }
+  }
+  @media (max-width: 670px) and (max-height: 620px) {
+    .lab:not(.menu-layout) .queen-art { max-width: 74px; }
+    .hud .settings { gap: 5px; }
+    .hud button { min-height: 32px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="tag">Alien Defense // Bio Lab</p><h1>Dr. Alien</h1></div>
+    <p class="tag">Hive<br>Containment</p>
+  </header>
+  <div class="lab menu-layout" id="lab">
+    <section class="panel queen" aria-labelledby="queen-name">
+      <p class="tag">Chief physician</p>
+      <canvas class="queen-art" id="queen" width="420" height="344" aria-label="Animated portrait of the Hive Queen in a lab coat, medical cap, and stethoscope"></canvas>
+      <h2 id="queen-name">Dr. Hive Queen</h2>
+      <p class="muted" id="queen-line">“Spores in my lab? Load the capsules.”</p>
+    </section>
+    <section class="panel menu" id="menu" aria-labelledby="menu-title">
+      <p class="tag">Containment protocol</p>
+      <h2 id="menu-title">Hive Bio Lab</h2>
+      <p class="muted">Dr. Hive Queen needs a steady hand. Clear the spores before they jam the capsule feed.</p>
+      <div class="settings">
+        <label class="muted">Start level <select id="start-level"></select></label>
+        <label class="muted">Speed <select id="speed">
+          <option value="0">Low</option><option value="1" selected>Medium</option><option value="2">High</option>
+        </select></label>
+        <label class="muted">Sound effects <input id="effects" type="checkbox" checked></label>
+        <label class="muted">Music <input id="music" type="checkbox"></label>
+      </div>
+      <div class="menu-actions">
+        <button id="resume-game" type="button" hidden>Resume mission</button>
+        <button id="play" type="button">Start mission</button>
+      </div>
+      <details>
+        <summary>How to play</summary>
+        <p class="muted">Move and rotate the two-color capsules as they fall. Line up four or more of the same color in a row or column. Spores and capsule halves both count.</p>
+        <p class="muted">Loose halves fall after a clear and can start a chain. Clear every spore to advance. Keep the capsule feed at the top open.</p>
+        <p class="muted">Keyboard: ← / → move, ↓ drops faster, Z / X rotate, and P pauses. On a phone, use the buttons under the chamber.</p>
+      </details>
+    </section>
+    <section class="chamber" id="chamber" aria-label="Containment chamber" hidden>
+      <p class="chamber-label tag"><span>Chamber 01</span><span id="signal">Standby</span></p>
+      <div class="tank">
+        <div id="board" tabindex="-1" role="img" aria-label="Eight-column, sixteen-row playfield"></div>
+        <div class="overlay" id="overlay">
+          <p class="tag">Hive bio lab</p>
+          <h2 id="overlay-title">Contain the breach</h2>
+          <p class="muted" id="overlay-copy">Match four or more of one color in a row or column. Clear every spore.</p>
+          <button id="action" type="button">Start mission</button>
+        </div>
+      </div>
+      <div class="commands" aria-label="Capsule controls">
+        <button data-command="left" aria-label="Move left">←</button>
+        <button data-command="ccw" aria-label="Rotate counterclockwise">↶</button>
+        <button data-command="down" aria-label="Drop faster">↓</button>
+        <button data-command="cw" aria-label="Rotate clockwise">↷</button>
+        <button data-command="right" aria-label="Move right">→</button>
+      </div>
+      <p class="muted legend">← → Move · ↓ Drop faster · Z / X Rotate · P Pause</p>
+    </section>
+    <section class="panel hud" id="hud" aria-label="Mission data" hidden>
+      <p class="tag">Next capsule</p><div id="next" aria-label="Next capsule">—</div>
+      <dl>
+        <div><dt>Level</dt><dd id="level">00</dd></div>
+        <div><dt>Spores</dt><dd id="spores">—</dd></div>
+        <div><dt>Score</dt><dd id="score">0</dd></div>
+      </dl>
+      <div class="settings">
+        <button id="pause" type="button" disabled>Pause</button>
+        <button id="restart" type="button" disabled>Restart</button>
+        <button id="main-menu" type="button">Menu</button>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+"use strict";
+// Hive Queen portrait and drawing primitives from Alien Defense.
+const TAU = Math.PI * 2;
+const R = "#ff5d7a";
+function shade(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const m = f < 0 ? 0 : 255, a = Math.abs(f);
+  r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a);
+  return `rgb(${r},${g},${b})`;
+}
+const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+function poly(c, pts) { c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); }
+function drawQueen(c, t, s) {
+  c.lineCap = "round";
+  for (let k = 0; k < 8; k++) {
+    const a = k * TAU / 8 + 0.2, x = Math.cos(a) * s * 0.6, y = Math.sin(a) * s * 0.6, L = s * 0.95, w = Math.sin(t * 3 + k) * 0.6;
+    c.strokeStyle = shade(R, -0.45 - 0.1 * (k % 2)); c.lineWidth = s * 0.16;
+    const ex = x + Math.cos(a + w) * L, ey = y + Math.sin(a + w) * L;
+    c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a + w * 0.5) * L * 0.5, y + Math.sin(a + w * 0.5) * L * 0.5, ex, ey); c.stroke();
+    c.fillStyle = "#ffd0d8"; poly(c, [[ex - s * 0.04, ey], [ex + Math.cos(a + w) * s * 0.14, ey + Math.sin(a + w) * s * 0.14], [ex + s * 0.04, ey]]); c.fill();
+  }
+  const g = c.createRadialGradient(-s * 0.15, -s * 0.2, s * 0.1, 0, 0, s * 0.78); g.addColorStop(0, shade(R, 0.1)); g.addColorStop(1, shade(R, -0.55));
+  c.fillStyle = g; circle(c, 0, 0, s * 0.75); c.fill();
+  c.fillStyle = "#fff1f3"; circle(c, 0, -s * 0.18, s * 0.34); c.fill();
+  const lx = Math.cos(t * 0.9) * s * 0.11, ly = Math.sin(t * 1.3) * s * 0.08 - s * 0.18;
+  c.fillStyle = "#c41f3d"; circle(c, lx, ly, s * 0.18); c.fill(); c.fillStyle = "#120206"; oval(c, lx, ly, s * 0.05, s * 0.13); c.fill();
+  const m = 0.08 + 0.07 * Math.max(0, Math.sin(t * 2));
+  c.fillStyle = "#1a0408"; oval(c, 0, s * 0.38, s * 0.36, s * m * 2.2); c.fill();
+  c.save();
+  c.clip(); // Keep the teeth inside the animated mouth.
+  c.fillStyle = "#ffffff";
+  for (let k = 0; k < 6; k++) { const x = -s * 0.28 + k * s * 0.112; poly(c, [[x, s * 0.38 - s * m * 2], [x + s * 0.05, s * 0.38 - s * m * 0.6], [x + s * 0.1, s * 0.38 - s * m * 2]]); c.fill(); }
+  c.restore();
+  drawDoctorOutfit(c, s);
+}
+
+function drawDoctorOutfit(c, size) {
+  c.save();
+  c.scale(size, size);
+  c.lineWidth = 0.025;
+  c.strokeStyle = "#415476";
+  c.fillStyle = "#e6f6ff";
+  c.beginPath();
+  c.moveTo(-0.53, 0.49);
+  c.quadraticCurveTo(-0.82, 0.58, -0.9, 1.04);
+  c.quadraticCurveTo(0, 1.25, 0.9, 1.04);
+  c.quadraticCurveTo(0.82, 0.58, 0.53, 0.49);
+  c.lineTo(0, 0.85);
+  c.closePath();
+  c.fill();
+  c.stroke();
+  c.fillStyle = "#a5cbe0";
+  poly(c, [[-0.53, 0.49], [-0.63, 0.77], [-0.39, 0.75], [0, 1.12], [0, 0.85]]);
+  c.fill();
+  poly(c, [[0.53, 0.49], [0.63, 0.77], [0.39, 0.75], [0, 1.12], [0, 0.85]]);
+  c.fill();
+  c.strokeStyle = "#25405c";
+  c.lineWidth = 0.043;
+  c.beginPath();
+  c.moveTo(-0.52, 0.57);
+  c.bezierCurveTo(-0.8, 0.99, -0.22, 1.1, -0.2, 0.83);
+  c.bezierCurveTo(-0.13, 0.62, 0.25, 1.15, 0.53, 0.93);
+  c.stroke();
+  c.fillStyle = "#476783";
+  circle(c, 0.53, 0.93, 0.084);
+  c.fill();
+  c.fillStyle = "#b9eeff";
+  circle(c, 0.53, 0.93, 0.049);
+  c.fill();
+
+  c.translate(-0.08, -0.72);
+  c.rotate(-0.12);
+  c.fillStyle = "#e6f6ff";
+  c.strokeStyle = "#415476";
+  c.lineWidth = 0.025;
+  c.beginPath();
+  c.roundRect(-0.47, -0.36, 0.94, 0.43, [0.14, 0.14, 0.06, 0.06]);
+  c.fill();
+  c.stroke();
+  c.fillStyle = "#cf2f51";
+  c.fillRect(-0.04, -0.28, 0.08, 0.25);
+  c.fillRect(-0.125, -0.195, 0.25, 0.08);
+  c.restore();
+}
+
+const COLS = 8;
+const ROWS = 16;
+const colors = ["red", "yellow", "blue"];
+const marks = ["●", "▲", "◆"];
+const colorNames = ["Rose", "Gold", "Cyan"];
+const directions = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+const directionNames = ["right", "down", "left", "up"];
+const speeds = [1050, 680, 420];
+const byId = id => document.getElementById(id);
+const cells = Array.from({ length: COLS * ROWS }, () => {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+  byId("board").append(cell);
+  return cell;
+});
+for (let i = 0; i <= 20; i++) byId("start-level").add(new Option(i, i));
+
+let board = emptyBoard();
+let level = 0;
+let speed = 1;
+let score = 0;
+let spores = 0;
+let capsule;
+let next;
+let matches = new Set();
+let chain = 0;
+let phase = "ready";
+let paused = false;
+let remaining = 0;
+let menuOpen = true;
+let audioContext;
+let nextNote = 0;
+let musicStep = 0;
+const melody = [48, 55, 60, 55, 51, 58, 63, 58, 46, 53, 58, 53, 43, 50, 55, 50];
+
+for (const name of ["effects", "music"]) {
+  const control = byId(name);
+  try {
+    const saved = localStorage.getItem(`dralien-${name}`);
+    if (saved !== null) control.checked = saved === "true";
+  } catch {
+    // Storage can be disabled for local files.
+  }
+  control.addEventListener("change", () => {
+    try {
+      localStorage.setItem(`dralien-${name}`, control.checked);
+    } catch {
+      // The current menu setting still applies.
+    }
+    if (control.checked) unlockAudio();
+  });
+}
+
+function unlockAudio() {
+  if (!byId("effects").checked && !byId("music").checked) return;
+  if (!window.AudioContext) return;
+  audioContext ??= new window.AudioContext();
+  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+}
+
+function tone(note, delay, duration, volume, type) {
+  if (audioContext?.state !== "running") return;
+  const time = audioContext.currentTime + delay;
+  const oscillator = audioContext.createOscillator();
+  const envelope = audioContext.createGain();
+  oscillator.type = type;
+  oscillator.frequency.value = 440 * 2 ** ((note - 69) / 12);
+  envelope.gain.setValueAtTime(0.0001, time);
+  envelope.gain.exponentialRampToValueAtTime(volume, time + 0.012);
+  envelope.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+  oscillator.connect(envelope);
+  envelope.connect(audioContext.destination);
+  oscillator.start(time);
+  oscillator.stop(time + duration);
+}
+
+function effect(notes) {
+  if (!byId("effects").checked) return;
+  notes.forEach((note, i) => tone(note, i * 0.075, 0.13, 0.045, "triangle"));
+}
+
+function updateMusic() {
+  if (!byId("music").checked || audioContext?.state !== "running") return;
+  if (audioContext.currentTime < nextNote) return;
+  tone(melody[musicStep], 0, 0.31, 0.027, "sine");
+  musicStep = (musicStep + 1) % melody.length;
+  nextNote = audioContext.currentTime + 0.34;
+}
+
+function showMenu(open) {
+  menuOpen = open;
+  byId("lab").classList.toggle("menu-layout", open);
+  byId("menu").hidden = !open;
+  byId("chamber").hidden = open;
+  byId("hud").hidden = open;
+  byId("resume-game").hidden = phase === "ready";
+  byId("play").textContent = phase === "ready" ? "Start mission" : "New mission";
+  const focusTarget = phase === "ready" ? "play" : "resume-game";
+  byId(open ? focusTarget : "board").focus({ preventScroll: true });
+}
+
+
+function emptyBoard() {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+function pieceHTML(piece, flashing = false) {
+  const shape = piece.spore ? "spore" : directionNames[piece.link] || "";
+  return `<span class="piece ${colors[piece.color]} ${shape}${flashing ? " clearing" : ""}">${marks[piece.color]}</span>`;
+}
+
+function render() {
+  const falling = new Map();
+  if (capsule) {
+    positions(capsule).forEach(([x, y], i) => {
+      falling.set(y * COLS + x, { color: capsule.colors[i], link: (capsule.rotation + i * 2) % 4 });
+    });
+  }
+
+  cells.forEach((cell, index) => {
+    const piece = falling.get(index) || board[Math.floor(index / COLS)][index % COLS];
+    cell.innerHTML = piece ? pieceHTML(piece, matches.has(index)) : "";
+  });
+  byId("next").innerHTML = next ? next.map((color, i) => pieceHTML({ color, link: i * 2 })).join("") : "—";
+  byId("next").setAttribute("aria-label", next ? `Next capsule: ${next.map(color => colorNames[color]).join(" and ")}` : "Next capsule");
+  byId("level").textContent = String(level).padStart(2, "0");
+  byId("spores").textContent = phase === "ready" ? "—" : spores;
+  byId("score").textContent = score.toLocaleString();
+}
+
+function shuffle(items) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+function seedSpores() {
+  const ceiling = Math.max(3, 7 - Math.floor(level / 5));
+  const slots = [];
+  for (let y = ceiling; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) slots.push(y * COLS + x);
+  }
+  spores = 4 * (level + 1);
+  const occupied = new Set(shuffle(slots).slice(0, spores));
+  // Fill in reading order and rule out pre-existing matches.
+  for (let y = ceiling; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (!occupied.has(y * COLS + x)) continue;
+      const choices = colors.map((_, color) => color).filter(color => (
+        ![1, 2, 3].every(offset => board[y][x - offset]?.color === color) &&
+        ![1, 2, 3].every(offset => board[y - offset]?.[x]?.color === color)
+      ));
+      board[y][x] = { color: choices[Math.floor(Math.random() * choices.length)], spore: true };
+    }
+  }
+}
+
+function randomCapsule() {
+  return Array.from({ length: 2 }, () => Math.floor(Math.random() * colors.length));
+}
+
+function positions({ x, y, rotation }) {
+  const [dx, dy] = directions[rotation];
+  return [[x, y], [x + dx, y + dy]];
+}
+
+function fits(candidate) {
+  return positions(candidate).every(([x, y]) => (
+    x >= 0 && x < COLS && y >= 0 && y < ROWS && !board[y][x]
+  ));
+}
+
+function setOverlay(title, copy, action) {
+  byId("overlay-title").textContent = title;
+  byId("overlay-copy").textContent = copy;
+  byId("action").textContent = action;
+  byId("overlay").hidden = false;
+}
+
+function start(newRun) {
+  if (newRun) {
+    level = Number(byId("start-level").value);
+    speed = Number(byId("speed").value);
+    score = 0;
+  }
+  board = emptyBoard();
+  matches.clear();
+  paused = false;
+  seedSpores();
+  next = randomCapsule();
+  byId("overlay").hidden = true;
+  byId("pause").disabled = false;
+  byId("pause").textContent = "Pause";
+  byId("restart").disabled = false;
+  byId("queen-line").textContent = "“Keep the feed clear. I’ll send the capsules.”";
+  spawn();
+  render();
+}
+
+function finish(won) {
+  phase = won ? "won" : "lost";
+  effect(won ? [64, 67, 72] : [55, 49, 43]);
+  byId("pause").disabled = true;
+  byId("signal").textContent = won ? "Secured" : "Feed blocked";
+  byId("queen-line").textContent = won
+    ? "“Chamber clean. Bring me the next batch.”"
+    : "“The feed is jammed. Vent the chamber.”";
+  setOverlay(
+    won ? "Chamber secured" : "Containment failed",
+    won ? "Every spore cleared." : "Capsules reached the feed port.",
+    won && level < 20 ? "Next level" : "New mission"
+  );
+}
+
+function spawn() {
+  capsule = { x: 3, y: 0, rotation: 0, colors: next };
+  next = randomCapsule();
+  chain = 0;
+  if (!fits(capsule)) {
+    capsule = null;
+    finish(false);
+    return;
+  }
+  phase = "fall";
+  remaining = speeds[speed];
+  byId("signal").textContent = "Live";
+}
+
+function findMatches() {
+  const found = new Set();
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      const piece = board[y][x];
+      if (!piece) continue;
+      for (const [dx, dy] of [directions[0], directions[1]]) {
+        if (board[y - dy]?.[x - dx]?.color === piece.color) continue;
+        let length = 1;
+        while (board[y + dy * length]?.[x + dx * length]?.color === piece.color) length++;
+        if (length < 4) continue;
+        for (let i = 0; i < length; i++) found.add((y + i * dy) * COLS + x + i * dx);
+      }
+    }
+  }
+  return found;
+}
+
+function resolve() {
+  matches = findMatches();
+  if (!matches.size) {
+    if (spores === 0) finish(true);
+    else spawn();
+    return;
+  }
+  chain++;
+  effect([65, 69, 72].map(note => note + Math.min(chain - 1, 8)));
+  phase = "flash";
+  remaining = 170;
+  byId("signal").textContent = chain > 1 ? `Chain ×${chain}` : "Match";
+}
+
+function clearMatches() {
+  let clearedSpores = 0;
+  for (const index of matches) {
+    const y = Math.floor(index / COLS);
+    const x = index % COLS;
+    const piece = board[y][x];
+    if (piece.spore) clearedSpores++;
+    if (piece.link !== undefined) {
+      const [dx, dy] = directions[piece.link];
+      const partner = board[y + dy][x + dx];
+      delete partner.link;
+    }
+    board[y][x] = null;
+  }
+  spores -= clearedSpores;
+  score += clearedSpores * 100 * (speed + 1) * chain;
+  matches.clear();
+  phase = "settle";
+  remaining = 75;
+}
+
+function gravityStep() {
+  let moved = false;
+  for (let y = ROWS - 2; y >= 0; y--) {
+    for (let x = 0; x < COLS; x++) {
+      const piece = board[y][x];
+      if (!piece || piece.spore || piece.link === 1 || piece.link === 2 || board[y + 1][x]) continue;
+
+      // Visit horizontal pairs from the left and vertical pairs from the bottom.
+      if (piece.link === 0 && board[y + 1][x + 1]) continue;
+      board[y + 1][x] = piece;
+      board[y][x] = null;
+      if (piece.link === 0) {
+        board[y + 1][x + 1] = board[y][x + 1];
+        board[y][x + 1] = null;
+      }
+      if (piece.link === 3) {
+        board[y][x] = board[y - 1][x];
+        board[y - 1][x] = null;
+      }
+      moved = true;
+    }
+  }
+  return moved;
+}
+
+function drop() {
+  const candidate = { ...capsule, y: capsule.y + 1 };
+  if (fits(candidate)) {
+    capsule = candidate;
+    remaining = speeds[speed];
+    return;
+  }
+  positions(capsule).forEach(([x, y], i) => {
+    board[y][x] = { color: capsule.colors[i], link: (capsule.rotation + i * 2) % 4 };
+  });
+  capsule = null;
+  effect([47]);
+  resolve();
+}
+
+function command(name) {
+  if (menuOpen || paused || phase !== "fall") return;
+  if (name === "down") {
+    drop();
+  } else if (name === "left" || name === "right") {
+    const candidate = { ...capsule, x: capsule.x + (name === "left" ? -1 : 1) };
+    if (fits(candidate)) capsule = candidate;
+  } else {
+    const rotation = (capsule.rotation + (name === "cw" ? 1 : 3)) % 4;
+    for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, -1], [0, 1]]) {
+      const candidate = { ...capsule, rotation, x: capsule.x + dx, y: capsule.y + dy };
+      if (!fits(candidate)) continue;
+      capsule = candidate;
+      effect([61]);
+      break;
+    }
+  }
+  render();
+}
+
+function togglePause() {
+  if (phase === "ready" || phase === "won" || phase === "lost") return;
+  paused = !paused;
+  byId("pause").textContent = paused ? "Resume" : "Pause";
+  byId("signal").textContent = paused ? "Paused" : "Live";
+  if (paused) setOverlay("Mission paused", "The chamber is on standby.", "Resume");
+  else byId("overlay").hidden = true;
+}
+
+byId("play").addEventListener("click", () => {
+  unlockAudio();
+  start(true);
+  showMenu(false);
+});
+byId("resume-game").addEventListener("click", () => {
+  unlockAudio();
+  showMenu(false);
+});
+byId("main-menu").addEventListener("click", () => showMenu(true));
+byId("action").addEventListener("click", () => {
+  if (paused) togglePause();
+  else if (phase === "won" && level < 20) {
+    level++;
+    start(false);
+  } else start(true);
+});
+byId("pause").addEventListener("click", togglePause);
+byId("restart").addEventListener("click", () => start(true));
+document.querySelectorAll("[data-command]").forEach(button => {
+  button.addEventListener("click", () => command(button.dataset.command));
+});
+const keys = {
+  ArrowLeft: "left", ArrowRight: "right", ArrowDown: "down",
+  z: "ccw", x: "cw", ArrowUp: "cw"
+};
+window.addEventListener("keydown", event => {
+  if (menuOpen || event.target instanceof HTMLSelectElement || event.ctrlKey || event.metaKey || event.altKey) return;
+  const key = event.key.toLowerCase();
+  if ((key === "p" || key === "escape") && !event.repeat) {
+    togglePause();
+    return;
+  }
+  const action = keys[event.key] || keys[key];
+  if (!action || paused || phase !== "fall") return;
+  event.preventDefault();
+  if (!event.repeat || action === "down" || action === "left" || action === "right") command(action);
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !menuOpen && !paused) togglePause();
+});
+
+const queenCanvas = byId("queen");
+const queenContext = queenCanvas.getContext("2d");
+const stillPortrait = matchMedia("(prefers-reduced-motion: reduce)");
+let lastFrame = performance.now();
+function frame(now) {
+  const elapsed = Math.min(now - lastFrame, 50);
+  lastFrame = now;
+  queenContext.clearRect(0, 0, queenCanvas.width, queenCanvas.height);
+  queenContext.save();
+  queenContext.translate(queenCanvas.width / 2, queenCanvas.height / 2);
+  drawQueen(queenContext, stillPortrait.matches ? 0 : now / 1000, 97);
+  queenContext.restore();
+
+  if (!document.hidden && (menuOpen || !paused)) updateMusic();
+
+  if (!menuOpen && !paused && ["fall", "flash", "settle"].includes(phase)) {
+    remaining -= elapsed;
+    if (remaining <= 0) {
+      if (phase === "fall") drop();
+      else if (phase === "flash") clearMatches();
+      else if (gravityStep()) remaining = 75;
+      else resolve();
+      render();
+    }
+  }
+  requestAnimationFrame(frame);
+}
+render();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
