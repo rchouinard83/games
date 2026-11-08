@@ -42,6 +42,7 @@
   .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
   .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   .big.warn { background: #4a1d2a; border-color: #7a2f45; color: #ffb3c2; }
+  a.big { text-decoration: none; }
   .big:disabled { opacity: 0.45; }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
   .row { display: flex; gap: 8px; }
@@ -1116,6 +1117,7 @@ function stageIcon(cvs, i) {
   if (!unlocked(i)) { c.fillStyle = "rgba(5,8,18,0.65)"; c.fillRect(0, 0, n, n); c.fillStyle = "#c9d3f0"; c.font = "900 40px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 14); }
 }
 
+const arcadeLink = '<a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
 function titleMenu() {
   const run = SAVE.run && STAGES[SAVE.run.stage] ? SAVE.run : null;
   openMenu(`<canvas id="titleArt"></canvas>
@@ -1124,7 +1126,8 @@ function titleMenu() {
     ${run ? `<button class="big main" data-act="cont">Continue<small>${STAGES[run.stage].name} · ${DIFFS[run.diff].name} · Wave ${run.wave}</small></button>` : ""}
     <button class="big ${run ? "" : "main"}" data-act="stages">Play</button>
     <div class="row"><button class="big" data-act="howto" data-arg="title">How to play</button><button class="big" data-act="guide" data-arg="title">Ship Guide</button></div>
-    <button class="big" data-act="settings">Settings</button>`, titleAnim);
+    <button class="big" data-act="settings">Settings</button>
+    ${arcadeLink}`, titleAnim);
 }
 function titleAnim(t) { // ships circling the carrier above the logo
   const cvs = $("titleArt"); if (!cvs) return;
@@ -1150,7 +1153,8 @@ function stagesMenu() {
         <canvas data-stage="${i}"></canvas><span>${done ? '<b class="tag">✓ Secured</b>' : ""}${st.name}
         <small>${unlocked(i) ? `${st.ships.map(k => SHIPS[k].name).join(" · ")}<br>${done ? "All 10 waves cleared" : best ? `Best: wave ${best} of ${WAVES}` : "Not played yet"}` : `Secure ${STAGES[i - 1].name} to unlock`}</small></span></button>`;
     }).join("")}
-    <button class="big" data-act="title">Back</button>`);
+    <button class="big" data-act="title">Back</button>
+    ${arcadeLink}`);
 }
 function briefMenu(i) {
   const st = STAGES[i];
@@ -1223,7 +1227,8 @@ function pauseMenu() {
     <div class="row"><button class="big" data-act="howto" data-arg="pause">How to play</button><button class="big" data-act="guide" data-arg="pause">Ship Guide</button></div>
     <button class="big" data-act="sound2">Sound: ${SAVE.sound ? "On" : "Off"}</button>
     <button class="big" data-act="restartWave">Restart wave ${G.wave}</button>
-    <button class="big" data-act="quit">Save &amp; quit</button>`);
+    <button class="big" data-act="quit">Save &amp; quit</button>
+    ${arcadeLink}`);
 }
 function gameOverMenu() {
   openMenu(`<p class="kicker">${G.ST.name} · ${G.D.name}</p><h2>Out of lives</h2>
@@ -1231,7 +1236,8 @@ function gameOverMenu() {
     <p>Your progress is saved at the start of wave ${G.wave}.</p>
     <button class="big main" data-act="restartWave">Retry wave ${G.wave}</button>
     <button class="big" data-act="stages">Stages</button>
-    <button class="big" data-act="title">Main menu</button>`);
+    <button class="big" data-act="title">Main menu</button>
+    ${arcadeLink}`);
 }
 function stageClearMenu() {
   const next = STAGES[G.stage + 1];
@@ -1241,7 +1247,8 @@ function stageClearMenu() {
     ${next ? `<p><b style="color:var(--good)">${next.name}</b> is unlocked, with three new ships.</p>
       <button class="big main" data-act="brief" data-arg="${G.stage + 1}">Next: ${next.name} ▶</button>`
       : `<p>Every stage is secure. Try a harder difficulty!</p>`}
-    <button class="big" data-act="stages">Stages</button>`);
+    <button class="big" data-act="stages">Stages</button>
+    ${arcadeLink}`);
 }
 
 // ---------- How to play: six short pages with live demos ----------
@@ -1411,7 +1418,7 @@ resize();
 
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now; // never negative: a frame can be stamped just before a menu closed
   if (G && !paused) for (let k = 0; k < fast && !(k && (G.over || G.cleared)); k++) update(dt);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
   if (G && G.talk > 0) G.talk -= dt;
