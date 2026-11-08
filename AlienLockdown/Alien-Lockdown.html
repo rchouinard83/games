@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#060c1c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Alien Lockdown</title>
+<style>
+  :root { --bg: #060c1c; --panel: #0e1a30; --line: #2a3e66; --ink: #e6f0ff; --dim: #93a6c9; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 6px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
+  #hud { width: 100%; max-width: 480px; display: flex; gap: 6px; align-items: stretch; }
+  .chip { background: rgba(14,26,48,0.9); border: 1px solid var(--line); border-radius: 12px; padding: 4px 9px 5px; font-weight: 800; font-size: 15px; line-height: 1.15; white-space: nowrap; }
+  .chip small { display: block; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  #hLives { color: var(--bad); letter-spacing: -1px; }
+  .spacer { flex: 1; }
+  .hudBtn { background: rgba(14,26,48,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; }
+  #orientBtn { font-size: 20px; min-width: 44px; color: var(--accent); }
+  #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+  #cv { display: block; border-radius: 14px; touch-action: none; }
+  #bubble { position: fixed; left: 50%; top: calc(60px + env(safe-area-inset-top)); transform: translate(-50%, -8px); max-width: min(92vw, 380px); background: #f0f8ff; color: #0c1a30;
+    border-radius: 14px; padding: 8px 12px; font-size: 15px; font-weight: 700; line-height: 1.3; box-shadow: 0 4px 16px rgba(0,0,0,0.45); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; z-index: 4; text-align: center; }
+  #bubble.on { opacity: 1; transform: translate(-50%, 0); }
+  #bubble b { color: #1a6ac4; }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(3,6,14,0.8); }
+  #overlay.hidden { display: none; }
+  #box { width: 100%; max-width: 420px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box h1 { font-size: 40px; line-height: 1.05; background: linear-gradient(90deg, #5dff9b, #4fd1ff 60%, #ff8bd0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #box h2 { font-size: 26px; margin-bottom: 4px; }
+  #box p { color: #d6e2f5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
+  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  #titleArt { width: 100%; height: 160px; display: block; border-radius: 12px; }
+  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17284a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  .big:disabled { opacity: 0.4; }
+  .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
+  .row { display: flex; gap: 8px; } .row .big { flex: 1; }
+  .stageCard { display: flex; align-items: center; gap: 12px; text-align: left; }
+  .stageCard canvas { width: 56px; height: 56px; flex: none; border-radius: 12px; }
+  .stageCard span { flex: 1; min-width: 0; }
+  .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0; }
+  .levels .big { margin: 0; padding: 10px 0 8px; font-size: 20px; }
+  .levels .big small { font-size: 11px; color: var(--gold); }
+  .levels .big small i, .bigStars i { color: #2a3e66; font-style: normal; }
+  .stars { color: var(--gold); }
+  .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; }
+  .score { font-size: 15px; color: var(--dim); font-weight: 700; }
+  #howCv { width: 100%; height: 200px; display: block; border-radius: 12px; background: #0a1428; border: 1px solid #2a3e66; margin: 6px 0 4px; }
+  .how { list-style: none; margin: 10px 0 8px; display: grid; gap: 6px; text-align: left; }
+  .how li { font-size: 18px; font-weight: 650; line-height: 1.3; padding: 7px 12px; background: #0a1428; border: 1px solid #2a3e66; border-radius: 10px; }
+  .how b { font-weight: 900; color: #fff; } .how b.c { color: var(--accent); } .how b.y { color: var(--gold); } .how b.g { color: var(--good); } .how b.r { color: var(--bad); }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3e66; }
+  .dots i.on { background: var(--accent); }
+  .cast { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 8px 0; }
+  .cast div { background: #0a1428; border: 1px solid #2a3e66; border-radius: 10px; padding: 4px 2px 6px; font-size: 12px; font-weight: 700; color: var(--dim); }
+  .cast div b { display: block; color: #fff; font-size: 14px; }
+  .cast canvas { width: 100%; height: 54px; display: block; }
+  .diffBtn { background: #0a1428; border: 2px solid #2a3e66; border-radius: 12px; padding: 4px 2px 7px; color: var(--dim); font: inherit; font-size: 12px; font-weight: 700; }
+  .diffBtn b { display: block; color: #fff; font-size: 15px; }
+  .diffBtn.on { border-color: var(--good); background: #10301f; }
+  .diffBtn.on b { color: var(--good); }
+  .diffBtn canvas { width: 100%; height: 54px; display: block; }
+  .castLine { font-size: 13px !important; color: var(--dim) !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip"><small id="hStage">Oort Gate</small><span id="hLevel">Level 1</span></div>
+    <div class="chip"><small>Shields</small><span id="hLives">♥♥♥</span></div>
+    <div class="chip"><small>Fenced</small><span id="hPct">0%</span></div>
+    <div class="spacer"></div>
+    <button class="hudBtn" id="orientBtn" aria-label="Beam direction">↔</button>
+    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
+    <button class="hudBtn" id="menuBtn">Menu</button>
+  </div>
+  <div id="stage"><canvas id="cv"></canvas></div>
+</div>
+<div id="bubble"></div>
+<div id="overlay"><div id="box"></div></div>
+<script>
+"use strict";
+// ============================================================
+//  ALIEN LOCKDOWN — fence in the bouncing aliens.
+//  Swipe across the arena to fire a force beam. It grows both ways from your finger.
+//  If an alien touches a beam before it reaches a wall, that half breaks and you lose a shield.
+//  Any space with no alien in it locks down. Fence in 75% to clear the level.
+//  The arena is 36 x 60 cells of 10 units (360 x 600), scaled to fit the screen.
+// ============================================================
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d");
+const TAU = Math.PI * 2, PI = Math.PI;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const CELL = 10, COLS = 36, ROWS = 60, LW = COLS * CELL, LH = ROWS * CELL;
+const TARGET = 75;          // percent to fence in to clear a level
+const BEAM_SPEED = 230;     // how fast each half of a beam grows (units per second)
+const FREEZE_SECS = 4;      // how long a freeze crystal stops the aliens
+const HIT_SHRINK = 0.85;    // aliens only break a beam when they really touch it (a little forgiving)
+
+// ============================================================
+//  THE CAST: Stage 1 "First Contact" aliens from Alien Defense (attacker-design.html)
+// ============================================================
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1,
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1,
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15,
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1,
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95,
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85,
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+// How each alien moves. r = size, sp = speed. Goo bounces off at wild angles.
+const TYPES = {
+  blip:   { r: 11, sp: 115, what: "Bounces along" },
+  runner: { r: 9,  sp: 175, what: "Small and fast" },
+  goo:    { r: 10, sp: 125, wild: true, what: "Wild bounces" },
+  jelly:  { r: 13, sp: 80,  what: "Slow drifter" },
+  chonk:  { r: 16, sp: 90,  what: "Big bruiser" },
+  mother: { r: 24, sp: 62,  what: "Huge boss" },
+};
+
+// ============================================================
+//  STAGES: 4 worlds x 8 levels. Each level lists the aliens loose in the arena.
+// ============================================================
+const STAGES = [
+  { name: "The Oort Gate", short: "Oort", color: "#7fb8ff", fill: ["#2b5f86", "#244f72"], sky: ["#0c1a33", "#04080f"],
+    intro: "Aliens bouncing round the ice. Fence them in!",
+    levels: [["blip", "blip"], ["blip", "blip"], ["blip", "blip", "blip"], ["blip", "blip", "blip"],
+      ["blip", "blip", "runner"], ["blip", "blip", "blip", "blip"], ["blip", "blip", "runner", "runner"], ["blip", "blip", "blip", "runner", "runner"]] },
+  { name: "Jupiter Storm", short: "Jupiter", color: "#ffb84d", fill: ["#8a5a2c", "#754a22"], sky: ["#2a160a", "#0c0603"],
+    intro: "Some drift <b>slowly</b>, some zip around <b>fast</b>.",
+    levels: [["jelly", "jelly"], ["jelly", "blip", "blip"], ["runner", "runner", "jelly"], ["jelly", "jelly", "blip", "blip"],
+      ["runner", "runner", "runner"], ["jelly", "jelly", "runner", "runner"], ["blip", "blip", "jelly", "jelly", "runner"], ["runner", "runner", "runner", "jelly", "jelly"]] },
+  { name: "Mars, the Red Wall", short: "Mars", color: "#ff8f5d", fill: ["#8a3a26", "#74301f"], sky: ["#2a0e0a", "#0c0403"],
+    intro: "Some bounce off at <b>wild angles</b>. Some are <b>big</b>.",
+    levels: [["goo", "goo"], ["goo", "blip", "blip"], ["chonk", "goo"], ["goo", "goo", "goo"],
+      ["chonk", "chonk", "blip"], ["goo", "goo", "runner", "runner"], ["chonk", "goo", "goo", "jelly"], ["chonk", "chonk", "goo", "goo", "runner"]] },
+  { name: "Earth, Final Stand", short: "Earth", color: "#5dff9b", fill: ["#2f7a4a", "#26663d"], sky: ["#0a2018", "#030a07"],
+    intro: "Everyone's here, and <b>Mother Blob</b> has landed.",
+    levels: [["mother"], ["mother", "blip", "blip"], ["chonk", "runner", "goo", "jelly"], ["mother", "goo", "goo"],
+      ["blip", "runner", "goo", "jelly", "chonk"], ["mother", "runner", "runner", "jelly"], ["mother", "chonk", "goo", "goo", "blip"], ["mother", "mother", "runner", "goo", "jelly", "blip"]] },
+];
+
+// ---------- save: stars per level ----------
+const KEY = "alienLockdown.v1";
+// Difficulty: picked with an alien tile. mul = how fast every alien moves.
+const DIFFS = [
+  { name: "Easy", alien: "jelly", mul: 1.0, desc: "Nice and slow" },
+  { name: "Medium", alien: "blip", mul: 1.3, desc: "Quicker" },
+  { name: "Hard", alien: "runner", mul: 1.65, desc: "Really fast" },
+];
+const picked = () => DIFFS[SAVE.diff].alien;
+// in the arena every alien looks like the one you picked; only the Mother Blob boss keeps her own look
+const looks = id => id === "mother" ? "mother" : picked();
+// stars are kept separately for each difficulty: bests[d][stage][level]
+const emptyBest = () => STAGES.map(s => s.levels.map(() => 0));
+const readBest = b => STAGES.map((st, i) => st.levels.map((_, l) => clamp(+(((b || [])[i] || [])[l]) || 0, 0, 3)));
+let SAVE = { bests: DIFFS.map(emptyBest), seenHelp: false, diff: 1 };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) {
+  if (Array.isArray(s.bests)) SAVE.bests = DIFFS.map((_, d) => readBest(s.bests[d]));
+  else if (Array.isArray(s.best)) SAVE.bests[0] = readBest(s.best); // older saves had one set of stars: they were earned at Easy speed
+  SAVE.seenHelp = !!s.seenHelp; SAVE.diff = s.diff === undefined ? 1 : clamp(+s.diff || 0, 0, 2); } } catch (e) {}
+const best = () => SAVE.bests[SAVE.diff]; // the stars for the difficulty you've picked
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
+const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every level for testing
+const stageOpen = s => TEST_ALL || s === 0 || best()[s - 1].every(n => n > 0);
+const levelOpen = (s, l) => TEST_ALL || (l === 0 ? stageOpen(s) : best()[s][l - 1] > 0);
+const stageStars = s => best()[s].reduce((a, n) => a + n, 0);
+
+// ============================================================
+//  THE ARENA: grid cells are 0 empty, 1 wall (edge or finished beam), 2 locked down
+// ============================================================
+const grid = new Uint8Array(COLS * ROWS);
+const idx = (x, y) => y * COLS + x;
+const solid = (x, y) => x < 0 || y < 0 || x >= COLS || y >= ROWS || grid[idx(x, y)] !== 0;
+const INTERIOR = (COLS - 2) * (ROWS - 2);
+function circleRect(cx, cy, r, x0, y0, x1, y1) { const nx = clamp(cx, x0, x1), ny = clamp(cy, y0, y1); return (cx - nx) ** 2 + (cy - ny) ** 2 < r * r; }
+function hitsGrid(x, y, r) {
+  const a = Math.floor((x - r) / CELL), b = Math.floor((x + r) / CELL), c = Math.floor((y - r) / CELL), d = Math.floor((y + r) / CELL);
+  for (let yy = c; yy <= d; yy++) for (let xx = a; xx <= b; xx++)
+    if (solid(xx, yy) && circleRect(x, y, r, xx * CELL, yy * CELL, xx * CELL + CELL, yy * CELL + CELL)) return true;
+  return false;
+}
+
+let si = 0, li = 0, S = STAGES[0], aliens = [], beam = null, pickups = [], fx = [], flash = [];
+let lives = 3, lost = 0, pct = 0, state = "play", endT = 0, freezeT = 0, shakeT = 0, t = 0, orient = "h", resultShown = false, layerDirty = true;
+
+function loadLevel(s, l) {
+  si = s; li = l; S = STAGES[s]; const list = S.levels[l];
+  grid.fill(0);
+  for (let x = 0; x < COLS; x++) { grid[idx(x, 0)] = 1; grid[idx(x, ROWS - 1)] = 1; }
+  for (let y = 0; y < ROWS; y++) { grid[idx(0, y)] = 1; grid[idx(COLS - 1, y)] = 1; }
+  aliens = []; const mul = (1 + l * 0.03 + s * 0.02) * DIFFS[SAVE.diff].mul; // a little faster each level, and faster on harder settings
+  for (const id of list) {
+    const T = TYPES[id]; let x, y, tries = 0;
+    do { x = CELL + T.r + 4 + Math.random() * (LW - 2 * CELL - 2 * T.r - 8); y = CELL + T.r + 4 + Math.random() * (LH - 2 * CELL - 2 * T.r - 8); tries++; }
+    while (tries < 60 && aliens.some(a => Math.hypot(a.x - x, a.y - y) < a.r + T.r + 40));
+    const ang = T.wild ? PI / 4 + Math.floor(Math.random() * 4) * PI / 2 + (Math.random() - 0.5) * 0.6 : PI / 4 + Math.floor(Math.random() * 4) * PI / 2;
+    const sp = T.sp * mul;
+    aliens.push({ id, x, y, r: T.r, sp, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, t: Math.random() * 10, squash: 0, wild: !!T.wild });
+  }
+  // power-ups: fence one in (or run a beam over it) to grab it
+  pickups = []; const np = s === 0 && l < 2 ? 0 : l >= 5 ? 2 : 1;
+  for (let k = 0; k < np; k++) pickups.push({ x: 50 + Math.random() * (LW - 100), y: 60 + Math.random() * (LH - 120), type: k % 2 === 0 ? (Math.random() < 0.5 ? "freeze" : "heart") : "freeze", t: Math.random() * 5 });
+  beam = null; flash = []; fx = []; lives = Math.max(3, list.length + 1); lost = 0; freezeT = 0; shakeT = 0;
+  state = "play"; endT = 0; resultShown = false; layerDirty = true; drag = null;
+  calcPct(); hud(true);
+  say(`<b>${S.short} ${l + 1}</b> · ${list.length} ${list.length === 1 ? "alien" : "aliens"}. Fence in <b>${TARGET}%</b>!`, 2.6);
+}
+
+// ---------- aliens ----------
+function bounce(a, axis) {
+  a.squash = 0.22;
+  if (!a.wild) return;
+  // Goo: bounce off at a wild angle, but never too flat (or it would crawl along a wall)
+  let ang = Math.atan2(a.vy, a.vx) + (Math.random() - 0.5) * 0.9, vx = Math.cos(ang) * a.sp, vy = Math.sin(ang) * a.sp;
+  if (axis === "x" && Math.sign(vx) !== Math.sign(a.vx)) vx = -vx;
+  if (axis === "y" && Math.sign(vy) !== Math.sign(a.vy)) vy = -vy;
+  const min = a.sp * 0.35;
+  if (Math.abs(vx) < min) vx = Math.sign(vx || 1) * min; if (Math.abs(vy) < min) vy = Math.sign(vy || 1) * min;
+  const k = a.sp / Math.hypot(vx, vy); a.vx = vx * k; a.vy = vy * k;
+}
+function unstick(a) { // safety: if an alien ever ends up inside a wall, move it to the nearest free spot
+  for (let d = 2; d <= 40; d += 2) for (let k = 0; k < 16; k++) {
+    const x = a.x + Math.cos(k / 16 * TAU) * d, y = a.y + Math.sin(k / 16 * TAU) * d;
+    if (!hitsGrid(x, y, a.r)) { a.x = x; a.y = y; return; } }
+}
+function moveAliens(dt) {
+  for (const a of aliens) { a.t += dt; a.squash = Math.max(0, a.squash - dt); }
+  if (freezeT > 0) return;
+  for (const a of aliens) {
+    if (hitsGrid(a.x, a.y, a.r)) unstick(a);
+    a.x += a.vx * dt; if (hitsGrid(a.x, a.y, a.r)) { a.x -= a.vx * dt; a.vx = -a.vx; bounce(a, "x"); }
+    a.y += a.vy * dt; if (hitsGrid(a.x, a.y, a.r)) { a.y -= a.vy * dt; a.vy = -a.vy; bounce(a, "y"); }
+  }
+  // aliens bump off each other (bigger ones push harder), then keep their own speed
+  for (let i = 0; i < aliens.length; i++) for (let j = i + 1; j < aliens.length; j++) {
+    const a = aliens[i], b = aliens[j], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = a.r + b.r;
+    if (d >= m || d < 0.01) continue;
+    const nx = dx / d, ny = dy / d, rv = (b.vx - a.vx) * nx + (b.vy - a.vy) * ny;
+    if (rv < 0) {
+      const ma = a.r * a.r, mb = b.r * b.r;
+      a.vx += 2 * mb / (ma + mb) * rv * nx; a.vy += 2 * mb / (ma + mb) * rv * ny;
+      b.vx -= 2 * ma / (ma + mb) * rv * nx; b.vy -= 2 * ma / (ma + mb) * rv * ny;
+      for (const q of [a, b]) { const s = Math.hypot(q.vx, q.vy) || 1; q.vx *= q.sp / s; q.vy *= q.sp / s; q.squash = 0.22; }
+    }
+    const push = (m - d) / 2 + 0.1;
+    if (!hitsGrid(a.x - nx * push, a.y - ny * push, a.r)) { a.x -= nx * push; a.y -= ny * push; }
+    if (!hitsGrid(b.x + nx * push, b.y + ny * push, b.r)) { b.x += nx * push; b.y += ny * push; }
+  }
+}
+
+// ---------- beams: two halves grow out from where you touched ----------
+function startBeam(wx, wy, o) {
+  if (beam || state !== "play" || paused) return;
+  const cx = Math.floor(wx / CELL), cy = Math.floor(wy / CELL);
+  if (solid(cx, cy)) { say("Start the beam in <b>open space</b>.", 1.4); return; }
+  const c0 = o === "h" ? cx * CELL + CELL / 2 : cy * CELL + CELL / 2;
+  beam = { o, cx, cy, c0, halves: [{ dir: -1, len: CELL / 2, state: "grow", tc: 0 }, { dir: 1, len: CELL / 2, state: "grow", tc: 0 }] };
+  tone(520, 0.12, "triangle", 0.06, 1.5);
+}
+function halfRect(h) {
+  const b = beam;
+  if (b.o === "h") { const y0 = b.cy * CELL; return h.dir < 0 ? [b.c0 - h.len, y0, b.c0, y0 + CELL] : [b.c0, y0, b.c0 + h.len, y0 + CELL]; }
+  const x0 = b.cx * CELL; return h.dir < 0 ? [x0, b.c0 - h.len, x0 + CELL, b.c0] : [x0, b.c0, x0 + CELL, b.c0 + h.len];
+}
+function stepBeam(dt) {
+  if (!beam) return;
+  const b = beam;
+  for (const h of b.halves) {
+    if (h.state !== "grow") continue;
+    h.len += BEAM_SPEED * dt;
+    const tip = b.c0 + h.dir * h.len, tc = h.dir < 0 ? Math.ceil(tip / CELL) - 1 : Math.floor(tip / CELL); // the cell the tip has reached
+    const reached = b.o === "h" ? solid(tc, b.cy) : solid(b.cx, tc);
+    if (reached) { h.len = h.dir < 0 ? b.c0 - (tc + 1) * CELL : tc * CELL - b.c0; h.tc = tc; }
+    const [x0, y0, x1, y1] = halfRect(h);
+    if (aliens.some(a => circleRect(a.x, a.y, a.r * HIT_SHRINK, x0, y0, x1, y1))) { h.state = "broken"; breakHalf(h, [x0, y0, x1, y1]); if (state !== "play") return; continue; }
+    if (reached) { h.state = "done"; solidify(h); if (state !== "play") return; }
+  }
+  if (beam && beam.halves.every(h => h.state !== "grow")) beam = null;
+}
+function solidify(h) {
+  const b = beam, c = b.o === "h" ? b.cx : b.cy;
+  const [from, to] = h.dir < 0 ? [h.tc + 1, c] : [c, h.tc - 1];
+  for (let k = from; k <= to; k++) { const i = b.o === "h" ? idx(k, b.cy) : idx(b.cx, k); grid[i] = 1; }
+  tone(330, 0.15, "square", 0.04); layerDirty = true;
+  capture();
+}
+function breakHalf(h, r) {
+  lives--; lost++; shakeT = 0.35;
+  for (let k = 0; k < 16; k++) { const x = r[0] + Math.random() * (r[2] - r[0]), y = r[1] + Math.random() * (r[3] - r[1]), a = Math.random() * TAU, v = 40 + Math.random() * 140;
+    fx.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.7, col: h.dir < 0 ? "#4fd1ff" : "#ff8bd0" }); }
+  tone(150, 0.4, "sawtooth", 0.07, 0.4);
+  if (lives <= 0) { state = "lost"; endT = 0; beam = null; say("<b>Shields down!</b>", 2); }
+  else say(`Beam broken! <b>−1 shield</b>`, 1.6);
+  hud(true);
+}
+// lock down every open space with no alien in it
+function capture() {
+  const seen = new Uint8Array(COLS * ROWS), q = [];
+  for (const a of aliens) { // seed from every empty cell an alien overlaps
+    const x0 = Math.floor((a.x - a.r) / CELL), x1 = Math.floor((a.x + a.r) / CELL), y0 = Math.floor((a.y - a.r) / CELL), y1 = Math.floor((a.y + a.r) / CELL);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!solid(x, y) && circleRect(a.x, a.y, a.r, x * CELL, y * CELL, x * CELL + CELL, y * CELL + CELL)) { const i = idx(x, y); if (!seen[i]) { seen[i] = 1; q.push(i); } } }
+  while (q.length) { const i = q.pop(), x = i % COLS, y = (i - x) / COLS;
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) if (!solid(nx, ny)) { const j = idx(nx, ny); if (!seen[j]) { seen[j] = 1; q.push(j); } } }
+  let n = 0;
+  for (let i = 0; i < grid.length; i++) if (!grid[i] && !seen[i]) { grid[i] = 2; n++; flash.push({ i, t: 0 }); }
+  const before = pct; calcPct();
+  for (let k = pickups.length - 1; k >= 0; k--) { const p = pickups[k];
+    if (solid(Math.floor(p.x / CELL), Math.floor(p.y / CELL))) { pickups.splice(k, 1); grab(p); } }
+  if (n) { layerDirty = true; const gain = Math.round(pct - before); tone(440, 0.12, "triangle", 0.07); tone(660, 0.18, "triangle", 0.07, 0, 0.08);
+    if (gain >= 1) say(`Locked down <b>+${gain}%</b>`, 1.2); }
+  if (pct >= TARGET && state === "play") { state = "won"; endT = 0; beam = null; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, "triangle", 0.08, 0, i * 0.1)); say("<b>Lockdown!</b>", 2); }
+  hud(true);
+}
+function grab(p) {
+  for (let k = 0; k < 20; k++) { const a = Math.random() * TAU, v = 60 + Math.random() * 160; fx.push({ x: p.x, y: p.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.8, col: p.type === "heart" ? "#ff5d7a" : "#bfe9ff" }); }
+  if (p.type === "heart") { lives++; say("<b>+1 shield!</b>", 1.6); tone(880, 0.25, "sine", 0.08, 1.3); }
+  else { freezeT = FREEZE_SECS; say("<b>Freeze!</b> The aliens are stuck for a moment.", 1.8); tone(1200, 0.4, "sine", 0.06, 0.5); }
+}
+function calcPct() { let n = 0; for (let y = 1; y < ROWS - 1; y++) for (let x = 1; x < COLS - 1; x++) if (grid[idx(x, y)]) n++; pct = n / INTERIOR * 100; }
+
+let lastHud = "";
+function hud(force) {
+  const s = `${si}|${li}|${lives}|${Math.floor(pct)}|${orient}`; if (!force && s === lastHud) return; lastHud = s;
+  $("hStage").textContent = S.short; $("hLevel").textContent = `Level ${li + 1}`;
+  $("hLives").textContent = lives > 6 ? `♥×${lives}` : "♥".repeat(Math.max(0, lives)) || "–";
+  $("hPct").textContent = `${Math.floor(pct)}/${TARGET}%`; $("hPct").style.color = pct >= TARGET ? "var(--good)" : "";
+  $("orientBtn").textContent = orient === "h" ? "↔" : "↕";
+}
+
+function update(dt) {
+  t += dt; shakeT = Math.max(0, shakeT - dt);
+  for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); }
+  for (let i = flash.length - 1; i >= 0; i--) { flash[i].t += dt; if (flash[i].t > 0.6) flash.splice(i, 1); }
+  for (const p of pickups) p.t += dt;
+  if (paused) return;
+  if (state === "play") {
+    freezeT = Math.max(0, freezeT - dt);
+    for (let s = 0; s < 4; s++) { moveAliens(dt / 4); stepBeam(dt / 4); if (state !== "play") break; }
+    hud();
+  } else {
+    for (const a of aliens) a.t += dt;
+    endT += dt; if (endT > 1.4 && !resultShown) { resultShown = true; resultMenu(); }
+  }
+}
+
+// ---------- input: swipe to fire a beam (swipe direction picks across or down); a tap uses the ↔/↕ button ----------
+let K = 1, drag = null;
+const toWorld = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / K, y: (e.clientY - r.top) / K }; };
+const dragOrient = d => { const dx = d.mx - d.sx, dy = d.my - d.sy; return Math.hypot(dx, dy) < 14 ? orient : Math.abs(dx) > Math.abs(dy) ? "h" : "v"; };
+cv.addEventListener("pointerdown", e => { audio(); if (paused || state !== "play" || beam) return; cv.setPointerCapture(e.pointerId);
+  const p = toWorld(e); drag = { sx: e.clientX, sy: e.clientY, mx: e.clientX, my: e.clientY, wx: p.x, wy: p.y }; });
+cv.addEventListener("pointermove", e => { if (!drag) return; drag.mx = e.clientX; drag.my = e.clientY; });
+cv.addEventListener("pointerup", () => { if (!drag) return; const d = drag; drag = null; const o = dragOrient(d); if (o !== orient) { orient = o; hud(true); } startBeam(d.wx, d.wy, o); });
+cv.addEventListener("pointercancel", () => { drag = null; });
+$("orientBtn").onclick = () => { audio(); orient = orient === "h" ? "v" : "h"; hud(true); tone(400, 0.05, "triangle", 0.05); };
+
+// ============================================================
+//  DRAWING
+// ============================================================
+let layer = document.createElement("canvas");
+function buildLayer() { // the still arena: sky, stars and every wall / locked cell
+  layer.width = cv.width; layer.height = cv.height; const c = layer.getContext("2d"), d = Math.min(3, devicePixelRatio || 1);
+  c.setTransform(K * d, 0, 0, K * d, 0, 0);
+  const g = c.createLinearGradient(0, 0, 0, LH); g.addColorStop(0, S.sky[0]); g.addColorStop(1, S.sky[1]); c.fillStyle = g; c.fillRect(0, 0, LW, LH);
+  let sd = 7 + si * 13; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(255,255,255,${0.15 + R() * 0.5})`; c.fillRect(R() * LW, R() * LH, 1.5, 1.5); }
+  c.strokeStyle = "rgba(255,255,255,0.04)"; c.lineWidth = 1; c.beginPath(); // faint arena grid
+  for (let x = 0; x <= COLS; x += 3) { c.moveTo(x * CELL, 0); c.lineTo(x * CELL, LH); } for (let y = 0; y <= ROWS; y += 3) { c.moveTo(0, y * CELL); c.lineTo(LW, y * CELL); } c.stroke();
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { const v = grid[idx(x, y)]; if (!v) continue;
+    const X = x * CELL, Y = y * CELL;
+    if (v === 2) { c.fillStyle = ((x >> 2) + (y >> 2)) % 2 ? S.fill[0] : S.fill[1]; c.fillRect(X, Y, CELL, CELL);
+      c.fillStyle = "rgba(255,255,255,0.05)"; if ((x + y) % 4 === 0) c.fillRect(X + 4, Y + 4, 2, 2); }
+    else { c.fillStyle = CHARS.shade(S.color, -0.35); c.fillRect(X, Y, CELL, CELL); }
+    c.fillStyle = S.color; // bright edge wherever this cell faces open space
+    if (y > 0 && !grid[idx(x, y - 1)]) c.fillRect(X, Y, CELL, 2);
+    if (y < ROWS - 1 && !grid[idx(x, y + 1)]) c.fillRect(X, Y + CELL - 2, CELL, 2);
+    if (x > 0 && !grid[idx(x - 1, y)]) c.fillRect(X, Y, 2, CELL);
+    if (x < COLS - 1 && !grid[idx(x + 1, y)]) c.fillRect(X + CELL - 2, Y, 2, CELL);
+  }
+  layerDirty = false;
+}
+function beamLine(o, cx, cy) { // where a beam started here would run: the open stretch through this cell
+  let a = o === "h" ? cx : cy, b = a;
+  if (o === "h") { while (!solid(a - 1, cy)) a--; while (!solid(b + 1, cy)) b++; } else { while (!solid(cx, a - 1)) a--; while (!solid(cx, b + 1)) b++; }
+  return [a, b];
+}
+function drawPickup(c, p) {
+  const y = p.y + Math.sin(p.t * 3) * 3, gl = 0.35 + 0.2 * Math.sin(p.t * 5);
+  c.fillStyle = p.type === "heart" ? `rgba(255,93,122,${gl})` : `rgba(160,220,255,${gl})`; c.beginPath(); c.arc(p.x, y, 14, 0, TAU); c.fill();
+  if (p.type === "heart") { c.fillStyle = "#ff5d7a"; c.beginPath(); c.moveTo(p.x, y + 7); c.bezierCurveTo(p.x - 13, y - 2, p.x - 6, y - 12, p.x, y - 4); c.bezierCurveTo(p.x + 6, y - 12, p.x + 13, y - 2, p.x, y + 7); c.fill(); }
+  else { c.strokeStyle = "#e6f6ff"; c.lineWidth = 2.2; c.lineCap = "round"; c.beginPath();
+    for (let k = 0; k < 3; k++) { const a = p.t * 0.8 + k * PI / 3; c.moveTo(p.x - Math.cos(a) * 9, y - Math.sin(a) * 9); c.lineTo(p.x + Math.cos(a) * 9, y + Math.sin(a) * 9); } c.stroke(); }
+}
+function drawAlien(c, a, tt) {
+  const sq = a.squash * 1.2, fr = freezeT > 0;
+  c.save(); c.translate(a.x, a.y); c.scale(1 + sq * 0.3, 1 - sq * 0.3);
+  CHARS.draw(c, looks(a.id), 0, a.r * 0.1, a.r * 0.95, fr ? a.t * 0.1 : a.t, state === "won" ? 0.5 : 0);
+  c.restore();
+  if (fr) { c.fillStyle = "rgba(170,225,255,0.35)"; c.strokeStyle = "rgba(220,245,255,0.8)"; c.lineWidth = 1.5; c.beginPath(); c.arc(a.x, a.y, a.r + 4, 0, TAU); c.fill(); c.stroke(); }
+}
+function draw(tt) {
+  const d = Math.min(3, devicePixelRatio || 1);
+  if (layerDirty || layer.width !== cv.width) buildLayer();
+  const sh = shakeT > 0 ? shakeT / 0.35 * 5 : 0, ox = (Math.random() - 0.5) * sh, oy = (Math.random() - 0.5) * sh;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.drawImage(layer, ox * K * d, oy * K * d);
+  const c = ctx; c.setTransform(K * d, 0, 0, K * d, ox * K * d, oy * K * d);
+  // freshly locked cells flash white
+  for (const f of flash) { const x = f.i % COLS, y = (f.i - x) / COLS; c.fillStyle = `rgba(255,255,255,${0.55 * (1 - f.t / 0.6)})`; c.fillRect(x * CELL, y * CELL, CELL, CELL); }
+  for (const p of pickups) drawPickup(c, p);
+  // where your beam will go while your finger is down
+  if (drag && !beam && state === "play") {
+    const cx = Math.floor(drag.wx / CELL), cy = Math.floor(drag.wy / CELL);
+    if (!solid(cx, cy)) { const o = dragOrient(drag), [a, b] = beamLine(o, cx, cy);
+      c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 2; c.setLineDash([5, 6]); c.beginPath();
+      if (o === "h") { c.moveTo(a * CELL, cy * CELL + CELL / 2); c.lineTo((b + 1) * CELL, cy * CELL + CELL / 2); } else { c.moveTo(cx * CELL + CELL / 2, a * CELL); c.lineTo(cx * CELL + CELL / 2, (b + 1) * CELL); }
+      c.stroke(); c.setLineDash([]);
+      c.fillStyle = "rgba(255,255,255,0.8)"; c.beginPath(); c.arc(cx * CELL + CELL / 2, cy * CELL + CELL / 2, 4, 0, TAU); c.fill(); }
+  }
+  // the growing beam: blue half and pink half
+  if (beam) for (const h of beam.halves) { if (h.state !== "grow") continue;
+    const [x0, y0, x1, y1] = halfRect(h), col = h.dir < 0 ? "79,209,255" : "255,139,208", fl = 0.5 + 0.3 * Math.sin(tt * 30);
+    c.fillStyle = `rgba(${col},0.25)`; c.fillRect(x0 - 3, y0 - 3, x1 - x0 + 6, y1 - y0 + 6);
+    c.fillStyle = `rgb(${col})`; c.fillRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
+    c.fillStyle = `rgba(255,255,255,${fl})`; if (beam.o === "h") c.fillRect(x0, y0 + 4, x1 - x0, 2); else c.fillRect(x0 + 4, y0, 2, y1 - y0);
+    const tx = beam.o === "h" ? (h.dir < 0 ? x0 : x1) : x0 + CELL / 2, ty = beam.o === "h" ? y0 + CELL / 2 : (h.dir < 0 ? y0 : y1);
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(tx, ty, 4 + Math.random() * 2, 0, TAU); c.fill(); }
+  for (const a of aliens) drawAlien(c, a, tt);
+  for (const p of fx) { c.globalAlpha = Math.max(0, p.life / 0.8); c.fillStyle = p.col; c.fillRect(p.x - 2, p.y - 2, 4, 4); } c.globalAlpha = 1;
+  if (freezeT > 0) { c.fillStyle = `rgba(160,220,255,${0.08 + 0.04 * Math.sin(tt * 6)})`; c.fillRect(0, 0, LW, LH); }
+}
+function resize() {
+  const st = $("stage"), w = st.clientWidth, h = st.clientHeight; K = Math.min(w / LW, h / LH);
+  const cw = Math.floor(LW * K), ch = Math.floor(LH * K), d = Math.min(3, devicePixelRatio || 1);
+  cv.style.width = cw + "px"; cv.style.height = ch + "px"; cv.width = Math.round(cw * d); cv.height = Math.round(ch * d); layerDirty = true;
+}
+addEventListener("resize", resize);
+
+// ---------- speech bubble & sound ----------
+let bubbleT = 0;
+function say(html, secs = 3) { $("bubble").innerHTML = html; $("bubble").classList.add("on"); bubbleT = secs; }
+let AC = null;
+function audio() { if (!AC) try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (AC && AC.state === "suspended") AC.resume(); }
+function tone(f, dur, type = "sine", vol = 0.08, slideTo = 0, delay = 0) { if (!AC) return; const s = AC.currentTime + delay, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, s); if (slideTo) o.frequency.exponentialRampToValueAtTime(f * slideTo, s + dur);
+  g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(vol, s + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); o.connect(g).connect(AC.destination); o.start(s); o.stop(s + dur + 0.05); }
+
+// ============================================================
+//  MENUS
+// ============================================================
+let menuAnim = null, paused = true;
+function openMenu(html, anim = null) { paused = true; drag = null; menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden");
+  for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
+  for (const cvs of $("box").querySelectorAll("canvas[data-stage]")) stageIcon(cvs, +cvs.dataset.stage); }
+function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); last = performance.now(); }
+const starStr = n => "★".repeat(n) + `<i>${"★".repeat(3 - n)}</i>`;
+function fitCanvas(cvs) { const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, devicePixelRatio || 1);
+  if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); } const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); return [c, w, h]; }
+function stageIcon(cvs, s) { // the stage's colours with its headline alien
+  const c = cvs.getContext("2d"), n = 112; cvs.width = cvs.height = n; const st = STAGES[s];
+  const g = c.createLinearGradient(0, 0, 0, n); g.addColorStop(0, st.sky[0]); g.addColorStop(1, st.sky[1]); c.fillStyle = g; c.fillRect(0, 0, n, n);
+  c.fillStyle = st.fill[0]; c.fillRect(0, n * 0.62, n, n * 0.38); c.fillStyle = st.color; c.fillRect(0, n * 0.62, n, 4);
+  CHARS.draw(c, s === 3 ? "mother" : picked(), n / 2, n * 0.45, 26, 1.3);
+  if (!stageOpen(s)) { c.fillStyle = "rgba(3,6,14,0.65)"; c.fillRect(0, 0, n, n); c.font = "900 38px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 13); }
+}
+function titleMenu() {
+  openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Lockdown</h1>
+    <p><b>Swipe</b> to fire force beams and fence in the bouncing aliens. Lock down <b>${TARGET}%</b> of the arena to win.</p>
+    ${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
+      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}
+    ${diffPicker("title")}
+    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, tt => { titleAnim(tt); drawDiffTiles(tt); });
+}
+function titleAnim(tt) { // three aliens bouncing in a box while a beam slices it
+  const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs);
+  c.fillStyle = "#0a1428"; c.fillRect(0, 0, w, h);
+  const T = tt % 4, cut = w * 0.62, grow = clamp((T - 0.6) / 0.9, 0, 1);
+  if (T > 1.5) { c.fillStyle = `rgba(43,95,134,${Math.min(1, (T - 1.5) * 3)})`; c.fillRect(cut, 0, w - cut, h); }
+  c.strokeStyle = "#7fb8ff"; c.lineWidth = 4; c.strokeRect(2, 2, w - 4, h - 4);
+  if (T > 0.6 && T < 1.5) { c.fillStyle = "#4fd1ff"; c.fillRect(cut - 4, h / 2 - grow * h / 2, 8, grow * h / 2); c.fillStyle = "#ff8bd0"; c.fillRect(cut - 4, h / 2, 8, grow * h / 2); }
+  if (T >= 1.5) { c.fillStyle = "#7fb8ff"; c.fillRect(cut - 4, 0, 8, h); }
+  const ids = [picked(), picked(), picked()], tri = v => Math.abs(((v % 2) + 2) % 2 - 1); // bounce back and forth inside the left part
+  ids.forEach((id, k) => { const x = 22 + tri(tt * (0.35 + k * 0.08) + k * 0.4) * (cut - 48), y = 22 + tri(tt * (0.5 + k * 0.07) + k * 0.7) * (h - 44); CHARS.draw(c, id, x, y, 13, tt * 2 + k); });
+  if (T > 1.6) { c.fillStyle = "#ffd25d"; c.font = "800 15px system-ui"; c.textAlign = "center"; c.fillText("Locked!", cut + (w - cut) / 2, h / 2 + 5); }
+}
+function stageMenu(s) {
+  const st = STAGES[s], types = [...new Set(st.levels.flat())];
+  openMenu(`<p class="kicker">Stage ${s + 1} of ${STAGES.length}</p><h2>${st.name}</h2>
+    <p>${st.intro}</p>
+    <p class="castLine">In this stage: ${types.map(id => id === "mother" ? "<b>Mother Blob</b> (huge boss)" : `<b>${TYPES[id].what.toLowerCase()}</b>`).join(" · ")}</p>
+    ${diffPicker(`stage|${s}`)}
+    <p class="score"><span class="stars">${stageStars(s)}/24 ★</span> on ${DIFFS[SAVE.diff].name}${stageOpen(s) ? "" : ` · clear ${STAGES[s - 1].short} on ${DIFFS[SAVE.diff].name} first`}</p>
+    <div class="levels">${st.levels.map((lv, i) => `<button class="big ${levelOpen(s, i) && !best()[s][i] ? "main" : ""}" data-act="play" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStr(best()[s][i])}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`, drawDiffTiles);
+}
+// three alien tiles: tap one to pick Easy, Medium or Hard. back = which menu to redraw afterwards
+function diffPicker(back) {
+  return `<p class="kicker">Difficulty</p><div class="cast">${DIFFS.map((d, i) => `<button class="diffBtn ${i === SAVE.diff ? "on" : ""}" data-act="diff" data-arg="${i}|${back}"><canvas data-alien="${d.alien}"></canvas><b>${d.name}</b>${d.desc}</button>`).join("")}</div>`;
+}
+function drawDiffTiles(tt) {
+  for (const cvs of $("box").querySelectorAll("canvas[data-alien]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const id = cvs.dataset.alien, on = cvs.parentElement.classList.contains("on");
+    CHARS.draw(c, id, w / 2, h * 0.55 - (on ? Math.abs(Math.sin(tt * 5)) * 5 : 0), 16, tt * (on ? 2 : 1) + w); }
+}
+function resultMenu() {
+  if (state === "won") {
+    const st = lost === 0 ? 3 : lost === 1 ? 2 : 1;
+    if (st > best()[si][li]) { best()[si][li] = st; save(); }
+    const next = li + 1 < S.levels.length ? [si, li + 1] : si + 1 < STAGES.length && stageOpen(si + 1) ? [si + 1, 0] : null;
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1} · ${DIFFS[SAVE.diff].name}</p><h2>Lockdown!</h2>
+      <div class="bigStars">${starStr(st)}</div>
+      <p>Fenced in <b>${Math.floor(pct)}%</b>. ${lost === 0 ? "No shields lost: perfect!" : `Shields lost: <b>${lost}</b>. ${st === 2 ? "Lose none for three stars." : "Lose one or none for more stars."}`}</p>
+      <p class="score">${S.short}: <span class="stars">${stageStars(si)}/24 ★</span></p>
+      ${next ? `<button class="big main" data-act="play" data-arg="${next[0]}|${next[1]}">${next[0] !== si ? `Next stage: ${STAGES[next[0]].short} ▶` : `Level ${next[1] + 1} ▶`}</button>`
+        : si + 1 === STAGES.length && li + 1 === S.levels.length ? `<p><b>You've locked down every alien!</b> Go back for any missing stars.</p>` : ""}
+      <button class="big" data-act="play" data-arg="${si}|${li}">Play again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`);
+  } else {
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1} · ${DIFFS[SAVE.diff].name}</p><h2>Shields down!</h2>
+      <p>You fenced in <b>${Math.floor(pct)}%</b> of the ${TARGET}% you need. Fire beams where the aliens <b>aren't</b> heading.</p>
+      <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
+      <button class="big" data-act="stage" data-arg="${si}">All levels</button>`);
+  }
+}
+// How to play: short pages with demos
+const HOWTO = [
+  { title: "Swipe a beam", lines: ["<b>Swipe</b> across the arena to fire a beam", "It grows <b>both ways</b> from your finger", "Or <b>tap</b>: the <b class='c'>↔ / ↕</b> button picks the way"], demo: demoSwipe },
+  { title: "Don't get hit", lines: ["An alien touching an <b>unfinished</b> beam breaks it", "That costs a <b class='r'>♥ shield</b>. No shields = try again", "Finished walls are <b>safe</b>"], demo: demoHit },
+  { title: "Lock it down", lines: ["Any space with <b>no alien</b> in it locks down", `Lock down <b class='g'>${TARGET}%</b> to clear the level`, "Fence in <b class='c'>❄ freeze</b> and <b class='r'>♥ shield</b> to grab them"], demo: demoLock },
+  { title: "Stars", lines: ["<b>No shields lost</b> = <b class='y'>★★★</b>", "<b>One lost</b> = <b class='y'>★★</b> · clear it = <b class='y'>★</b>", "Easy, Medium and Hard each have their <b>own stars</b> and unlocks"], demo: demoStars },
+];
+function helpMenu(back, page = 0) {
+  const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first", done = first ? "start" : back === "game" ? "resume" : "title";
+  openMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>
+    <canvas id="howCv"></canvas><ul class="how">${p.lines.map(l => `<li>${l}</li>`).join("")}</ul>
+    <div class="dots">${HOWTO.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); c.fillStyle = "#0a1428"; c.fillRect(0, 0, w, h); c.strokeStyle = "#7fb8ff"; c.lineWidth = 4; c.strokeRect(2, 2, w - 4, h - 4); p.demo(c, tt, w, h); });
+}
+function finger(c, x, y, down) { c.fillStyle = down ? "rgba(79,209,255,0.4)" : "rgba(255,255,255,0.25)"; c.beginPath(); c.arc(x, y, 16, 0, TAU); c.fill(); c.fillStyle = down ? "#4fd1ff" : "#fff"; c.beginPath(); c.arc(x, y, 7, 0, TAU); c.fill(); }
+function label(c, text, x, y, col) { c.fillStyle = col; c.font = "800 14px system-ui"; c.textAlign = "center"; c.fillText(text, x, y); }
+function halves(c, x, y, w, k, horiz) { // a demo beam growing out from (x, y)
+  if (horiz) { c.fillStyle = "#4fd1ff"; c.fillRect(x - k * w, y - 4, k * w, 8); c.fillStyle = "#ff8bd0"; c.fillRect(x, y - 4, k * w, 8); }
+  else { c.fillStyle = "#4fd1ff"; c.fillRect(x - 4, y - k * w, 8, k * w); c.fillStyle = "#ff8bd0"; c.fillRect(x - 4, y, 8, k * w); }
+}
+function demoSwipe(c, tt, w, h) {
+  const T = tt % 3.4, y = h * 0.5, sx = w * 0.4, sw = clamp((T - 0.3) / 0.5, 0, 1), grow = clamp((T - 0.9) / 1.2, 0, 1);
+  if (T < 0.9) { c.strokeStyle = "rgba(255,255,255,0.5)"; c.setLineDash([5, 6]); c.lineWidth = 2; c.beginPath(); c.moveTo(4, y); c.lineTo(w - 4, y); c.stroke(); c.setLineDash([]); finger(c, sx + sw * 60, y, T > 0.3); label(c, "swipe across...", w / 2, h - 14, "#fff"); }
+  else { halves(c, sx, y, Math.max(sx, w - sx), grow, true); label(c, grow < 1 ? "...it grows both ways" : "wall done!", w / 2, h - 14, grow < 1 ? "#fff" : "#5dff9b"); }
+  CHARS.draw(c, picked(), w * 0.75, h * 0.25 + Math.sin(tt * 2) * 8, 13, tt * 2);
+}
+function demoHit(c, tt, w, h) {
+  const T = tt % 3.4, y = h * 0.5, sx = w * 0.3, grow = clamp(T / 1.6, 0, 1), ax = w * 0.72, ay = h * 0.15 + clamp(T / 1.2, 0, 1) * (y - h * 0.15 - 4);
+  c.fillStyle = "#4fd1ff"; c.fillRect(sx - grow * sx, y - 4, grow * sx, 8);
+  if (T < 1.2) { c.fillStyle = "#ff8bd0"; c.fillRect(sx, y - 4, grow * (w - sx), 8); }
+  else { label(c, "CRACK! −1 ♥", ax, y + 34, "#ff5d7a"); for (let k = 0; k < 6; k++) { c.fillStyle = "#ff8bd0"; c.fillRect(sx + 20 + k * 30 + Math.sin(k * 3 + T) * 6, y - 3 + (T - 1.2) * 30 * (k % 2 ? 1 : -1), 6, 6); } }
+  CHARS.draw(c, picked(), ax, T < 1.2 ? ay : y - 16 - (T - 1.2) * 40, 13, tt * 2);
+}
+function demoLock(c, tt, w, h) {
+  const T = tt % 3.4, cut = w * 0.55, k = clamp((T - 0.4) / 0.6, 0, 1);
+  c.fillStyle = `rgba(43,95,134,${k})`; c.fillRect(cut, 4, w - cut - 4, h - 8);
+  c.fillStyle = "#7fb8ff"; c.fillRect(cut - 4, 0, 8, h);
+  CHARS.draw(c, picked(), 30 + Math.abs(((tt * 0.4) % 2) - 1) * (cut - 60), 30 + Math.abs(((tt * 0.55) % 2) - 1) * (h - 60), 13, tt * 2);
+  if (k < 1) { c.fillStyle = "rgba(255,255,255,0.6)"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("❄", cut + (w - cut) / 2, h * 0.3); }
+  label(c, k < 1 ? "no alien in here..." : "locked down! ❄ grabbed", cut + (w - cut) / 2, h * 0.55, k < 1 ? "#fff" : "#5dff9b");
+  label(c, `${Math.round(30 + k * 45)}%`, cut + (w - cut) / 2, h * 0.75, "#ffd25d");
+}
+function demoStars(c, tt, w, h) {
+  const rows = [["♥♥♥", "★★★"], ["♥♥ ", "★★"], ["♥", "★"]];
+  rows.forEach(([hs, st], i) => { const y = h * (0.28 + i * 0.25); c.font = "800 20px system-ui"; c.textAlign = "left"; c.fillStyle = "#ff5d7a"; c.fillText(hs, w * 0.2, y);
+    c.fillStyle = "#ffd25d"; c.fillText(st, w * 0.58, y); });
+  label(c, "shields left → stars", w / 2, h - 12, "#93a6c9");
+}
+
+const ACT = {
+  title: () => titleMenu(),
+  stage: s => stageMenu(+s),
+  play: a => { const [s, l] = a.split("|").map(Number); loadLevel(s, l); closeMenu(); },
+  start: () => { SAVE.seenHelp = true; save(); loadLevel(0, 0); closeMenu(); },
+  resume: () => closeMenu(),
+  diff: a => { const [d, back, s] = a.split("|"); SAVE.diff = +d; save(); tone(500 + +d * 150, 0.08, "triangle", 0.06);
+    const keep = $("box").scrollTop; if (back === "stage") stageMenu(+s); else titleMenu(); $("box").scrollTop = keep; },
+  help: a => { const [back, page] = a.split("|"); helpMenu(back, +page || 0); },
+};
+$("menuBtn").onclick = () => { audio(); if (state === "play") openMenu(`<p class="kicker">Paused</p><h2>${S.short} · Level ${li + 1}</h2>
+  <p>Fenced <b>${Math.floor(pct)}%</b> of ${TARGET}% · shields <b>${lives}</b></p>
+  <button class="big main" data-act="resume">Resume</button>
+  <button class="big" data-act="play" data-arg="${si}|${li}">Restart level</button>
+  <button class="big" data-act="stage" data-arg="${si}">All levels</button>
+  <button class="big" data-act="title">Main menu</button>`); else titleMenu(); };
+$("helpBtn").onclick = () => { audio(); helpMenu(state === "play" ? "game" : "title", 0); };
+
+// ============================================================
+//  MAIN LOOP: fixed 1/60 s steps
+// ============================================================
+let last = performance.now(), acc = 0;
+function frame(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.1);
+  last = now;
+  acc += dt; let n = 0;
+  while (acc >= 1 / 60 && n < 6) { update(1 / 60); acc -= 1 / 60; n++; }
+  if (n === 6) acc = 0;
+  if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
+  if (menuAnim) menuAnim(now / 1000);
+  draw(now / 1000);
+  requestAnimationFrame(frame);
+}
+resize();
+loadLevel(0, 0); $("bubble").classList.remove("on"); bubbleT = 0;
+if (SAVE.seenHelp) titleMenu(); else helpMenu("first", 0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
