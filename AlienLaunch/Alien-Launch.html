@@ -11,7 +11,7 @@
 <style>
   :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none; touch-action: none;
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   #cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #hud { position: fixed; left: 0; right: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; pointer-events: none; padding: calc(8px + env(safe-area-inset-top)) 8px 0; }
@@ -27,14 +27,16 @@
   #bubble.on { opacity: 1; transform: translate(-50%, 0); }
   #bubble canvas { width: 40px; height: 40px; flex: none; border-radius: 10px; background: #0d1a2c; }
   #bubble b { color: #1b5fd6; }
-  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(4,7,16,0.8); }
+  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); background: rgba(4,7,16,0.8); }
   #overlay.hidden { display: none; }
-  #box { width: 100%; max-width: 400px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  #box { width: 100%; max-width: 400px; min-height: 0; overflow: auto; touch-action: pan-y; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
   #box h1 { font-size: 40px; line-height: 1.05; margin: 4px 0 2px; background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
   #box h2 { font-size: 24px; margin: 2px 0 6px; }
   #box p { color: #c9d3f0; font-size: 15px; line-height: 1.45; margin: 6px 0 12px; }
   #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0; }
   .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
+  #arcadeLink { flex: none; max-width: 400px; margin: 8px 0 0; text-align: center; text-decoration: none; }
   .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   .big:disabled { opacity: 0.4; }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
@@ -69,11 +71,14 @@
   <button class="hudBtn" id="pauseBtn">❚❚</button>
 </div>
 <div id="bubble"><canvas id="zibFace" width="80" height="80"></canvas><span id="bubbleText"></span></div>
-<div id="overlay"><div id="box"></div></div>
+<div id="overlay">
+  <div id="box"></div>
+  <a class="big" id="arcadeLink" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
+</div>
 <script>
 "use strict";
 // ============================================================
-//  ALIEN LAUNCH — take off, fly through the obstacles, land softly. One touch: hold to thrust, let go to fall.
+//  ALIEN LAUNCH — take off, fly through the obstacles, land softly. One touch: tap to boost, hold to keep climbing.
 // ============================================================
 const $ = id => document.getElementById(id);
 const cv = $("cv"), ctx = cv.getContext("2d");
@@ -84,7 +89,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 let W = 0, H = 0, S = 0, DPR = 1;
 
 // ---------- stages, ordered by gravity: each one pulls harder ----------
-// g = gravity (in screen heights per second², scaled by S), thrust is always 2.3x gravity, so heavy worlds feel heavy.
+// g is gravity in course units per second squared, scaled by S.
 const STAGES = [
   { name: "The Oort Gate", short: "Oort Gate", g: 0.55, theme: "ice",     sky: ["#14284a", "#060c1c"], ground: ["#bcd8f0", "#5a7a9c"], glow: "#4fd1ff",
     feel: "Very light gravity. Floaty and forgiving.", obstacle: "ice spires" },
@@ -97,10 +102,15 @@ const STAGES = [
 ];
 const MISSIONS = 3;
 // mission settings: number of obstacle gates, gap size, flight speed
-const missionSpec = (st, m) => ({ gates: 6 + st * 2 + m * 3, gap: 0.46 - m * 0.04 - Math.min(st, 2) * 0.015 + (st === 3 ? 0.04 : 0), speed: 0.3 + m * 0.03 + st * 0.02 });
+const INTRO_GAPS = [0.55, 0.44, 0.52, 0.46];
+const missionSpec = (st, m) => st === 0 && m === 0 ? { gates: INTRO_GAPS.length, gap: 0.56, speed: 0.34 } : ({ gates: 6 + st * 2 + m * 3, gap: 0.46 - m * 0.04 - Math.min(st, 2) * 0.015 + (st === 3 ? 0.04 : 0), speed: 0.3 + m * 0.03 + st * 0.02 });
 // Fuel burns while thrusting. Fuel cells replenish it.
 const FUEL = { start: 75, burn: 8, cell: 32 }; // fuel only burns while you thrust. Tuned: collecting cells gets you home, skipping them runs you dry
-const SAFE_SPEED = 0.42; // touchdown speed limit, in S per second (the same on every world, so heavy gravity is harder)
+const BOOST = { speed: 0.3, tapTime: 0.14, fuel: 1, flash: 0.12 };
+const TOUCH_BOOST_SPEED = 0.24;
+const touchFlightScale = () => H * 0.44;
+const climbLimit = () => G.touchControl ? touchFlightScale() * (G.intro ? 0.58 : 0.8) : S * (G.intro ? 0.72 : 1.2);
+const safeSpeed = () => G.intro ? 0.6 : 0.42; // touchdown speed limit, in S per second
 
 // ---------- save ----------
 const KEY = "alienLaunch.v1";
@@ -152,9 +162,10 @@ const REST = () => GROUND() - SHIP_R() * 0.95; // centre height when the legs to
 function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = false) {
   const random = rand(seed);
   const ST = STAGES[st], spec = missionSpec(st, m);
-  G = { st, m, ST, spec, seed, phase: retry ? "launch" : "count", t: 0, flightTime: 0, count: retry ? 0 : 3,
+  const intro = st === 0 && m === 0, ready = retry || intro;
+  G = { st, m, ST, spec, seed, intro, phase: ready ? "launch" : "count", t: 0, flightTime: 0, count: ready ? 0 : 3, tapAt: null, boostFlash: 0, touchControl: false,
         x: 0, y: REST(), vy: 0, vx: 0, ang: 0,   // x = distance flown along the course
-        gates: [], tunnels: [], cans: [], debris: [], fuel: FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, windRandom: rand(seed ^ 0x9e3779b9), landStart: 0, padX: 0, touch: null, stars: 0 };
+        gates: [], tunnels: [], cans: [], debris: [], fuel: intro ? 100 : FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, windRandom: rand(seed ^ 0x9e3779b9), landStart: 0, padX: 0, touch: null, stars: 0 };
   // the course: launch pad at 0, then gates and tunnels, then the landing pad
   let cy = 0.45, gx = S * 1.4;
   const moveChance = m === 0 ? 0 : 0.18 + (m - 1) * 0.14 + st * 0.07;          // sliding gaps from mission 2
@@ -169,6 +180,10 @@ function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = f
   let placed = 0;
   const addCell = (exitX, exitY, i) => {
     if (i >= spec.gates - 1) return;
+    if (intro) {
+      if (i === 1) G.cans.push({ x: exitX + S * 0.32, y: 0.48, got: false, seed: 0 });
+      return;
+    }
     if (!(random() < 0.55 || minCells - placed >= spec.gates - 1 - i)) { spaceCan[i] = null; return; }
     const up = placed % 2 === 0 ? exitY > 0.42 : exitY > 0.52;
     const reach = 0.14 + st * 0.035 + random() * 0.07; // further out on heavy worlds, where you climb and drop faster
@@ -193,7 +208,7 @@ function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = f
     // big swings: usually flip to the other half of the screen
     const prevY = cy, flip = random() < 0.65, swing = 0.12 + random() * (0.12 + st * 0.03);
     cy = flip ? (cy > 0.46 ? cy - swing - 0.05 : cy + swing + 0.05) : cy + (random() - 0.5) * 0.24;
-    cy = clamp(cy, lo, hi);
+    cy = intro ? INTRO_GAPS[i] : clamp(cy, lo, hi);
     gx += S * 0.9 * Math.abs(cy - prevY); // bigger height changes get more room to make them
     const moving = i > 0 && random() < moveChance;
     const gt = { x: gx, cy0: cy, cy, gap: spec.gap, seed: random() * 10, passed: false,
@@ -220,10 +235,10 @@ function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = f
     }
   }
   G.landStart = gx + S * 0.3;           // ground returns here
-  G.padX = G.landStart + S * 1.25;      // the ship comes to rest over this point
-  G.padW = S * (0.34 - st * 0.02);
+  G.padX = G.landStart + S * (intro ? 0.65 : 1.25);      // the ship comes to rest over this point
+  G.padW = S * (intro ? 0.48 : 0.34 - st * 0.02);
   hud();
-  say(`Mission ${m + 1} on <b>${ST.name}</b>. ${ST.feel} <b>Hold</b> to thrust, let go to fall.`, 4.5);
+  say(`Mission ${m + 1} on <b>${ST.name}</b>. ${ST.feel} <b>Hold</b> to lift off. <b>Tap</b> to boost in flight.`, 4.5);
 }
 // centre line of a tunnel (fraction of screen height) at world x: starts at its base and winds up and down
 const tunnelCy = (T, x) => clamp(T.base + T.amp * (Math.sin((x - T.x0) / (T.x1 - T.x0) * TAU * T.k + T.ph) - Math.sin(T.ph)), 0.2, 0.72);
@@ -261,7 +276,13 @@ function update(dt) {
   for (let i = G.fx.length - 1; i >= 0; i--) { const p = G.fx[i]; p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += S * 0.6 * dt; if (p.life <= 0) G.fx.splice(i, 1); }
   if (G.over || G.done) { if (!G.menuShown && G.t - G.endAt > (G.done ? 1.4 : 0.65)) { G.menuShown = true; G.done ? landedMenu() : crashMenu(); } return; }
   const firing = holding && G.fuel > 0 && G.phase !== "count";
-  const g = G.ST.g * S, thrust = firing ? -g * 2.3 : 0;
+  if (G.boostFlash > 0) {
+    G.boostFlash = Math.max(0, G.boostFlash - dt);
+    if (!G.boostFlash && !firing) thrustSound(false);
+  }
+  // Touch flight uses a fixed fraction of screen height on both tablets and phones.
+  const g = G.ST.g * (G.touchControl && G.phase === "fly" ? touchFlightScale() : S);
+  const thrust = firing ? -g * (G.intro && G.phase === "fly" ? 1.7 : 2.3) : 0;
   if (firing) G.fuel = Math.max(0, G.fuel - FUEL.burn * dt);
   if (firing || G.fuel <= 0) {
     if (G.fuel < 25 && !G.lowWarned) { G.lowWarned = true; SFX.warn(); say("<b>Fuel low!</b> Grab a glowing fuel cell, and save some for the landing.", 3); }
@@ -284,15 +305,23 @@ function update(dt) {
   if (G.phase === "launch") { // can't move forward until the ship has lifted off
     G.vy += (g + thrust) * dt; G.y += G.vy * dt;
     if (G.y > REST()) { G.y = REST(); G.vy = 0; }
-    if (G.y < REST() - S * 0.14) { G.phase = "fly"; say("Lift-off! Fly through the gaps.", 2); }
+    if (G.y < REST() - S * 0.14) {
+      G.phase = "fly";
+      if (G.touchControl) G.vy = Math.max(G.vy, -touchFlightScale() * 0.32);
+      say("Lift-off! <b>Tap</b> to boost through the gaps.", 2);
+    }
     G.vx = lerp(G.vx, G.y < REST() - S * 0.05 ? G.spec.speed * S * 0.6 : 0, dt * 2);
   } else if (G.phase === "fly" || G.phase === "land") {
     G.vy += (g + thrust + G.wind) * dt;
-    G.vy = clamp(G.vy, -S * 1.2, S * 1.4);
+    G.vy = clamp(G.vy, G.phase === "fly" ? -climbLimit() : -S * 1.2, S * 1.4);
     G.y += G.vy * dt;
     if (G.phase === "fly") {
       G.vx = lerp(G.vx, G.spec.speed * S, dt * 1.5);
-      if (G.x > G.landStart - S * 0.2) { G.phase = "land"; say("Landing pad ahead! Come down <b>slowly</b>. Keep the speed meter green.", 3.5); }
+      if (G.x > G.landStart - S * (G.intro ? 0.45 : 0.2)) {
+        G.phase = "land";
+        say(G.intro ? "Approach assist is on. Let go when you see <b>OVER PAD</b>." :
+          "Landing pad ahead! <b>Hold</b> to slow your descent. Keep the meter green.", 3.5);
+      }
     } else { // slow down so the ship comes to rest right over the pad
       const left = Math.max(1, G.padX - G.x);
       G.vx = Math.max(S * 0.02, Math.min(G.vx, Math.sqrt(2 * left * S * 0.12)));
@@ -303,7 +332,7 @@ function update(dt) {
   if (G.y < SHIP_R() + 48) { G.y = SHIP_R() + 48; G.vy = Math.max(0, G.vy); } // top of the screen: bump, no crash
   G.ang = lerp(G.ang, clamp(G.vy / (S * 4), -0.15, 0.15), dt * 6); // just a slight lean
   // exhaust
-  if (firing && Math.random() < dt * 50) G.fx.push({ x: SHIP_X() + (Math.random() - 0.5) * S * 0.02, y: G.y + S * 0.05, vx: (Math.random() - 0.5) * 30 - G.vx * 0.4, vy: S * 0.5, life: 0.35, max: 0.35, col: Math.random() < 0.5 ? "#ffd25d" : "#ff8a3d", screen: true });
+  if ((firing || G.boostFlash > 0) && Math.random() < dt * 50) G.fx.push({ x: SHIP_X() + (Math.random() - 0.5) * S * 0.02, y: G.y + S * 0.05, vx: (Math.random() - 0.5) * 30 - G.vx * 0.4, vy: S * 0.5, life: 0.35, max: 0.35, col: Math.random() < 0.5 ? "#ffd25d" : "#ff8a3d", screen: true });
   // gates
   const sx = SHIP_X(), r = SHIP_R() * 0.85; // collision size (the dome and body)
   for (const gt of G.gates) {
@@ -334,8 +363,12 @@ function update(dt) {
   }
   // ground: only exists near the launch pad and on the landing stretch; elsewhere there's a deep canyon
   const floor = hasGround(G.x) ? contactY() : H + S * 0.2;
+  if (G.intro && G.phase === "land" && !onPad(G.x) && G.y > REST() - S * 0.23) {
+    G.y = REST() - S * 0.23;
+    G.vy = Math.min(0, G.vy);
+  }
   if (G.y > floor) {
-    if (G.phase === "land" && onPad(G.x) && G.vy < SAFE_SPEED * S && Math.abs(G.ang) < 0.3) return touchdown();
+    if (G.phase === "land" && onPad(G.x) && G.vy < safeSpeed() * S && Math.abs(G.ang) < 0.3) return touchdown();
     if (G.phase === "launch") return;
     return crash(G.phase === "land" ? (onPad(G.x) ? "hard" : "rocks") : "ground");
   }
@@ -343,7 +376,7 @@ function update(dt) {
 }
 function touchdown() {
   G.done = true; G.endAt = G.t; G.y = groundY(G.padX) - SHIP_R() * 0.95; holding = false; thrustSound(false);
-  const soft = 1 - G.vy / (SAFE_SPEED * S), centre = 1 - Math.abs(G.x - G.padX) / (G.padW / 2);
+  const soft = 1 - G.vy / (safeSpeed() * S), centre = 1 - Math.abs(G.x - G.padX) / (G.padW / 2);
   G.landing = { soft, centre, speed: G.vy / S };
   G.stars = 1 + (soft > 0.45 ? 1 : 0) + (soft > 0.45 && centre > 0.8 ? 1 : 0);
   G.score += 50 + Math.round(soft * 100) + Math.round(centre * 50) + Math.round(G.fuel);
@@ -356,24 +389,67 @@ function crash(why) {
   G.why = why;
   for (let k = 0; k < 36; k++) { const a = Math.random() * TAU, v = S * (0.2 + Math.random() * 0.8); G.fx.push({ x: SHIP_X(), y: G.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - S * 0.3, life: 1.1, max: 1.1, col: k % 3 ? G.ST.glow : "#ffd25d", screen: true }); }
   if (G.fuel <= 0 && why !== "obstacle" && why !== "debris" && why !== "tunnel") { say("Out of fuel and down we go! Grab more fuel cells next time.", 3); return; }
-  say({ tunnel: "Scraped the tunnel wall! Follow the bends early.", debris: "Hit the floating debris! Watch for it between the gaps.", obstacle: "Clipped an obstacle! Aim for the middle of the gap.", ground: "Too low! Keep tapping to stay up.", rocks: "That's not the pad! Wait until you're over it.", hard: `Too fast! Touch down below ${SAFE_SPEED.toFixed(2)} on the meter.` }[why], 3);
+  say({ tunnel: "Scraped the tunnel wall! Follow the bends early.", debris: "Hit the floating debris! Watch for it between the gaps.", obstacle: "Clipped an obstacle! Aim for the middle of the gap.", ground: "Too low! Keep tapping to stay up.", rocks: "That's not the pad! Wait until you're over it.", hard: `Too fast! Touch down below ${safeSpeed().toFixed(2)} on the meter.` }[why], 3);
 }
 
 // ============================================================
-//  INPUT: hold anywhere (or Space / ↑) to thrust
+//  INPUT: tap to boost in flight, hold to thrust
 // ============================================================
-function press(on) { if (on) audio(); if (paused || !G || G.over || G.done) { holding = false; thrustSound(false); return; } holding = on; thrustSound(on); }
-cv.addEventListener("pointerdown", e => { e.preventDefault(); press(true); });
-window.addEventListener("pointerup", () => press(false));
-window.addEventListener("pointercancel", () => press(false));
+let thrustPointer = null, thrustKeyboard = null;
+function press(on, allowBoost = true, inputTime = null) {
+  if (on) audio();
+  if (paused || !G || G.over || G.done) { holding = false; thrustSound(false); return; }
+  const time = inputTime ?? G.flightTime;
+  if (on && !holding) G.tapAt = G.phase === "fly" ? time : null;
+  const boostLimit = G.touchControl ? climbLimit() : S * 0.72;
+  if (allowBoost && !on && holding && G.phase === "fly" && G.tapAt !== null &&
+      time - G.tapAt <= BOOST.tapTime && G.fuel >= BOOST.fuel && G.vy > -boostLimit) {
+    const speed = G.touchControl ? touchFlightScale() * TOUCH_BOOST_SPEED : S * BOOST.speed;
+    G.vy = Math.max(-boostLimit, G.vy - speed);
+    G.fuel -= BOOST.fuel;
+    G.boostFlash = BOOST.flash;
+  }
+  holding = on;
+  thrustSound((holding && G.fuel > 0) || G.boostFlash > 0);
+}
+function cancelThrust() {
+  const pointer = thrustPointer;
+  thrustPointer = thrustKeyboard = null;
+  if (pointer !== null && cv.hasPointerCapture(pointer)) cv.releasePointerCapture(pointer);
+  press(false, false);
+}
+cv.addEventListener("pointerdown", e => {
+  if (e.button !== 0 || thrustPointer !== null || thrustKeyboard !== null || paused || G.over || G.done) return;
+  e.preventDefault();
+  thrustPointer = e.pointerId;
+  cv.setPointerCapture(e.pointerId);
+  G.touchControl = e.pointerType === "touch";
+  press(true, true, G.touchControl ? e.timeStamp / 1000 : null);
+});
+function releasePointer(e) {
+  if (e.pointerId !== thrustPointer) return;
+  thrustPointer = null;
+  press(false, e.type === "pointerup", G.touchControl ? e.timeStamp / 1000 : null);
+}
+window.addEventListener("pointerup", releasePointer);
+window.addEventListener("pointercancel", releasePointer);
+cv.addEventListener("lostpointercapture", releasePointer);
+window.addEventListener("blur", cancelThrust);
 const thrustKey = e => e.key === " " || e.key === "ArrowUp" || e.key.toLowerCase() === "w";
 document.addEventListener("keydown", e => {
   if (e.key === "p" || e.key === "Escape") pauseMenu();
   if (paused || !thrustKey(e) || (e.key === " " && e.target === $("pauseBtn"))) return;
   e.preventDefault();
-  if (!e.repeat) press(true);
+  if (e.repeat || thrustKeyboard !== null || thrustPointer !== null || G.over || G.done) return;
+  thrustKeyboard = e.code || e.key;
+  G.touchControl = false;
+  press(true);
 });
-document.addEventListener("keyup", e => { if (thrustKey(e)) press(false); });
+document.addEventListener("keyup", e => {
+  if ((e.code || e.key) !== thrustKeyboard) return;
+  thrustKeyboard = null;
+  press(false);
+});
 
 // ============================================================
 //  DRAWING
@@ -546,11 +622,11 @@ function drawGround(t) {
 
 function drawSpeedMeter() { // shown while landing: green below the safe touchdown speed
   if (G.phase !== "land" || G.over || G.done) return;
-  const v = Math.max(0, G.vy / S), k = clamp(v / (SAFE_SPEED * 2), 0, 1), x = W - 30, y0 = H * 0.3, h = H * 0.36;
+  const v = Math.max(0, G.vy / S), k = clamp(v / (safeSpeed() * 2), 0, 1), x = W - 30, y0 = H * 0.3, h = H * 0.36;
   ctx.fillStyle = "rgba(10,16,34,0.85)"; ctx.beginPath(); ctx.roundRect(x - 13, y0 - 30, 26, h + 46, 10); ctx.fill();
   ctx.fillStyle = "rgba(93,255,155,0.25)"; ctx.fillRect(x - 6, y0 + h / 2, 12, h / 2);
   ctx.fillStyle = "rgba(255,93,122,0.25)"; ctx.fillRect(x - 6, y0, 12, h / 2);
-  const ok = v < SAFE_SPEED, yy = y0 + h - k * h;
+  const ok = v < safeSpeed(), yy = y0 + h - k * h;
   ctx.fillStyle = ok ? "#5dff9b" : "#ff5d7a"; ctx.fillRect(x - 10, yy - 3, 20, 6);
   ctx.fillStyle = "#e6ecff"; ctx.font = "800 9px system-ui"; ctx.textAlign = "center"; ctx.fillText("SPEED", x, y0 - 16);
   ctx.fillStyle = ok ? "#5dff9b" : "#ff5d7a"; ctx.font = "900 10px system-ui"; ctx.fillText(ok ? "SAFE" : "SLOW!", x, y0 - 4);
@@ -580,7 +656,7 @@ function draw(t) {
   if (G.ST.wind && Math.abs(G.wind) > 1) { ctx.strokeStyle = `rgba(255,230,200,${Math.min(0.35, Math.abs(G.wind) / (S * 2))})`; ctx.lineWidth = 2; // wind streaks
     for (let k = 0; k < 14; k++) { const x = (k * 97 + t * 300) % W, y = (k * 53 + (G.wind > 0 ? t : -t) * 200) % H; ctx.beginPath(); ctx.moveTo(x, (y + H) % H); ctx.lineTo(x - 6, ((y + H) % H) + Math.sign(G.wind) * 26); ctx.stroke(); } }
   for (const p of G.fx) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); } ctx.globalAlpha = 1;
-  if (!G.over) lander(ctx, sx, G.y, SHIP_R(), G.ang, t, holding && !G.done && G.fuel > 0 && G.phase !== "count");
+  if (!G.over) lander(ctx, sx, G.y, SHIP_R(), G.ang, t, !G.done && ((holding && G.fuel > 0 && G.phase !== "count") || G.boostFlash > 0));
   if (!G.over && !G.done && G.fuel <= 0 && G.t % 0.6 < 0.4) { ctx.fillStyle = "#ff5d7a"; ctx.font = "900 16px system-ui"; ctx.textAlign = "center"; ctx.fillText("NO FUEL", sx, G.y - SHIP_R() - 12); }
   const fb = $("hFuel"), fk = Math.round(G.fuel); if (fb.dataset.k != fk) { fb.dataset.k = fk; fb.style.width = fk + "%"; fb.style.background = fk > 50 ? "#5dff9b" : fk > 25 ? "#ffd25d" : "#ff5d7a"; $("hFuelPct").textContent = fk + "%"; }
   drawSpeedMeter();
@@ -611,7 +687,7 @@ function say(html, secs = 3) { $("bubbleText").innerHTML = html; $("bubble").cla
 // ============================================================
 //  MENUS
 // ============================================================
-function openMenu(html, anim = null) { paused = true; holding = false; thrustSound(false); menuAnim = anim; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden"); $("hud").style.visibility = "hidden"; wire(); }
+function openMenu(html, anim = null) { paused = true; cancelThrust(); menuAnim = anim; if (G) G.boostFlash = 0; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden"); $("hud").style.visibility = "hidden"; wire(); }
 function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("hud").style.visibility = ""; last = performance.now(); }
 function wire() {
   for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
@@ -669,19 +745,19 @@ function landedMenu() {
   openMenu(`<p class="kicker">${G.ST.name} · Mission ${G.m + 1}</p><h2>Landed!</h2>
     <div class="bigStars">${starStr(G.stars)}</div>
     <div class="stats"><div>${G.score}<small>Score</small></div><div>${G.landing.speed.toFixed(2)}<small>Touchdown speed</small></div><div>${Math.round(G.landing.centre * 100)}%<small>On target</small></div></div>
-    <p style="font-size:13px;color:var(--dim)">★ landed · ★★ soft (under ${(SAFE_SPEED * 0.55).toFixed(2)}) · ★★★ soft and dead centre</p>
+    <p style="font-size:13px;color:var(--dim)">★ landed · ★★ soft (under ${(safeSpeed() * 0.55).toFixed(2)}) · ★★★ soft and dead centre</p>
     ${next ? `<button class="big main" data-act="go" data-arg="${next[0]}|${next[1]}">Next: ${next[1] === 0 ? STAGES[next[0]].name : "Mission " + (next[1] + 1)} ▶</button>` : `<p><b style="color:var(--good)">Every mission complete!</b> Go back for 3 stars on each.</p>`}
     <button class="big" data-act="retry">Fly it again</button>
     <button class="big" data-act="missions">Missions</button>`);
 }
 
-// ---------- How to play: four pages with live demos ----------
+// ---------- How to play: five pages with live demos ----------
 const HOWTO = [
-  { title: "Hold to thrust", text: "<b>Hold</b> anywhere on the screen (or Space) to fire the thruster and rise. <b>Let go</b> to fall. That's the only control.", demo: demoThrust },
-  { title: "Fly through the gaps", text: "After lift-off the course scrolls by. Steer up and down through each gap. Touching an obstacle is a crash. Later missions add <b>sliding gaps</b> (marked ▲▼), winding <b>tunnels</b> you can see through, and from Mars, <b>floating debris</b>.", demo: demoGaps },
-  { title: "Watch your fuel", text: "The thruster burns <b>fuel</b> (top of the screen). Fuel only burns <b>while you're thrusting</b>, but the tank is small, so <b>you will run out</b> unless you climb or dive for the glowing <b style='color:var(--good)'>fuel cells</b> (they sit high or low, off the straight path). Run dry and you fall. Leftover fuel adds to your landing score.", demo: demoFuel },
-  { title: "Land softly", text: "At the end your ship slows over the <b style='color:var(--good)'>green pad</b>. Come down gently: keep the <b>speed meter</b> green. Land off the pad or too fast and you crash.", demo: demoLand },
-  { title: "Gravity gets stronger", text: "Each planet pulls harder: floaty on the <b>Oort Gate</b>, heavier on <b>Mars</b> and <b>Earth</b>, crushing on <b>Jupiter</b>, which also has wind gusts. Earn up to <b style='color:var(--gold)'>3 stars</b> per mission.", demo: demoGravity },
+  { title: "Tap to boost", text: "<b>Hold</b> to lift off or climb. <b>Tap</b> to boost. <b>Release</b> to fall. Use the screen or <b>Space</b>.", demo: demoThrust },
+  { title: "Fly through gaps", text: "<b>Thread the gaps.</b> Dodge moving walls and debris.", demo: demoGaps },
+  { title: "Grab fuel", text: "<b>Grab glowing fuel cells</b> to keep your thruster running.", demo: demoFuel },
+  { title: "Land softly", text: "Wait for <b>OVER PAD</b>. <b>Hold to brake</b> and keep the speed meter green.", demo: demoLand },
+  { title: "Stronger gravity", text: "<b>Gravity gets stronger</b> each world. Watch for <b>gusts on Jupiter</b>.", demo: demoGravity },
 ];
 function helpMenu(back, page = 0) {
   const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
@@ -694,13 +770,13 @@ function helpMenu(back, page = 0) {
       if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
       const c = cvs.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.fillStyle = "#0e1838"; c.fillRect(0, 0, w, h); p.demo(c, t, w, h); });
 }
-function finger(c, x, y, down) { c.fillStyle = down ? "rgba(93,255,155,0.35)" : "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x, y, 20, 0, TAU); c.fill(); c.fillStyle = down ? "#5dff9b" : "rgba(255,255,255,0.8)"; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
-  c.font = "800 11px system-ui"; c.textAlign = "center"; c.fillText(down ? "HOLD" : "let go", x, y + 34); }
+function finger(c, x, y, down, action = "HOLD") { c.fillStyle = down ? "rgba(93,255,155,0.35)" : "rgba(255,255,255,0.2)"; c.beginPath(); c.arc(x, y, 20, 0, TAU); c.fill(); c.fillStyle = down ? "#5dff9b" : "rgba(255,255,255,0.8)"; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
+  c.font = "800 11px system-ui"; c.textAlign = "center"; c.fillText(down ? action : "let go", x, y + 34); }
 function demoThrust(c, t, w, h) {
-  const T = t % 4, down = T < 1.6, y = h * 0.62 - Math.sin(Math.min(PI, T / 4 * TAU) ) * h * 0.3;
-  c.fillStyle = "#4fd1ff"; c.fillRect(w * 0.38, h * 0.88, w * 0.24, 4);
-  lander(c, w / 2, y, 22, 0, t, down);
-  finger(c, w * 0.84, h * 0.6, down);
+  const cycle = (t % 1.25) / 1.25;
+  const y = h * (0.68 - 0.3 * 4 * cycle * (1 - cycle));
+  lander(c, w / 2, y, 22, 0.12 * (cycle * 2 - 1), t, cycle < 0.14);
+  finger(c, w * 0.84, h * 0.6, cycle > 0.9, "TAP");
 }
 function demoGaps(c, t, w, h) {
   const off = (t * 80) % 160;
@@ -780,7 +856,7 @@ function resize() {
 window.addEventListener("resize", resize); resize();
 let last = performance.now();
 function frame(now) {
-  const dt = clamp((now - last) / 1000, 0, 0.04); // never negative: a frame can be stamped just before a menu closed last = now;
+  const dt = clamp((now - last) / 1000, 0, 0.04); last = now; // never negative: a frame can be stamped just before a menu closed
   if (G && !paused) update(dt);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) $("bubble").classList.remove("on"); }
   drawZib($("zibFace").getContext("2d"), 80, now / 1000, bubbleT > 0);
