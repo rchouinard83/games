@@ -43,6 +43,7 @@
   #box p { color: #c9d3f0; font-size: 15px; line-height: 1.45; margin: 6px 0 12px; }
   #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0; }
   .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
+  a.big { text-decoration: none; }
   .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
   .row { display: flex; gap: 8px; } .row .big { flex: 1; }
@@ -497,12 +498,15 @@ function wire() {
 const lbHTML = () => { const lb = getLB(); return lb.length ? `<div class="lb">${lb.map((e, i) => `<div><span>${i + 1}. ${esc(e.name)}${e.diff ? ` <small style="color:var(--dim);font-weight:600">${e.diff}</small>` : ""}</span><span>${e.score}</span></div>`).join("")}</div>` : `<p>No scores yet. Be the first!</p>`; };
 const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 
+const arcadeLink = '<a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
+
 function titleMenu() {
   openMenu(`<canvas id="titleArt"></canvas><h1>Alien Snake</h1>
     <p>Fly the rescue saucer, pick up stranded aliens, and tow them home. Every rescue makes your train longer.</p>
     <button class="big main" data-act="play">Play<small>${DIFFS[diff].name} · starting at level ${startLevel} · ${WORLDS[worldFor(startLevel)].name}</small></button>
     <div class="row"><button class="big" data-act="help">How to play</button><button class="big" data-act="scores">High scores</button></div>
-    <button class="big" data-act="settings">Settings</button>`, titleAnim);
+    <button class="big" data-act="settings">Settings</button>
+    ${arcadeLink}`, titleAnim);
 }
 function titleAnim(t) { // a little rescue train looping around
   const cvs = $("titleArt"); if (!cvs) return;
@@ -609,7 +613,8 @@ function pauseMenu() {
     <button class="big main" data-act="resume">Resume</button>
     <button class="big" data-act="help" data-arg="pause">How to play</button>
     <button class="big" data-act="restart">Restart</button>
-    <button class="big" data-act="title">Main menu</button>`);
+    <button class="big" data-act="title">Main menu</button>
+    ${arcadeLink}`);
 }
 let nameSaved = true;
 function gameOverMenu() {
@@ -620,7 +625,8 @@ function gameOverMenu() {
     ${isNew ? `<p>Enter your name for the leaderboard:</p><input id="playerName" maxlength="12" placeholder="Your name" autocomplete="off"><button class="big" data-act="saveName">Save</button>` : ""}
     <div id="lbBox">${lbHTML()}</div>
     <button class="big main" data-act="again">Play again</button>
-    <button class="big" data-act="title">Main menu</button>`);
+    <button class="big" data-act="title">Main menu</button>
+    ${arcadeLink}`);
   if (isNew) { const inp = $("playerName"); inp.focus(); inp.onkeydown = e => { if (e.key === "Enter") ACT.saveName(); }; }
 }
 function saveScore() {
@@ -654,7 +660,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && ali
 // ============================================================
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = now; // never negative: a frame can be stamped just before a menu closed
   if (!paused || !alive) {
     time += dt;
     if (alive && !paused) {
