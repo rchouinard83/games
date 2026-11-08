@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070b16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Alien Arcade</title>
+<style>
+  :root { --bg: #070b16; --panel: #0e1530; --line: #2a3a66; --ink: #e6ecff; --dim: #8f9cc4; --good: #5dff9b; --accent: #4fd1ff; --gold: #ffd25d; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { min-height: 100vh; color: var(--ink); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)); }
+  #stars { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; }
+  main { max-width: 1040px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 14px; margin: 6px 0 22px; }
+  #zib { width: 72px; height: 72px; flex: none; border-radius: 18px; background: #0d1a2c; border: 1px solid var(--line); }
+  h1 { font-size: clamp(34px, 8vw, 54px); line-height: 1; letter-spacing: -0.01em;
+    background: linear-gradient(90deg, #5dff9b, #4fd1ff 55%, #c77dff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  header p { color: var(--dim); font-size: 15px; margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+  .card { display: flex; flex-direction: column; background: rgba(14, 21, 48, 0.88); border: 1px solid var(--line); border-radius: 18px; overflow: hidden;
+    color: inherit; text-decoration: none; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s; }
+  .card:hover, .card:focus-visible { transform: translateY(-3px); border-color: var(--c); box-shadow: 0 10px 30px -10px var(--c); outline: none; }
+  .card canvas { width: 100%; height: 170px; display: block; background: #0a1024; }
+  .info { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .info h2 { font-size: 21px; display: flex; align-items: center; gap: 8px; }
+  .info h2 .tag { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; color: var(--c); border: 1px solid var(--c); border-radius: 999px; padding: 2px 7px; }
+  .info p { color: #c9d3f0; font-size: 14px; line-height: 1.4; flex: 1; }
+  .play { align-self: flex-start; margin-top: 4px; padding: 9px 18px; border-radius: 12px; font-weight: 800; font-size: 15px; color: #06120c; background: var(--c); }
+  footer { color: var(--dim); font-size: 13px; text-align: center; margin-top: 22px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<main>
+  <header>
+    <canvas id="zib" width="144" height="144" aria-hidden="true"></canvas>
+    <div><h1>Alien Arcade</h1><p>Five games from the same galaxy. Pick one and play.</p></div>
+  </header>
+  <div class="grid" id="grid"></div>
+  <footer>Best on a phone. Tip: use <b>Add to Home Screen</b> to play full screen.</footer>
+</main>
+<script>
+"use strict";
+const TAU = Math.PI * 2, PI = Math.PI;
+// The games, in the order players usually meet them. href = folder/file on GitHub Pages.
+const GAMES = [
+  { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
+    desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien Launch", tag: "Flight", color: "#ffb84d", href: "Alien-Launch/Alien-Launch.html", art: artLaunch,
+    desc: "Blast off, weave through obstacles and tunnels, grab fuel, then land softly. Every planet pulls harder." },
+  { name: "Alien Landing", tag: "Traffic control", color: "#4fd1ff", href: "AlienLanding/Alien-Landing.html", art: artLanding,
+    desc: "Draw flight paths to land saucers, haulers and carrier ships on the right pads without a crash." },
+  { name: "Alien Snake", tag: "Arcade", color: "#c77dff", href: "AlienSnake/Alien-Snake.html", art: artSnake,
+    desc: "Fly the rescue saucer, pick up stranded aliens and tow them home. Don't hit your own pods." },
+  { name: "Dr Alien", tag: "Puzzle", color: "#ff8bd0", href: "DrAlien/Dr-Alien.html", art: artDrAlien,
+    desc: "Drop capsules with Dr. Hive Queen and match colours to clear every spore before the lab jams." },
+];
+
+// ---------- shared little drawings ----------
+function eyeAlien(c, x, y, r, col, t) { // a one-eyed alien, the series mascot
+  c.fillStyle = col; c.beginPath(); c.arc(x, y, r, PI, 0); c.lineTo(x + r, y + r * 0.6); c.quadraticCurveTo(x, y + r, x - r, y + r * 0.6); c.closePath(); c.fill();
+  c.strokeStyle = col; c.lineWidth = r * 0.16; c.beginPath(); c.moveTo(x, y - r * 0.9); c.lineTo(x, y - r * 1.5); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(x, y - r * 1.55, r * 0.2, 0, TAU); c.fill();
+  const blink = (t + x * 0.01) % 3.2 < 0.12;
+  c.fillStyle = "#fff"; c.beginPath(); c.ellipse(x, y - r * 0.1, r * 0.48, blink ? r * 0.06 : r * 0.48, 0, 0, TAU); c.fill();
+  if (!blink) { c.fillStyle = "#10162c"; c.beginPath(); c.arc(x + Math.sin(t) * r * 0.12, y - r * 0.1, r * 0.22, 0, TAU); c.fill(); }
+}
+function saucer(c, x, y, r, t, col = "#4fd1ff") { // top-down saucer with chasing rim lights
+  c.fillStyle = "rgba(0,0,0,0.3)"; c.beginPath(); c.arc(x + r * 0.15, y + r * 0.2, r, 0, TAU); c.fill();
+  const g = c.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r); g.addColorStop(0, "#e8f8ff"); g.addColorStop(0.55, col); g.addColorStop(1, "#1b3a66");
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
+  for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + t * 2; c.fillStyle = (Math.floor(t * 8) + k) % 2 ? "#fff7b0" : "#ffb84d"; c.beginPath(); c.arc(x + Math.cos(a) * r * 0.78, y + Math.sin(a) * r * 0.78, r * 0.1, 0, TAU); c.fill(); }
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(x, y, r * 0.38, 0, TAU); c.fill();
+  c.fillStyle = "#fff"; c.beginPath(); c.arc(x, y, r * 0.22, 0, TAU); c.fill();
+  c.fillStyle = "#10162c"; c.beginPath(); c.arc(x + r * 0.06, y, r * 0.1, 0, TAU); c.fill();
+}
+function sky(c, w, h, a, b, seed) {
+  const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, a); g.addColorStop(1, b); c.fillStyle = g; c.fillRect(0, 0, w, h);
+  let s = seed; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 40; i++) { c.fillStyle = `rgba(255,255,255,${0.2 + R() * 0.5})`; c.fillRect(R() * w, R() * h, 1.5, 1.5); }
+}
+
+// ---------- one animated preview per game ----------
+function artDefense(c, w, h, t) { // a maze of towers with aliens walking the path
+  sky(c, w, h, "#16263a", "#0e1828", 3);
+  const cs = h / 6, cols = Math.ceil(w / cs);
+  c.strokeStyle = "rgba(255,255,255,0.05)"; for (let i = 0; i <= cols; i++) { c.beginPath(); c.moveTo(i * cs, 0); c.lineTo(i * cs, h); c.stroke(); }
+  for (let j = 0; j <= 6; j++) { c.beginPath(); c.moveTo(0, j * cs); c.lineTo(w, j * cs); c.stroke(); }
+  const path = [[0, 1.5], [cols - 2.5, 1.5], [cols - 2.5, 4.5], [0, 4.5]].map(([x, y]) => [x * cs, y * cs]);
+  c.strokeStyle = "rgba(93,255,155,0.35)"; c.lineWidth = 3; c.setLineDash([3, 7]); c.beginPath(); path.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); c.setLineDash([]);
+  for (let i = 0; i < cols - 3; i += 2) for (const row of [3]) { // towers between the lanes
+    const x = (i + 0.5) * cs, y = row * cs; c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x + 3, y + cs * 0.3, cs * 0.35, cs * 0.14, 0, 0, TAU); c.fill();
+    c.fillStyle = i % 4 ? "#7a8aa8" : "#4fd1ff"; c.fillRect(x - cs * 0.22, y - cs * 0.35, cs * 0.44, cs * 0.6);
+    c.fillStyle = "#c9d3e6"; c.fillRect(x - cs * 0.3, y - cs * 0.42, cs * 0.6, cs * 0.12); }
+  const len = (cols - 2.5) * 2 + 3, segs = [[cols - 2.5, 0], [3, 1], [cols - 2.5, 2]];
+  for (let k = 0; k < 4; k++) { // aliens marching along the path
+    let d = ((t * 1.2 + k * 1.6) % len); let x, y;
+    if (d < segs[0][0]) { x = d; y = 1.5; } else if ((d -= segs[0][0]) < 3) { x = cols - 2.5; y = 1.5 + d; } else { d -= 3; x = cols - 2.5 - d; y = 4.5; }
+    eyeAlien(c, x * cs, y * cs + cs * 0.1, cs * 0.28, ["#5dff9b", "#ff8bd0", "#ffd25d", "#7ab8ff"][k], t + k);
+  }
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(cs * 0.3, 4.5 * cs, cs * 0.3, 0, TAU); c.fill(); // the base
+}
+function artLaunch(c, w, h, t) { // the lander weaving between pillars
+  sky(c, w, h, "#060c1c", "#1a2a4a", 7);
+  c.fillStyle = "#c06a48"; c.beginPath(); c.arc(w * 0.85, h * 0.25, h * 0.16, 0, TAU); c.fill();
+  const off = (t * 60) % 150;
+  for (let k = -1; k < w / 150 + 1; k++) { const x = k * 150 - off + 40, gy = h * (0.5 + 0.18 * Math.sin(k * 1.9)), gap = 60;
+    const g = c.createLinearGradient(x - 14, 0, x + 14, 0); g.addColorStop(0, "#5a8ab8"); g.addColorStop(0.5, "#e8f6ff"); g.addColorStop(1, "#4a7aa8");
+    c.fillStyle = g; c.fillRect(x - 14, 0, 28, gy - gap / 2); c.fillRect(x - 14, gy + gap / 2, 28, h); }
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.roundRect(w * 0.58, h * 0.32, 14, 20, 5); c.fill(); // a fuel cell
+  const y = h * 0.5 + Math.sin(t * 2) * h * 0.16, x = w * 0.3, r = 15, thr = Math.cos(t * 2) < 0;
+  if (thr) { c.fillStyle = "#ffb84d"; c.beginPath(); c.moveTo(x - 5, y + 9); c.lineTo(x, y + 22 + Math.random() * 6); c.lineTo(x + 5, y + 9); c.fill(); }
+  c.strokeStyle = "#9aa6c0"; c.lineWidth = 2.5; c.beginPath(); c.moveTo(x - 8, y + 5); c.lineTo(x - 14, y + 13); c.moveTo(x + 8, y + 5); c.lineTo(x + 14, y + 13); c.stroke();
+  c.fillStyle = "#b8c4e6"; c.beginPath(); c.ellipse(x, y + 3, r, r * 0.45, 0, 0, TAU); c.fill();
+  c.fillStyle = "rgba(190,235,255,0.4)"; c.beginPath(); c.arc(x, y, r * 0.62, PI, 0); c.fill();
+  eyeAlien(c, x, y + 1, r * 0.4, "#5dff9b", t);
+}
+function artLanding(c, w, h, t) { // a saucer following a dotted path onto its pad, a hauler lining up for the runway
+  sky(c, w, h, "#1d3352", "#122238", 11);
+  c.fillStyle = "#262c3e"; c.fillRect(w * 0.55, h * 0.62, w * 0.38, 26); c.strokeStyle = "#ffb84d"; c.lineWidth = 2; c.strokeRect(w * 0.55, h * 0.62, w * 0.38, 26);
+  c.strokeStyle = "rgba(230,236,255,0.5)"; c.setLineDash([10, 8]); c.beginPath(); c.moveTo(w * 0.6, h * 0.62 + 13); c.lineTo(w * 0.92, h * 0.62 + 13); c.stroke(); c.setLineDash([]);
+  const px = w * 0.24, py = h * 0.38; c.fillStyle = "#262c3e"; c.beginPath(); c.arc(px, py, 30, 0, TAU); c.fill(); c.strokeStyle = "#4fd1ff"; c.lineWidth = 3; c.stroke();
+  const k = (t * 0.25) % 1, sx = lerp(w * 0.95, px, k), sy = lerp(h * 0.08, py, k) + Math.sin(k * PI) * -20;
+  c.strokeStyle = "rgba(93,255,155,0.8)"; c.lineWidth = 2.5; c.setLineDash([2, 7]); c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo(lerp(sx, px, 0.5), Math.min(sy, py) - 20, px, py); c.stroke(); c.setLineDash([]);
+  saucer(c, sx, sy, 14 * (1 - Math.max(0, k - 0.85) * 2), t);
+  const hx = lerp(w * 0.2, w * 0.55, (t * 0.18) % 1), hy = h * 0.62 + 13; // hauler rolling in
+  c.fillStyle = "#ffb84d"; c.beginPath(); c.roundRect(hx - 18, hy - 9, 36, 18, 8); c.fill(); c.fillStyle = "rgba(200,240,255,0.6)"; c.beginPath(); c.arc(hx + 9, hy, 6, 0, TAU); c.fill();
+}
+function artSnake(c, w, h, t) { // the rescue train looping on a grid
+  sky(c, w, h, "#14284a", "#0a1428", 19);
+  c.strokeStyle = "rgba(255,255,255,0.05)"; for (let x = 0; x < w; x += 22) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); } for (let y = 0; y < h; y += 22) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+  const P = s => ({ x: w / 2 + Math.sin(s) * w * 0.34, y: h / 2 + Math.sin(s * 2) * h * 0.3 }), cols = ["#5dff9b", "#7ab8ff", "#ff8bd0", "#ffd25d"];
+  eyeAlien(c, w * 0.82, h * 0.78, 10, "#5dff9b", t);
+  for (let k = 6; k >= 1; k--) { const p = P(t * 0.9 - k * 0.24); c.fillStyle = "#b8c4e6"; c.beginPath(); c.arc(p.x, p.y, 9, 0, TAU); c.fill();
+    c.strokeStyle = cols[k % 4]; c.lineWidth = 2; c.stroke(); eyeAlien(c, p.x, p.y + 1, 5, cols[k % 4], t + k); }
+  const p0 = P(t * 0.9); saucer(c, p0.x, p0.y, 12, t);
+}
+function artDrAlien(c, w, h, t) { // a lab bottle filling with capsules and spores
+  sky(c, w, h, "#24102e", "#100818", 23);
+  const bx = w / 2 - 70, by = 18, bw = 140, bh = h - 30, cs = bw / 7;
+  c.fillStyle = "rgba(255,255,255,0.06)"; c.fillRect(bx, by, bw, bh); c.strokeStyle = "#ff8bd0"; c.lineWidth = 3; c.strokeRect(bx, by, bw, bh);
+  const cols = ["#5dff9b", "#4fd1ff", "#ffd25d", "#ff8bd0"];
+  let s = 5; const R = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 9; i++) { const gx = Math.floor(R() * 7), gy = 3 + Math.floor(R() * 4), col = cols[Math.floor(R() * 4)], x = bx + gx * cs + cs / 2, y = by + gy * cs + cs / 2 + 8; // spores
+    c.fillStyle = col; c.beginPath(); for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + t, rr = cs * (k % 2 ? 0.28 : 0.4); c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill();
+    c.fillStyle = "#10162c"; c.beginPath(); c.arc(x, y, cs * 0.1, 0, TAU); c.fill(); }
+  const fall = (t * 30) % (cs * 3), cx = bx + 3 * cs; // a capsule dropping in
+  for (const [i, col] of [[0, "#4fd1ff"], [1, "#ffd25d"]]) { c.fillStyle = col; c.beginPath(); c.roundRect(cx + i * cs + 2, by + 4 + fall, cs - 4, cs - 4, cs * 0.45); c.fill(); }
+  eyeAlien(c, bx + bw + 32, h * 0.6, 16, "#ff8bd0", t); // Dr. Hive Queen watching
+}
+const lerp = (a, b, k) => a + (b - a) * k;
+
+// ---------- build the cards ----------
+const grid = document.getElementById("grid");
+grid.innerHTML = GAMES.map((g, i) => `<a class="card" href="${g.href}" style="--c:${g.color}">
+  <canvas data-i="${i}" aria-hidden="true"></canvas>
+  <div class="info"><h2>${g.name} <span class="tag">${g.tag}</span></h2><p>${g.desc}</p><span class="play">Play ▶</span></div></a>`).join("");
+const canvases = [...grid.querySelectorAll("canvas")];
+
+// ---------- background stars and Commander Zib ----------
+const bg = document.getElementById("stars"), bc = bg.getContext("2d");
+const STARS = Array.from({ length: 160 }, () => ({ x: Math.random(), y: Math.random(), z: 0.3 + Math.random() * 0.7 }));
+function drawStars(t) {
+  const d = Math.min(2, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+  if (bg.width !== Math.round(w * d)) { bg.width = Math.round(w * d); bg.height = Math.round(h * d); }
+  bc.setTransform(d, 0, 0, d, 0, 0);
+  const g = bc.createRadialGradient(w * 0.7, -h * 0.1, 0, w * 0.7, -h * 0.1, Math.max(w, h)); g.addColorStop(0, "#1a2350"); g.addColorStop(1, "#070b16");
+  bc.fillStyle = g; bc.fillRect(0, 0, w, h);
+  for (const s of STARS) { bc.globalAlpha = 0.3 + 0.5 * s.z * (0.7 + 0.3 * Math.sin(t * 2 + s.x * 40)); bc.fillStyle = "#fff"; bc.fillRect(s.x * w, ((s.y + t * 0.004 * s.z) % 1) * h, s.z * 2, s.z * 2); }
+  bc.globalAlpha = 1;
+}
+function drawZib(t) {
+  const c = document.getElementById("zib").getContext("2d"); c.setTransform(1.8, 0, 0, 1.8, 0, 0); c.clearRect(0, 0, 80, 80);
+  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(40, 62, 26, PI, 0); c.fill();
+  c.strokeStyle = "#5dff9b"; c.lineWidth = 3; c.beginPath(); c.moveTo(40, 36); c.lineTo(40, 22 + Math.sin(t * 3) * 2); c.stroke();
+  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(40, 20 + Math.sin(t * 3) * 2, 4, 0, TAU); c.fill();
+  const blink = t % 3.5 < 0.12;
+  c.fillStyle = "#fff"; c.beginPath(); c.ellipse(40, 52, 12, blink ? 1.5 : 12, 0, 0, TAU); c.fill();
+  if (!blink) { c.fillStyle = "#10162c"; c.beginPath(); c.arc(42 + Math.sin(t * 0.8) * 3, 52, 5.5, 0, TAU); c.fill(); }
+  c.strokeStyle = "#1a2240"; c.lineWidth = 4; c.beginPath(); c.arc(40, 56, 28, PI * 1.12, PI * 1.88); c.stroke();
+}
+
+// ---------- animate (only what's on screen) ----------
+const visible = new Set();
+const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting ? visible.add(e.target) : visible.delete(e.target)));
+canvases.forEach(cv => io.observe(cv));
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function frame(now) {
+  const t = reduce ? 2 : now / 1000;
+  drawStars(t); drawZib(t);
+  for (const cv of canvases) {
+    if (!visible.has(cv) && cv.width) continue;
+    const d = Math.min(2, devicePixelRatio || 1), w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    const c = cv.getContext("2d"); c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, w, h);
+    GAMES[+cv.dataset.i].art(c, w, h, t);
+  }
+  if (!reduce) requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
