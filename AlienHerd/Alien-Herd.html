@@ -171,12 +171,14 @@ const pool = (left, right, y) => [left, right, y];
 const WORLDS = [
   {
     name: "Moon Training Base", color: "#8fe9ff", rock: [113, 138, 178], sky: ["#0b1837", "#253d63"],
-    intro: "Six small rescues. Watch the herd walk, then learn one job at a time.",
+    intro: "Six short rescues that start with one job and build up to trickier placements.",
     levels: [
-      { name: "Walk Home", hatch: [42, 134], exit: [128, 159], crew: 5, need: 4, jobs: {}, ground: [floor(160)],
-        hint: "Watch the aliens walk into the green rescue beam. They move on their own." },
-      { name: "First Tunnel", hatch: [42, 129], exit: [138, 159], crew: 6, need: 4, jobs: { bash: 3 }, ground: [floor(160), wall(96, 160)],
-        hint: "Select Basher. Tap an alien walking toward the wall when it is close enough to touch it." },
+      { name: "Open the Route", hatch: [58, 134], exit: [124, 159], crew: 5, need: 4, jobs: { bash: 3 },
+        ground: [floor(160), wall(90, 160, 7)], steel: [[41, 136, 45, 159]],
+        hint: "Tap Basher, then tap an alien with a yellow ring. It will open a tunnel for the herd." },
+      { name: "Double Tunnel", hatch: [42, 129], exit: [151, 159], crew: 6, need: 4, jobs: { bash: 3 },
+        ground: [floor(160), wall(83, 160), wall(120, 160)],
+        hint: "Bash through the first wall, then use a second Basher on the far wall." },
       { name: "Dig Down", hatch: [43, 98], exit: [137, 164], crew: 6, need: 4, jobs: { dig: 2 }, ground: [floor(124), floor(165)],
         hint: "Select Digger and tap an alien on the upper shelf. The rest can follow through the hole." },
       { name: "Build a Bridge", hatch: [43, 133], exit: [137, 159], crew: 6, need: 4, jobs: { build: 3 }, ground: [floor(160, 8, 83), floor(160, 100)], lava: [pool(84, 99, 202)],
@@ -263,7 +265,7 @@ const timeLimit = () => wi === 0 ? 55 : 40 + wi * 8;
 function newLevel(w = wi, l = li) {
   wi = w; li = l; L = WORLDS[w].levels[l];
   buildLevel(); aliens = []; spawned = saved = lost = tick = 0; time = acc = 0; spawnT = 0.6; over = false; fx = [];
-  counts = { ...L.jobs }; selected = Object.keys(counts)[0]; bubbleT = 0; $("hint").textContent = L.hint;
+  counts = { ...L.jobs }; selected = wi === 0 && li === 0 ? null : Object.keys(counts)[0]; bubbleT = 0; $("hint").textContent = L.hint;
   const bottom = Math.max(L.exit[1] + 27, ...(L.lava || []).map(([, , y]) => y + 12));
   viewHeight = Math.max(126, bottom - L.hatch[1] + 28);
   viewY = Math.max(0, L.hatch[1] - 28);
@@ -465,6 +467,10 @@ function draw(t) {
   for (const a of aliens) {
     if (a.state === "dead") continue;
     if (a.state === "saved") { ctx.globalAlpha = Math.max(0, 1 - a.t / 40); alienArt(ctx, a.x, a.y - a.t * 0.8, K, a.dir, "fall", t * 30, false); ctx.globalAlpha = 1; continue; }
+    if (wi === 0 && li === 0 && selected === "bash" && canAssign(a, "bash")) {
+      ctx.strokeStyle = "#ffd25d"; ctx.lineWidth = Math.max(1.5, K);
+      ctx.beginPath(); ctx.ellipse(a.x * K, (a.y - 5) * K, 5 * K, 7 * K, 0, 0, TAU); ctx.stroke();
+    }
     alienArt(ctx, a.x, a.y, K, a.dir, a.state, a.t, a.jet);
   }
   for (const p of fx) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.col; ctx.fillRect(p.x * K, p.y * K, K, K); } ctx.globalAlpha = 1;
