@@ -50,7 +50,7 @@
   @media(max-width: 420px) { body { padding-top: 12px; } .hud div { padding-inline: 7px; } .hud #pause { padding-inline: 8px; } }
 
 </style>
-<link rel="stylesheet" href="../lib/arcade-menu.css">
+<link rel="stylesheet" href="../lib/arcade-menu.css?phone=2">
 </head>
 <body>
 <main>
@@ -214,7 +214,7 @@ function worldMenu() {
     return `<button class="arcade-stage" data-action="world" data-world="${i}" ${unlocked(first) ? "" : "disabled"}>
       <i class="arcade-planet" data-world="${i}" aria-hidden="true"></i>
       <span>${world.name}<small>${unlocked(first) ? stars + " / 9 stars" : "Locked"}</small></span></button>`;
-  }).join("")}</div><div class="menu-actions"><button data-action="title">Back</button></div>${ARCADE_LINK}`);
+  }).join("")}</div><div class="arcade-footer"><button data-action="title">Back</button>${ARCADE_LINK}</div>`);
 }
 function stageMenu(wi) {
   const world = WORLDS[wi];
