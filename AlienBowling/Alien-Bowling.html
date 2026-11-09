@@ -393,13 +393,13 @@ const WORLDS=[
 const STORAGE="alienArcade.bowling.v1", FINISH_Y=17.5, HALF_LANE=1.13, PIN_R=.153, BALL_R=.185;
 const BALL_SPEED=7.5, BALL_MASS=1.6, PIN_TIP_SPEED=1.32;
 // ---------- the ball rack: each ball rolls differently ----------
-// speed = how fast it rolls, mass = how hard it hits pins, hook = how much a hook bends it, wobble = how far the aim marker swings
+// speed = how fast it rolls, mass = how hard it hits pins, hook = how much a hook bends it, wobble = how quickly the aim marker moves away from the starting line
 const BALLS=[
   {name:"Comet",desc:"All-rounder. Good at everything.",colors:["#eaffc7","#7db84f","#233f49"],speed:1,mass:1,hook:1,wobble:1,stats:[3,3,3,3]},
   {name:"Ice Moon",desc:"Light and steady. Easiest to aim.",colors:["#ffffff","#9fe8ff","#1a5a90"],speed:.88,mass:.8,hook:.7,wobble:.7,stats:[2,2,2,5]},
   {name:"Plasma",desc:"Bends like crazy on a hook.",colors:["#ffe0ff","#c77dff","#3a1460"],speed:1,mass:.95,hook:1.75,wobble:1.05,stats:[3,5,3,2]},
-  {name:"Meteor",desc:"Fast and heavy, but the aim jumps around.",colors:["#fff0c0","#ff8f5d","#5a1a10"],speed:1.3,mass:1.35,hook:.8,wobble:1.3,stats:[5,2,4,1]},
-  {name:"Black Hole",desc:"Slow, but smashes everything it touches.",colors:["#c9b6ff","#3a2a6a","#05030c"],speed:.8,mass:1.9,hook:1.1,wobble:.9,stats:[1,3,5,3]},
+  {name:"Meteor",desc:"Fast and heavy, but the aim jumps around.",colors:["#fff0c0","#ff8f5d","#5a1a10"],speed:1.24,mass:1.29,hook:.8,wobble:1.3,stats:[5,2,4,1]},
+  {name:"Black Hole",desc:"Slow, but smashes everything it touches.",colors:["#c9b6ff","#3a2a6a","#05030c"],speed:.8,mass:1.78,hook:1.1,wobble:.9,stats:[1,3,5,3]},
 ];
 const BALL_KEY="alienArcade.bowling.ball";
 let ballPick=0;
@@ -616,7 +616,11 @@ function moveHecklers(){
     if(pin.mischief&&!pin.walk)pin.x=pin.homeX+Math.sign(pin.homeX)*.14*Math.sin(time*3.4);
   }
 }
-function aim(){return clamp(position+1.02*myBall().wobble*Math.sin(time*world().beat),-1.28,1.28);}
+function aim(){
+  const swing=Math.sin(time*world().beat);
+  const edge=Math.sign(swing)*1.28;
+  return position+(edge-position)*Math.abs(swing)**(1/myBall().wobble);
+}
 function laneEvents(){
   if(!obstacleOn())return [];
   const kind=world().kind;
