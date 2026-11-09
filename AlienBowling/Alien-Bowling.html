@@ -29,7 +29,7 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#1d2131
 .score{flex:none;display:grid;grid-template-columns:repeat(9,minmax(0,1fr)) minmax(0,1.5fr);gap:2px;margin:0;text-align:center}
 .controls,#rollOptions{flex:none}
 .frame{background:#242439;border:1px solid #424464;border-radius:5px;padding:3px 1px;min-width:0}
-.frame.now{border-color:var(--accent);background:#32394b}.frame small,.frame strong{display:block}.frame small{font-size:.62rem;color:#c9bfdc}.frame strong{font-size:.69rem;white-space:nowrap;min-height:1.2em}.frame .total{color:var(--accent);font-size:.68rem}
+.frame.now{border-color:var(--accent);background:#32394b}.frame small,.frame strong{display:block}.frame small{font-size:.62rem;color:#c9bfdc}.frame strong{font-size:.69rem;white-space:nowrap;min-height:1.2em}.frame .total{color:var(--accent);font-size:.68rem}.frame .bank-bonus{color:#ffd25d}
 .overlay{position:absolute;inset:0;display:grid;place-items:center;background:#14142ad9;padding:10px}
 .panel{width:min(100%,410px);max-height:100%;overflow:auto;background:#25233e;border:1px solid #6d658a;border-radius:13px;padding:13px}
 h2{margin:3px 0;font-size:1.55rem;letter-spacing:-.04em}.panel p{font-size:.88rem;line-height:1.35;margin:6px 0 10px;color:#dfd9f1}
@@ -182,6 +182,7 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
 }
 #panel .match-options { text-align: left; margin: 10px 0; }
 #panel .match-options label { display: block; }
+#panel .match-options button[data-act="bowl"] { margin-top: 8px; }
 #panel .lane-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; }
 #panel.arcade-panel .lane-options button { padding: 7px; }
 #panel.arcade-panel .lane-options button[aria-pressed="true"] { background: #1d4a3a; border-color: #62c594; }
@@ -272,7 +273,7 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
   #panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
   #panel.arcade-panel :is(.guide svg, #howCv) { height: min(85px, 25dvh); }
   #panel .match-options { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
-  #panel .lane-options { margin-bottom: 0; }
+  #panel .lane-options { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0; }
   #panel #laneDetails { font-size: 12px; }
 }
 </style>
@@ -412,25 +413,33 @@ const BALL_KEY="alienArcade.bowling.ball";
 let ballPick=0;
 try{const saved=Number(localStorage.getItem(BALL_KEY));if(BALLS[saved])ballPick=saved;}catch{}
 const myBall=()=>BALLS[ballPick];
+const BANK_BONUS=5;
+const SPARE_PATTERNS=[
+  [6], [9], [0], [1,3], [2,5], [3,6], [5,9], [0,1,4], [4,6], [1,4,7],
+];
+const SPARE_STARS=[3,6,8];
 const LANES=[
   {name:"Original"},
-  {name:"Bumper Rails",kind:"rails",hint:"Bank off the rails. The gutters are covered."},
+  {name:"Bumper Rails",kind:"rails",hint:`No gutters. A strike after a rail bounce earns +${BANK_BONUS} bonus points, so 300 isn’t the limit.`},
   {name:"Gravity Well",kind:"gravity",hint:"The glowing well pulls the ball sideways. Aim against the pull."},
   {name:"Staggered Rack",kind:"stagger",hint:"The pin rows are offset and mirror each frame. Find the new pocket."},
+  {name:"Spare Rescue",kind:"spare",hint:`One shot per setup. Clear ${SPARE_STARS.join(", ")} of ${SPARE_PATTERNS.length} for stars.`},
+  {name:"Moving Pins",kind:"moving",hint:"On some frames, the whole rack slides while you aim. It stops when you roll."},
 ];
 const LANE_STORAGE="alienArcade.bowling.lanes.v2";
-const validScore=v=>Number.isInteger(v)&&v>=0&&v<=300?v:0;
+const validScore=(v,max)=>Number.isInteger(v)&&v>=0&&v<=max?v:0;
+const laneMax=l=>LANES[l].kind==="spare"?SPARE_PATTERNS.length:LANES[l].kind==="rails"?300+12*BANK_BONUS:300;
 let records=[], storedLanes=[];
 try{
   const saved=JSON.parse(localStorage.getItem(STORAGE));
-  if(Array.isArray(saved))records=saved.map(validScore);
+  if(Array.isArray(saved))records=saved.map(score=>validScore(score,300));
 }catch{}
 try{
   const saved=JSON.parse(localStorage.getItem(LANE_STORAGE));
   if(Array.isArray(saved))storedLanes=saved;
 }catch{}
-const laneRecords=WORLDS.map((_,w)=>LANES.map((_,l)=>validScore(storedLanes[w]?.[l])));
-let worldIndex=0, laneIndex=0, frames=[], frame=0, pins=[], ball=null, position=0, time=0, rollTime=0;
+const laneRecords=WORLDS.map((_,w)=>LANES.map((_,l)=>validScore(storedLanes[w]?.[l],laneMax(l))));
+let worldIndex=0, laneIndex=0, frames=[], bankBonuses=[], frame=0, pins=[], ball=null, position=0, time=0, rollTime=0;
 let state="menu", resumeState="aim", last=0, carry=0, width=0,height=0,ratio=1, hitMessage="", hitCount=0;
 let audioCtx,gesture=null,hook=0;
 const HOOK_START=7, HOOK_DISTANCE=7.12, MAX_HOOK=.44;
@@ -442,7 +451,8 @@ const laneBest=(w,l)=>l===0?(records[w]??0):laneRecords[w][l];
 const starText=n=>"★".repeat(n)+"☆".repeat(3-n);
 const rolls=()=>frames[frame];
 const isOpen=i=>i===0||(records[i-1]??0)>=WORLDS[i-1].unlock;
-const stars=(i,score)=>WORLDS[i].stars.filter(target=>score>=target).length;
+const stars=(i,score,l=0)=>(LANES[l].kind==="spare"?SPARE_STARS:WORLDS[i].stars).filter(target=>score>=target).length;
+const spareLane=()=>lane().kind==="spare";
 // sound on/off, remembered between visits
 const SOUND_KEY="alienArcade.bowling.sound";
 let soundOn=true;
@@ -517,21 +527,36 @@ function mark(r,j){
   if(j>0&&r[j-1]!==10&&r[j]+r[j-1]===10&&!(j===2&&r[0]!==10))return "/";
   return r[j]===10?"X":r[j]||"–";
 }
+function matchTotals(){
+  if(spareLane()){
+    let total=0;
+    return frames.map(r=>r.length?(total+=r[0]):null);
+  }
+  let bonus=0;
+  return frameTotals(frames).map((score,i)=>{
+    bonus+=(bankBonuses[i]??0);
+    return score===null?null:score+bonus;
+  });
+}
 function paintScore(){
-  const totals=frameTotals(frames);
+  const totals=matchTotals(), spares=spareLane();
   $("score").innerHTML=Array.from({length:10},(_,i)=>{
     const r=frames[i]??[];
-    return `<div class="frame ${i===frame&&state!=="result"&&frames.length?"now":""}"><small>${i+1}</small><strong>${r.map((_,j)=>mark(r,j)).join(" ")||"&nbsp;"}</strong><strong class="total">${totals[i]??"&nbsp;"}</strong></div>`;
+    const marks=r.length?(spares?(r[0]?"✓":"–"):r.map((_,j)=>mark(r,j)).join(" ")):"&nbsp;";
+    return `<div class="frame ${i===frame&&state!=="result"&&frames.length?"now":""}"><small>${i+1}</small><strong>${marks}</strong><strong class="total">${totals[i]??"&nbsp;"}</strong>${bankBonuses[i]?`<small class="bank-bonus">+${bankBonuses[i]}</small>`:""}</div>`;
   }).join("");
-  $("stage").textContent=frames.length?`${world().name}${laneIndex===0?"":` · ${lane().name}`} · Frame ${frame+1}/10`:world().name;
+  $("stage").textContent=frames.length?`${world().name}${laneIndex===0?"":` · ${lane().name}`} · ${spares?"Spare":"Frame"} ${frame+1}/10`:world().name;
 }
 // enter = the aliens walk in from the back of the lane and take their spots
 function rack(enter=false){
   pins=[];bubbles=[];
   const stagger=lane().kind==="stagger"?(frame%2?-1:1):0;
+  const spare=spareLane()?SPARE_PATTERNS[frame]:null;
   for(let row=0;row<4;row++)for(let col=0;col<=row;col++){
+    const index=row*(row+1)/2+col;
+    if(spare&&!spare.includes(index))continue;
     const x=(col-row/2)*.53+stagger*[.21,-.16,.13,-.09][row],y=14.1+row*.42;
-    const p={x,y,homeX:x,homeY:y,vx:0,vy:0,down:false,spin:0,angle:0,id:CHARS.list[pins.length%CHARS.list.length].id,mischief:row===3&&(col===0||col===3),
+    const p={x,y,homeX:x,homeY:y,vx:0,vy:0,down:false,spin:0,angle:0,id:CHARS.list[index%CHARS.list.length].id,mischief:row===3&&(col===0||col===3),
       act:null,actT:0,fall:0,walk:null,seed:Math.random()*10};
     if(enter){p.walk={x0:x+(Math.random()-.5)*1.2,y0:17.3+Math.random()*.4,t:-pins.length*.06};p.x=p.walk.x0;p.y=p.walk.y0;}
     pins.push(p);
@@ -635,6 +660,13 @@ function reactions(dt){
 }
 function obstacleOn(){return frame>=2&&(frame%2===0||frame>=6);}
 function moveHecklers(){
+  if(lane().kind==="moving"){
+    if(frame%3===1&&!rolls()?.length&&!pins.some(p=>p.walk)){
+      const shift=.23*Math.sin(time*3);
+      for(const p of pins)p.x=p.homeX+shift;
+    }
+    return;
+  }
   if(frame<6||rolls()?.length||pins.length!==10)return;
   for(const pin of pins){
     if(pin.mischief&&!pin.walk)pin.x=pin.homeX+Math.sign(pin.homeX)*.14*Math.sin(time*3.4);
@@ -677,7 +709,7 @@ function showMenu(html){
 const ARCADE_LINK = '<a class="button" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
 let pendingWorld = null, pendingLane = 0;
 function title(){
-  state="menu";pendingWorld=null;frames=[];frame=0;ball=null;hitMessage="";rack();paintScore();setStatus("");
+  state="menu";pendingWorld=null;frames=[];bankBonuses=[];frame=0;ball=null;hitMessage="";rack();paintScore();setStatus("");
   showMenu(`<svg class="arcade-hero" viewBox="0 0 360 112" aria-hidden="true"><g fill="#9fb4ef"><circle cx="55" cy="20" r="1.7"/><circle cx="286" cy="17" r="1.5"/><circle cx="309" cy="74" r="1.3"/><circle cx="87" cy="86" r="1.5"/></g><path d="M100 107l47-72h66l47 72z" fill="#503f62" stroke="#9899c2" stroke-width="2"/><path d="M139 105l29-68m53 68l-28-68" fill="none" stroke="#e8ff83" opacity=".56"/><g fill="#86efb1" stroke="#163448" stroke-width="2"><ellipse cx="166" cy="30" rx="8" ry="13"/><ellipse cx="194" cy="30" rx="8" ry="13"/><ellipse cx="180" cy="42" rx="9" ry="15"/></g><g fill="#142c45"><circle cx="166" cy="27" r="2.5"/><circle cx="194" cy="27" r="2.5"/><circle cx="180" cy="38" r="3"/></g><circle cx="181" cy="83" r="16" fill="#aa8dfb" stroke="#e5d7ff" stroke-width="2"/><path d="M173 77q5-7 11-6" fill="none" stroke="#f2eaff" stroke-width="2" stroke-linecap="round"/></svg><p class="kicker">Alien Arcade</p><h1>Alien Bowling</h1>
     <p>Ten aliens. One ball. They’re already heckling you.</p>
     <button class="primary" data-act="worlds">Play</button>
@@ -688,7 +720,7 @@ function worldsMenu(){
   showMenu(`<p class="kicker">Alien Bowling</p><h2>Choose a world</h2><p>Ten frames per match</p>
     <div class="worlds arcade-stages">${WORLDS.map((w,i)=>`<button class="arcade-stage" data-act="world" data-index="${i}" ${isOpen(i)?"":"disabled"}>
       <i class="arcade-planet" data-world="${i}" aria-hidden="true"></i>
-      <span>${w.name}<small>${isOpen(i)?`${LANES.reduce((sum,_,l)=>sum+stars(i,laneBest(i,l)),0)}/12 lane stars`:`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name} Original`}</small></span></button>`).join("")}</div>
+      <span>${w.name}<small>${isOpen(i)?`${LANES.reduce((sum,_,l)=>sum+stars(i,laneBest(i,l),l),0)}/${LANES.length*3} lane stars`:`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name} Original`}</small></span></button>`).join("")}</div>
     <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
 }
 function ballDetails(){
@@ -703,15 +735,15 @@ function matchMenu(i, l=0){
     <div class="match-options">
       <section aria-label="Lane selection"><p class="kicker">Lane</p>
         <div class="lane-options">${LANES.map((lane,j)=>{const best=laneBest(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
-          <span>${lane.name}<small>${j===0?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best)} stars">${starText(stars(i,best))}</span>${best?` · ${best}`:""}</small></span></button>`;}).join("")}</div>
+          <span>${lane.name}<small>${j===0?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best,j)} stars">${starText(stars(i,best,j))}</span>${best?` · ${best}${lane.kind==="spare"?"/10":""}`:""}</small></span></button>`;}).join("")}</div>
         <p id="laneDetails">${pendingLane===0?w.hint:LANES[pendingLane].hint}</p>
       </section>
       <section aria-label="Ball selection"><label class="kicker" for="ballSelect">Ball</label>
         <select id="ballSelect" aria-describedby="ballDetails">${BALLS.map((b,j)=>`<option value="${j}" ${j===ballPick?"selected":""}>${b.name}</option>`).join("")}</select>
         <p id="ballDetails">${ballDetails()}</p>
+        <button class="primary" data-act="bowl" data-index="${i}">Bowl ▶</button>
       </section>
     </div>
-    <button class="primary" data-act="bowl" data-index="${i}">Bowl ▶</button>
     <div class="arcade-footer"><button data-act="worlds">All worlds</button>${ARCADE_LINK}</div>`);
   $("ballSelect").onchange=()=>{
     const pick=Number($("ballSelect").value);
@@ -728,7 +760,8 @@ const HOWTO=[
   {title:"Time it",lines:["The <b>aim ring</b> by the pins swings side to side","Roll when it lines up just off the <b>front alien</b>"],demo:demoTiming},
   {title:"Hook it",lines:["<b>Swipe up at an angle</b> for a late bend","Or pick <b>↶ Hook left</b> / <b>↷ Hook right</b> first (Q / E)","The <b class='y'>orange dots</b> show the bend"],demo:demoHook},
   {title:"Pick a ball",lines:["Choose a <b>lane and ball</b> on the match setup screen","Each ball has its own <b>speed, hook, power and aim</b>","<b>Black Hole</b> smashes · <b>Ice Moon</b> is easiest to aim"],demo:demoBalls},
-  {title:"Lane trouble",lines:["<b>Original</b> adds the world’s twist starting in frame 3","<b>Bumper Rails</b> bounce the ball back into play","<b>Gravity Well</b> bends the ball toward the glow","<b>Staggered Rack</b> mirrors the offset pin rows each frame"],demo:demoTrouble},
+  {title:"Lane trouble",lines:["<b>Original</b> adds the world’s twist starting in frame 3","<b>Bumper Rails</b> bounce the ball back. A bank strike is worth <b>+5</b> extra points","<b>Gravity Well</b> bends the ball toward the glow","<b>Staggered Rack</b> mirrors the offset pin rows each frame"],demo:demoTrouble},
+  {title:"Bonus lanes",lines:["<b>Spare Rescue</b>: one shot to clear each of ten setups","<b>Moving Pins</b>: watch the rack slide, then time your roll"],demo:demoStrike},
   {title:"Score big",lines:["<b>X Strike</b>: all ten in one roll · <b>/ Spare</b>: in two","Frame 10 gives <b>bonus rolls</b> after a strike or spare",`Stars by score (Oort: <b class='y'>★ ${WORLDS[0].stars.join(" / ")}</b>)`,`Each lane earns its own stars. Clear the <b>Original</b> lane’s score goal to unlock the next world`],demo:demoStrike},
   {title:"The aliens",lines:["They <b>taunt</b> you and <b>panic</b> when the ball comes","They <b class='r'>laugh</b> at gutter balls and misses","Wait too long and they get <b>impatient</b>!"],demo:demoAliens},
 ];
@@ -818,7 +851,7 @@ function demoAliens(c,tt,w,h){
 function start(i, l=0){
   if(!WORLDS[i]||!LANES[l]||!isOpen(i))return;
   pendingWorld=null;
-  worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);frame=0;time=0;position=0;hook=0;rack(true);ready();
+  worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);bankBonuses=Array(10).fill(0);frame=0;time=0;position=0;hook=0;rack(true);ready();
 }
 function ready(){
   state="aim";gesture=null;tauntT=.9;poked();ball=null;bubbles=[];hitMessage="";$("overlay").hidden=true;showControls(true);paintScore();setStatus(hint());
@@ -827,8 +860,9 @@ function launch(curve=hook){
   if(state!=="aim")return;
   if(pins.some(p=>p.walk)){setStatus("Wait for the aliens to get in place…");return;}
   moveHecklers();
+  if(lane().kind==="moving")for(const pin of pins)pin.homeX=pin.x;
   const target=aim(), B=myBall(), sp=BALL_SPEED*B.speed;
-  ball={x:position,y:.52,vx:(target-position)*sp/13.6,vy:sp,spin:0,hook:curve*B.hook,hookVelocity:0,gutter:false,earlyGutter:false,touchedPin:false,scared:false,bumped:new Set()};
+  ball={x:position,y:.52,vx:(target-position)*sp/13.6,vy:sp,spin:0,hook:curve*B.hook,hookVelocity:0,gutter:false,earlyGutter:false,touchedPin:false,scared:false,banked:false,bumped:new Set()};
   state="roll";rollTime=0;hitMessage="";hitCount=0;bubbles=[];showControls(true);
   setStatus("Ball on the lane…");playSound(190,.26,"triangle");
 }
@@ -890,7 +924,8 @@ function update(dt){
   if(kind==="rails"&&!ball.gutter&&Math.abs(ball.x)>HALF_LANE&&ball.y<FINISH_Y){
     const side=Math.sign(ball.x);
     ball.x=side*Math.max(0,2*HALF_LANE-Math.abs(ball.x));
-    ball.vx=-side*Math.abs(ball.vx)*.9;
+    ball.vx=-side*Math.abs(ball.vx)*1.7;
+    if(!ball.touchedPin)ball.banked=true;
     setStatus("Bumper bank!");playSound(330,.09,"triangle");
   }else if(!ball.gutter&&Math.abs(ball.x)>HALF_LANE&&ball.y<FINISH_Y){
     ball.gutter=true;ball.x=Math.sign(ball.x)*1.27;ball.vx=0;
@@ -920,6 +955,16 @@ function update(dt){
 }
 let rackAfterRoll=false, endAfterRoll=false;
 function finishRoll(){
+  if(spareLane()){
+    const cleared=pins.every(p=>p.down);
+    rolls().push(Number(cleared));
+    rackAfterRoll=endAfterRoll=true;
+    hitMessage=cleared?"SPARE RESCUED!":hitCount?"Not quite cleared":"Missed the spare";
+    setStatus(hitMessage);
+    if(cleared)playSound(550,.27,"sine",820);
+    state="settle";rollTime=0;paintScore();
+    return;
+  }
   const r=rolls();r.push(hitCount);
   const sum=r[0]+(r[1]??0);
   if(frame<9){
@@ -929,7 +974,9 @@ function finishRoll(){
     rackAfterRoll=r.length===1&&r[0]===10||r.length===2&&((r[0]===10&&r[1]===10)||(r[0]!==10&&sum===10));
   }
   const strike=hitCount===10, spare=r.length===2&&r[0]!==10&&sum===10;
-  hitMessage=strike?"STRIKE!":spare?"SPARE!":hitCount?`${hitCount} DOWN`:ball.earlyGutter?"GUTTER BALL":"MISS!";
+  const bankStrike=strike&&ball.banked;
+  if(bankStrike)bankBonuses[frame]+=BANK_BONUS;
+  hitMessage=bankStrike?`BANK STRIKE! +${BANK_BONUS}`:strike?"STRIKE!":spare?"SPARE!":hitCount?`${hitCount} DOWN`:ball.earlyGutter?"GUTTER BALL":"MISS!";
   setStatus(hitMessage);if(strike||spare)playSound(strike?630:500,.27,"sine",820);
   const up=pins.filter(p=>!p.down),downs=pins.filter(p=>p.down);
   if(!ball.earlyGutter||hitCount>0){
@@ -954,7 +1001,8 @@ function advance(){
 }
 function result(){
   state="result";paintScore();
-  const score=frameTotals(frames)[9], old=laneBest(worldIndex,laneIndex), medal=stars(worldIndex,score);
+  const score=matchTotals()[9], old=laneBest(worldIndex,laneIndex), medal=stars(worldIndex,score,laneIndex);
+  const bankBonus=bankBonuses.reduce((total,value)=>total+value,0);
   if(score>old){
     if(laneIndex===0){
       records[worldIndex]=score;
@@ -965,8 +1013,9 @@ function result(){
     }
   }
   const next=worldIndex+1, canAdvance=next<WORLDS.length&&isOpen(next);
-  showMenu(`<div class="kicker">${world().name} · ${LANES[laneIndex].name}</div><h2>${score} points</h2>
-    <p><span class="stars">${starText(medal)}</span> · ${score>old?"New lane best!":`Lane best ${old}`}</p>
+  showMenu(`<div class="kicker">${world().name} · ${LANES[laneIndex].name}</div><h2>${spareLane()?`${score}/10 spares rescued`:`${score} points`}</h2>
+    ${bankBonus?`<p>Includes +${bankBonus} from bank strikes.</p>`:""}
+    <p><span class="stars">${starText(medal)}</span> · ${score>old?"New lane best!":`Lane best ${old}${spareLane()?"/10":""}`}</p>
     <p>${canAdvance?`${WORLDS[next].name} is open.`:next<WORLDS.length?`Score ${world().unlock} on the Original lane to unlock ${WORLDS[next].name}.`:"You reached the Earth finals."}</p>
     <div class="actions">${canAdvance?`<button class="primary" data-act="world" data-index="${next}">Next world</button>`:""}<button ${canAdvance ? "" : 'class="primary"'} data-act="retry">Bowl again</button>
     <button data-act="setup">Change lane or ball</button><button data-act="worlds">All worlds</button></div>`);
