@@ -304,8 +304,8 @@ const SECTORS = [
 const MISSIONS = SECTORS.flatMap((sector, si) => sector.missions.map((name, mi) => ({name, sector, si, mi})));
 const MODES = [
   {name:"Easy", hp:3, shots:3, speed:.86, spacing:1.12, blast:1.15, reload:.18},
-  {name:"Normal", hp:2, shots:0, speed:1.12, spacing:.82, blast:1, reload:.34},
-  {name:"Hard", hp:1, shots:-2, speed:1.28, spacing:.73, blast:.88, reload:.42},
+  {name:"Normal", hp:2, shots:0, speed:1.24, spacing:.76, blast:.92, reload:.38},
+  {name:"Hard", hp:1, shots:-2, speed:1.39, spacing:.68, blast:.81, reload:.46},
 ];
 const ARCADE = '<a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
 const starsText = n => "★".repeat(n) + "☆".repeat(3-n);
@@ -460,7 +460,7 @@ function beginWave() {
       const target = flanker ? flankTarget : primary;
       const entrySide = (i % 2 ? 1 : -1) * (flanker ? -1 : 1);
       const from = clamp(target.x + entrySide * (90 + progress * 85), 60, W - 60);
-      const sideEntry = mission >= 3 && (
+      const sideEntry = mission >= (mode === 0 ? 8 : 1) && (
         (flanker && ((i + wave * 2) % 3 === 0 || (mission >= 8 && (i + wave * 2) % 3 === 1))) ||
         (mode === 0 && mission >= 8 && i === wave + 1 && j === count - 1)
       );
