@@ -89,7 +89,7 @@
 // ============================================================
 //  ALIEN POP — a bubble shooter. Aim the launcher, fire goo bubbles, and match 3 or more of a colour to pop them.
 //  Anything left hanging with nothing holding it up falls. Some bubbles have aliens trapped inside: free them all to win.
-//  Miss too often and the ceiling creeps down (and costs a shield). If the bubbles reach the danger line, it's over.
+//  Time and misses bring the ceiling down. Reaching the danger line or running out of shields ends the run.
 //  The board is 360 x 640 units, scaled to fit; the bubbles sit on a hexagon grid, 10 across.
 // ============================================================
 const $ = id => document.getElementById(id);
@@ -226,7 +226,7 @@ const STAGES = [
 ];
 function levelInfo(s, l) {
   return { rows: Math.min(12, 7 + Math.floor(l / 2) + Math.floor(s / 2)), colors: Math.min(6, 4 + Math.floor((l + s * 3) / 5)), aliens: Math.min(8, 3 + Math.floor(l / 2) + Math.floor(s / 2)),
-    dropEvery: Math.max(4, 8 - Math.floor(l / 3) - s), wind: s === 1 ? 70 + l * 12 : 0 };
+    dropEvery: Math.max(4, 8 - Math.floor(l / 3) - s), dropSeconds: Math.max(18, [36, 33, 30, 27][s] - l), wind: s === 1 ? 70 + l * 12 : 0 };
 }
 
 // ---------- save ----------
@@ -285,14 +285,14 @@ function genLevel(s, l) {
 // ============================================================
 let si = 0, li = 0, S = STAGES[0], L = null, state = "aim", endT = 0, resultShown = false, t = 0, shake = 0;
 let shot = null, current = null, next = null, aimA = -PI / 2, aiming = false, hearts = MAX_HEARTS, misses = 0, score = 0, power = 0, freed = 0, aliensTotal = 0, wind = 0;
-let fx = [], falling = [], floaters = [], pops = [], banner = null, combo = 0;
+let fx = [], falling = [], floaters = [], pops = [], banner = null, combo = 0, ceilingClock = 0;
 function coloursLeft() { const set = new Set(); for (const row of grid) for (const b of row) if (b && b.col >= 0 && !b.ice) set.add(b.col); if (!set.size) for (const row of grid) for (const b of row) if (b && b.col >= 0) set.add(b.col); return [...set]; }
 function newBubble() { const cs = coloursLeft(); return { col: cs.length ? cs[Math.floor(Math.random() * cs.length)] : 0 }; }
 function loadLevel(s, l) {
   si = s; li = l; S = STAGES[s]; L = genLevel(s, l);
   aliensTotal = grid.flat().filter(b => b && b.alien).length; freed = 0; hearts = MAX_HEARTS; misses = 0; score = 0; power = 0; combo = 0;
   fx = []; falling = []; floaters = []; pops = []; shot = null; current = newBubble(); next = newBubble(); newWind();
-  state = "aim"; endT = 0; resultShown = false;
+  state = "aim"; endT = 0; resultShown = false; ceilingClock = L.dropSeconds;
   banner = { text: `${S.short.toUpperCase()} · LEVEL ${l + 1}`, sub: `Free ${aliensTotal} trapped aliens`, t: 2.4 };
   hud(true);
 }
@@ -374,9 +374,9 @@ function dropLoose() { // everything not connected to the ceiling falls
   return n;
 }
 function trimRows() { while (grid.length && grid[grid.length - 1].every(b => !b)) grid.pop(); }
-function ceilingDrop() {
-  ceiling++; misses = 0; hearts = Math.max(0, hearts - 1); shake = 0.45; tone(110, 0.5, "sawtooth", 0.08, 0.6);
-  banner = { text: "CEILING DROPS!", sub: hearts > 0 ? `−1 shield · aim for matches!` : "No shields left!", t: 1.6 }; hud(true);
+function ceilingDrop(timed = false) {
+  ceiling++; ceilingClock = L.dropSeconds; misses = 0; hearts = Math.max(0, hearts - 1); shake = 0.45; tone(110, 0.5, "sawtooth", 0.08, 0.6);
+  banner = { text: "CEILING DROPS!", sub: hearts > 0 ? (timed ? "Time ran out · −1 shield" : "Too many misses · −1 shield") : "No shields left!", t: 1.6 }; hud(true);
 }
 function lowestBubbleY() { let y = 0; for (let r = 0; r < grid.length; r++) for (let c = 0; c < rowLen(r); c++) if (grid[r][c]) y = Math.max(y, cellY(r)); return y; }
 function afterShot() {
@@ -384,7 +384,8 @@ function afterShot() {
     // bonus: the rest of the board pops for points
     let n = 0; for (let r = 0; r < grid.length; r++) for (let c = 0; c < rowLen(r); c++) if (grid[r][c]) { const b = grid[r][c]; grid[r][c] = null; falling.push({ ...b, x: cellX(r, c), y: cellY(r), vx: (Math.random() - 0.5) * 120, vy: -100 - Math.random() * 120 }); n++; }
     score += n * 5; [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, "triangle", 0.08, 0, i * 0.09)); hud(true); return; }
-  if (lowestBubbleY() + R > DANGER_Y) { state = "lost"; endT = 0; banner = { text: "THE BUBBLES REACHED YOU!", sub: `${aliensTotal - freed} aliens still trapped`, t: 2.2 }; tone(140, 0.6, "sawtooth", 0.08, 0.4); shake = 0.5; return; }
+  if (ceilingClock <= 0 && hearts > 0 && lowestBubbleY() + R <= DANGER_Y) ceilingDrop(true);
+  if (hearts === 0 || lowestBubbleY() + R > DANGER_Y) { state = "lost"; endT = 0; banner = { text: hearts === 0 ? "NO SHIELDS LEFT!" : "THE BUBBLES REACHED YOU!", sub: `${aliensTotal - freed} aliens still trapped`, t: 2.2 }; tone(140, 0.6, "sawtooth", 0.08, 0.4); shake = 0.5; return; }
   if (power >= POWER_FULL && current && !current.special) { current = { col: current.col, special: POWER_SPECIAL[SAVE.char] }; power = 0; banner = { text: POWERS[SAVE.char].name.toUpperCase() + " READY!", sub: POWERS[SAVE.char].text, t: 2 }; tone(990, 0.3, "sine", 0.07, 1.5); }
   if (current && current.special === "home") { usePowerHome(); current = newBubble(); }
   if (current && !coloursLeft().includes(current.col) && !current.special) current = newBubble(); // never hand out a colour that's gone from the board
@@ -404,6 +405,11 @@ function update(dt) {
   for (let i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; if (pops[i].t > 1) pops.splice(i, 1); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (paused || !L) return;
+  if (playing()) ceilingClock = Math.max(0, ceilingClock - dt);
+  if (state === "aim" && ceilingClock <= 0) {
+    afterShot();
+    return;
+  }
   if (state === "fly" && shot) {
     for (let k = 0; k < 8 && shot; k++) { const res = stepShot(shot, dt / 8);
       if (shot.special === "laser") { // pop everything the laser touches, then it fizzles at the top
@@ -508,6 +514,14 @@ function draw(tt) {
   // the board: a glass panel with the ceiling at the top and the danger line near the bottom
   ctx.fillStyle = "rgba(10,10,30,0.55)"; ctx.beginPath(); ctx.roundRect(0, 0, BW, BH, 14); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 2; ctx.stroke();
   const cy = TOP + ceiling * ROW_H; ctx.fillStyle = "#2a2a5a"; ctx.fillRect(0, 0, BW, cy); ctx.fillStyle = "#4a4a8a"; ctx.fillRect(0, cy - 4, BW, 4);
+  if (playing()) {
+    const urgent = ceilingClock <= 5;
+    ctx.fillStyle = "#171731"; ctx.fillRect(0, cy - 4, BW, 4);
+    ctx.fillStyle = urgent ? "#ff5d7a" : "#ffd25d";
+    ctx.fillRect(0, cy - 4, BW * ceilingClock / L.dropSeconds, 4);
+    ctx.font = "800 12px system-ui"; ctx.textAlign = "left";
+    ctx.fillText(ceilingClock > 0 ? `DROP IN ${Math.ceil(ceilingClock)}s` : "DROP NEXT", 10, cy - 11);
+  }
   for (let k = 0; k < L.dropEvery; k++) { ctx.fillStyle = k < L.dropEvery - misses ? "#5dff9b" : "#ff5d7a"; ctx.beginPath(); ctx.arc(BW / 2 - (L.dropEvery - 1) * 6 + k * 12, cy - 14, 3.5, 0, TAU); ctx.fill(); } // shots before the ceiling drops
   const danger = lowestBubbleY() + R > DANGER_Y - ROW_H * 1.5; ctx.strokeStyle = danger ? `rgba(255,93,122,${0.5 + 0.5 * Math.sin(tt * 10)})` : "rgba(255,93,122,0.4)"; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
   ctx.beginPath(); ctx.moveTo(0, DANGER_Y); ctx.lineTo(BW, DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
@@ -658,7 +672,7 @@ function pauseMenu() {
 const HOWTO = [
   { title: "Aim and fire", lines: ["<b>Drag</b> anywhere to aim, <b>let go</b> to fire", "Bounce shots off the <b>side walls</b>", "<b>Tap</b> the small bubble to <b>swap</b> it in"], demo: demoAim },
   { title: "Match 3", lines: ["Join <b>3 or more</b> of one colour to <b>pop</b> them", "Anything left <b>hanging</b> with nothing above it <b>falls</b>", "Aliens are <b class='p'>trapped</b> in some bubbles: free them all!"], demo: demoMatch },
-  { title: "The ceiling", lines: ["Shots that pop nothing are <b>misses</b> (the dots at the top)", "Too many misses: the ceiling <b class='r'>drops</b> and you lose a <b class='r'>♥</b>", "Bubbles past the <b class='r'>red line</b> = game over"], demo: demoCeiling },
+  { title: "The ceiling", lines: ["Shots that pop nothing are <b>misses</b> (the dots at the top)", "When the timer runs out or you miss too often, the ceiling <b class='r'>drops</b> and costs a <b class='r'>♥</b>", "Cross the <b class='r'>red line</b> or lose all shields and the run ends"], demo: demoCeiling },
   { title: "Power", lines: ["Popping fills the <b class='p'>power ring</b>", "Full ring = your alien's <b class='g'>special bubble</b>", "Blip <b>Laser</b> · Runner <b>Zap</b> · Goo <b>Rainbow</b> · Jelly <b>Burst</b> · Chonk <b>Bomb</b> · Mother <b>Call Home</b>"], demo: demoPower },
   { title: "Worlds and stars", lines: ["<b class='c'>Oort</b> frozen bubbles · <b class='y'>Jupiter</b> wind · <b>Mars</b> rocks · <b class='g'>Earth</b> goo bombs", "Win with all <b>5 ♥</b> = <b class='y'>★★★</b> · 3+ = <b class='y'>★★</b> · any win = <b class='y'>★</b>"], demo: demoStars },
 ];
