@@ -112,6 +112,8 @@ const GAMES = [
     desc: "Hop across busy space lanes, ride drifting platforms over hazards, and dodge fast trains to reach the landing pad." },
   { name: "Alien Pachinko", tag: "Peg shooter", color: "#ff9a3c", href: "AlienPachinko/Alien-Pachinko.html", art: artPachinko,
     desc: "Aim the saucer cannon and drop balls through the pegs. Hit every orange pod to free the trapped aliens, and use your alien's power." },
+  { name: "Alien Ball", tag: "Party arcade", color: "#68e8ca", href: "AlienBall/Alien-Ball.html", art: artBall,
+    desc: "Knock rivals out in Sumo or launch, glide and land on scoring targets across four worlds." },
   { name: "Alien Pop", tag: "Bubble shooter", color: "#ff8bd0", href: "AlienPop/Alien-Pop.html", art: artPop,
     desc: "Fire goo bubbles, match three to pop them, and free the aliens trapped in the bubble wall before it creeps down on you." },
   { name: "Alien Slopes", tag: "Downhill snowboard", color: "#7fe8ff", href: "AlienSlopes/Alien-Slopes.html", art: artSlopes,
@@ -204,6 +206,21 @@ function artSlopes(c, w, h, t) { // an alien carves down between pines, leaving 
   c.save(); c.translate(x, py); c.fillStyle = "rgba(20,30,70,0.22)"; c.beginPath(); c.ellipse(0, 1, 13, 4, 0, 0, TAU); c.fill();
   c.save(); c.scale(1, 0.72); c.rotate(PI / 2 - d); c.fillStyle = "#7fe8ff"; c.beginPath(); c.ellipse(0, 0, 15, 4.5, 0, 0, TAU); c.fill(); c.restore();
   c.rotate(d * 0.3); eyeAlien(c, 0, -10, 9, "#5dff9b", t); c.restore();
+}
+function artBall(c, w, h, t) {
+  sky(c, w, h, "#172953", "#080b23", 111);
+  const x = w / 2, y = h * 0.65, radius = Math.min(w * 0.34, h * 0.6);
+  for (const [scale, color] of [[1, "#237c79"], [0.67, "#4bdbc2"], [0.31, "#e6faf3"], [0.14, "#223a54"]]) {
+    c.fillStyle = color; c.beginPath(); c.ellipse(x, y, radius * scale, radius * 0.38 * scale, 0, 0, TAU); c.fill();
+  }
+  const flyX = x + Math.sin(t * 1.8) * radius * 0.34, flyY = y - radius * (0.5 + Math.cos(t * 1.8) * 0.12);
+  const r = radius * 0.21;
+  c.fillStyle = "#ffd28a"; c.beginPath();
+  c.moveTo(flyX - r * 2.65, flyY - r * 0.45); c.lineTo(flyX, flyY); c.lineTo(flyX + r * 2.65, flyY - r * 0.45);
+  c.lineTo(flyX + r * 1.9, flyY + r * 0.14); c.lineTo(flyX, flyY + r * 0.64); c.lineTo(flyX - r * 1.9, flyY + r * 0.14); c.closePath(); c.fill();
+  eyeAlien(c, flyX, flyY + r * 0.22, r * 0.65, "#ff9a57", t);
+  c.fillStyle = "#bcecff38"; c.strokeStyle = "#c5f5ff"; c.lineWidth = 2;
+  c.beginPath(); c.arc(flyX, flyY, r, 0, TAU); c.fill(); c.stroke();
 }
 function artPop(c, w, h, t) { // a bubble flies up, makes a match, and the group pops, freeing a trapped alien
   sky(c, w, h, "#1a1440", "#06061a", 127);
