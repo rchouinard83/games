@@ -294,9 +294,9 @@ const W = 600, H = 600, PADDLE_Y = H - 48, R = 7; // a taller board: more room b
 const WORLDS = [
   { name: "The Oort Gate", crew: "Ice Blips", sky: ["#193555", "#0a142d"], color: "#76ebdf",
     cell: "#1e4d56", planet: "#587aa5", levels: [
-      { name: "Prison Ship", rows: ["..RRRRRR..", "...R..R...", "..R.CC.R.."] },
-      { name: "Salvage Ring", rows: [".RR.CC.RR.", "RR..RR..RR", ".CC.RR.CC.", "..R....R.."] },
-      { name: "Security Wing", rows: ["..RRRRRR..", ".A.R..R.A.", ".R.ACCA.R.", "..R....R..", "....RR...."] },
+      { name: "Prison Ship", rows: ["..RRRRRR..", ".R.RRRR.R.", "..R.RR.R.."] },
+      { name: "Salvage Ring", rows: [".RR.BB.RR.", "RR..RR..RR", ".RC.RR.CR.", "..RR..RR.."] },
+      { name: "Security Wing", rows: ["..RRRRRR..", ".A.R..R.A.", ".R.ABBA.R.", "..R....R..", "....RR...."] },
     ] },
   { name: "Jupiter Storm", crew: "Storm Jellies", sky: ["#4a2d43", "#160e2a"], color: "#ffad79",
     cell: "#573444", planet: "#af644f", levels: [
@@ -442,7 +442,7 @@ function helpMenu() {
   openMenu("help", `<h2>How to play</h2>
     <p><b>Slide</b> along the bar under the board to steer, so your finger stays off the game. You can also drag on the board. On desktop, use the mouse or arrow keys.</p>
     <p><b>Tap</b> or press <b>Space</b> to launch. Hit the paddle’s edge to aim wider.</p>
-    <p><b>Free every alien.</b> <b>Gold armor</b> takes two hits. <b>Closing walls</b> narrow later levels.</p>
+    <p><b>Free every alien.</b> <b>Gold armor</b> takes two hits. <b>Steel bumpers</b> deflect the ball and stay in place. <b>Closing walls</b> narrow later levels.</p>
     <p class="stars">★★★ 0 balls lost · ★★☆ 1 lost · ★☆☆ 2 lost</p>
     <div class="menu-actions"><button data-action="helpBack">Back</button></div>${ARCADE_LINK}`);
 }
@@ -542,6 +542,7 @@ function step(dt) {
     else if (oldX + R <= x) { ball.x = x - R; ball.vx = -Math.abs(ball.vx); }
     else if (oldX - R >= x + cellWidth) { ball.x = x + cellWidth + R; ball.vx = Math.abs(ball.vx); }
     else { ball.y = oldY; ball.vy *= -1; }
+    if (cell.type === "B") { tone(160); break; }
     cell.hits--;
     if (cell.hits) { tone(190); break; }
     cell.live = false;
@@ -602,13 +603,13 @@ function draw() {
   for (const cell of cells) {
     if (!cell.live) continue;
     const x = inset + cell.x * scale, {y,type,hits} = cell;
-    const crew = type === "R", armored = type === "A" && hits === 2;
-    c.fillStyle = crew ? world.cell : armored ? "#504126" : "#33284e";
-    c.strokeStyle = crew ? world.color : armored ? "#ffd25d" : "#a887e1";
+    const crew = type === "R", armored = type === "A" && hits === 2, steel = type === "B";
+    c.fillStyle = crew ? world.cell : steel ? "#37465a" : armored ? "#504126" : "#33284e";
+    c.strokeStyle = crew ? world.color : steel ? "#b9cbe1" : armored ? "#ffd25d" : "#a887e1";
     c.lineWidth = 1.5; c.beginPath(); c.roundRect(x,y,cellWidth,29,7); c.fill(); c.stroke();
     if (crew) drawCrew(x + cellWidth / 2, y + 15, level);
     else {
-      c.fillStyle = armored ? "#ffd25d" : "#c8a4ff";
+      c.fillStyle = steel ? "#e0e9f4" : armored ? "#ffd25d" : "#c8a4ff";
       c.fillRect(x + cellWidth * .2, y + 13, cellWidth * .6, 3);
     }
   }
