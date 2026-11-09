@@ -222,7 +222,7 @@ const STAGES = [
 ];
 function levelInfo(s, l) {
   return { len: 7000 + l * 600 + s * 800, dens: 6 + l * 1.2 + s * 1.8, gap: Math.max(66, 126 - l * 5 - s * 8), swing: Math.min(170, 50 + l * 11 + s * 16),
-    spacing: 560 - s * 20 - l * 6, chase: 195 + l * 10 + s * 22, clear: Math.max(38, 50 - l - s * 2) };
+    spacing: 560 - s * 20 - l * 6, chase: 165 + l * 7 + s * 15, gd: (s * 8 + l) / 31, clear: Math.max(38, 50 - l - s * 2) };
 }
 
 // ---------- save ----------
@@ -337,7 +337,7 @@ function loadLevel(s, l) {
   si = s; li = l; S = STAGES[s]; L = levelInfo(s, l); genLevel(s, l); SET = spriteSet(s); snowPat = null;
   const ch = STATS[SAVE.char]; maxHearts = MAX_HEARTS + (ch.hearts || 0); hearts = maxHearts;
   p = { x: 0, y: 60, h: 0, d: 0, tH: 0, s: 0, z: 0, vz: 0, spin: 0, spinA: 0, airT: 0, tumble: 0, inv: 0, crater: null, mogul: null, boostT: 0 };
-  gob = { x: 0, y: -840, v: L.chase, on: false };
+  gob = { x: 0, y: -560, v: L.chase, on: false, mode: "chase", modeT: 0, next: 7 - 2 * L.gd }; camPY = 0.27;
   score = 0; gatesHit = 0; crystalsGot = 0; tricks = 0; rideT = 0; endT = 0; growlT = 0; resultShown = false; lostWhy = "";
   trail = []; fx = []; pops = []; camX = 0; shake = 0; inp.on = false;
   state = "ready"; readyT = 1.3; banner = { text: `${S.short} · Level ${l + 1}`, sub: "Get ready…", t: 0, dur: 1.3 };
@@ -349,6 +349,7 @@ function trick() { if (state !== "ride" || p.z <= 0 || p.tumble > 0) return; if 
 function crash(msg) {
   hearts--; p.tumble = 0.9; p.s *= 0.3; p.inv = 1.8; p.spin = 0; p.spinA = 0; shake = 0.35; boomSound(); tone(160, 0.3, "sawtooth", 0.06, 0.5);
   say(p.x, p.y - 30, msg, "#ff5d7a", true); puff(p.x, p.y, "#ffffff", 16); hud(true);
+  score = Math.max(0, score - 100); if (gob.on) gob.y += 60 + 70 * L.gd; // a crash also costs points and lets the Gobbler close in
   if (hearts <= 0) { state = "lost"; lostWhy = "crash"; endT = 0; }
 }
 function land() {
@@ -388,7 +389,10 @@ function update(dt) {
   follow(dt);
   setWind(state === "ride" ? clamp(p.s / BASE_TOP, 0, 1.5) : 0);
 }
+let camPY = 0.27;
 function follow(dt) {
+  const base = vh > 560 ? 0.27 : 0.23, gap = gob && gob.on && state === "ride" ? p.y - gob.y : 9999;
+  const want = base + clamp((600 - gap) / 280, 0, 1) * (vh > 560 ? 0.2 : 0.14); camPY += (want - camPY) * Math.min(1, 2.5 * dt);
   const lim = Math.max(0, HALF + 70 - vw / 2);
   camX += (clamp(p.x, -lim, lim) - camX) * Math.min(1, 5 * dt);
 }
@@ -425,14 +429,21 @@ function ride(dt) {
   // gates
   for (const g of gates) if (!g.res && prevY < g.y && p.y >= g.y) {
     if (Math.abs(p.x - g.x) <= g.gap / 2) { g.res = 1; gatesHit++; score += SCORE.gate; say(g.x, g.y - 30, `+${SCORE.gate}`, "#5dff9b"); tone(880, 0.08, "sine", 0.07); tone(1320, 0.12, "sine", 0.06, 1, 0.06); }
-    else { g.res = -1; say(p.x, p.y - 30, "Missed gate", "#ff5d7a"); tone(220, 0.18, "triangle", 0.06, 0.7); }
+    else { g.res = -1; score = Math.max(0, score - 50); say(p.x, p.y - 30, "Missed gate −50", "#ff5d7a"); tone(220, 0.18, "triangle", 0.06, 0.7);
+      if (gob.on) { gob.v += 4 + 6 * L.gd; gob.y += 60 + 60 * L.gd; say(p.x, p.y - 52, "The Gobbler speeds up!", "#ffffff"); tone(80, 0.4, "sawtooth", 0.06, 0.7); } }
     hud();
   }
   // finish line
   if (p.y >= len) { state = "won"; endT = 0; banner = { text: "FINISH!", sub: `${gatesHit}/${gates.length} gates`, t: 0, dur: 1.6 }; [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, "triangle", 0.08, 1, i * 0.09)); return; }
-  // the Frost Gobbler
-  if (rideT > 1.2) { gob.on = true; gob.y += gob.v * dt; gob.x += clamp(p.x - gob.x, -150 * dt, 150 * dt); }
-  const gap = p.y - gob.y; if (gap > 1000) gob.y = p.y - 1000;
+  // the Frost Gobbler: plods after you, and every so often it lunges in behind you, then drops back.
+  // A lunge stops short of you; it only catches you if you crash or slow down while it's close.
+  // Everything about it (how often, how close, how far back it can fall) gets tougher run by run: L.gd goes 0 -> 1.
+  if (rideT > 1.2) { gob.on = true; let sp = gob.v; const g0 = p.y - gob.y;
+    if (gob.mode === "chase") { gob.next -= dt; if (gob.next <= 0 && g0 > 220) { gob.mode = "lunge"; gob.modeT = 2.4; tone(60, 0.7, "sawtooth", 0.08, 1.8); say(p.x, p.y - 60, "ROAAAR!", "#7fe8ff", true); } }
+    if (gob.mode === "lunge") { sp = p.s + 260; gob.modeT -= dt; if (g0 <= 170 - 70 * L.gd || gob.modeT <= 0) { gob.mode = "rest"; gob.modeT = 1.6; } }
+    else if (gob.mode === "rest") { sp = Math.min(gob.v, p.s * 0.6); gob.modeT -= dt; if (gob.modeT <= 0) { gob.mode = "chase"; gob.next = 15 - 6 * L.gd + Math.random() * 5; } }
+    gob.y += sp * dt; gob.x += clamp(p.x - gob.x, -170 * dt, 170 * dt); }
+  const gap = p.y - gob.y, far = 720 - 140 * L.gd; if (gap > far) gob.y = p.y - far;
   if (gob.on && gap < 420) { growlT -= dt; if (growlT <= 0) { growlT = 0.4 + gap / 300; tone(70 + (420 - gap) / 6, 0.25, "sawtooth", 0.05, 0.8); } }
   if (gob.on && gap < 26 && Math.abs(p.x - gob.x) < 40) { state = "lost"; lostWhy = "gob"; endT = 0; boomSound(); tone(90, 0.6, "sawtooth", 0.09, 0.4); say(p.x, p.y - 40, "GOBBLED!", "#ff5d7a", true); shake = 0.5; }
   // board tracks in the snow
@@ -604,7 +615,7 @@ function draw(tt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = S.snow; ctx.fillRect(0, 0, cssW, cssH);
   if (!p) return;
   if (!snowPat) snowPat = makeSnow(si);
-  const pyf = vh > 560 ? 0.27 : 0.23, sh = shake > 0 ? shake * 14 : 0;
+  const pyf = camPY, sh = shake > 0 ? shake * 14 : 0;
   const camY = p.y - vh * pyf + (Math.random() - 0.5) * sh, cx = camX + (Math.random() - 0.5) * sh;
   ctx.setTransform(dpr * K, 0, 0, dpr * K, dpr * (cssW / 2 - cx * K), -dpr * camY * K);
   const x0 = cx - vw / 2 - 4, x1 = cx + vw / 2 + 4, y0 = camY - 60, y1 = camY + vh + 70, c = ctx;
@@ -665,13 +676,23 @@ function draw(tt) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const gap = p.y - gob.y;
   if (gob.on && state === "ride" && gap < 520) { const a = clamp((520 - gap) / 520, 0, 1) * (0.6 + 0.4 * Math.sin(tt * 8)); const g = ctx.createLinearGradient(0, 0, 0, 90); g.addColorStop(0, `rgba(255,60,90,${0.55 * a})`); g.addColorStop(1, "rgba(255,60,90,0)"); ctx.fillStyle = g; ctx.fillRect(0, 0, cssW, 90);
-    if (gob.y < camY) { ctx.font = "900 15px system-ui"; ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,18,38,0.8)"; const txt = `⚠ FROST GOBBLER ${Math.max(0, Math.round(gap / 10))} m`; ctx.strokeText(txt, cssW / 2, 40); ctx.fillStyle = "#ffffff"; ctx.fillText(txt, cssW / 2, 40); } }
+    if (gob.y < camY + 20) { // still off the top: a badge with its face, on the side it's coming from
+      const bxg = clamp(cssW / 2 + (gob.x - camX) * K, 40, cssW - 40), byg = 52 + Math.sin(tt * 8) * 2;
+      ctx.fillStyle = "rgba(10,18,38,0.75)"; ctx.beginPath(); ctx.arc(bxg, byg, 19, 0, TAU); ctx.fill(); ctx.strokeStyle = "#ff3d5e"; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.arc(bxg, byg, 17, 0, TAU); ctx.clip(); drawGob(ctx, bxg, byg + 26, 14, tt, 0.6); ctx.restore();
+      ctx.fillStyle = "#ff3d5e"; ctx.beginPath(); ctx.moveTo(bxg - 7, byg - 21); ctx.lineTo(bxg + 7, byg - 21); ctx.lineTo(bxg, byg - 29); ctx.fill();
+      ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,18,38,0.85)"; const txt = `${Math.max(0, Math.round(gap / 10))} m`; ctx.strokeText(txt, bxg, byg + 34); ctx.fillStyle = "#ffffff"; ctx.fillText(txt, bxg, byg + 34); } }
   // progress bar along the top
   const bx = 14, bw = cssW - 28, prog = clamp(p.y / len, 0, 1);
   ctx.fillStyle = "rgba(10,18,38,0.45)"; rrect(ctx, bx, 10, bw, 7, 3.5); ctx.fill(); ctx.fillStyle = S.color; rrect(ctx, bx, 10, Math.max(7, bw * prog), 7, 3.5); ctx.fill();
   for (const g of gates) { ctx.fillStyle = g.res > 0 ? "#5dff9b" : g.res < 0 ? "#ff5d7a" : "rgba(255,255,255,0.7)"; ctx.fillRect(bx + bw * g.y / len - 1, 8, 2, 11); }
-  if (gob.on && gob.y > 0) { ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(bx + bw * clamp(gob.y / len, 0, 1), 13.5, 6, 0, TAU); ctx.fill(); ctx.fillStyle = "#c0143c"; ctx.beginPath(); ctx.arc(bx + bw * clamp(gob.y / len, 0, 1), 13.5, 2.5, 0, TAU); ctx.fill(); }
-  ctx.fillStyle = CHARS.byId(SAVE.char).color; ctx.beginPath(); ctx.arc(bx + bw * prog, 13.5, 6, 0, TAU); ctx.fill(); ctx.strokeStyle = "#0a1226"; ctx.lineWidth = 2; ctx.stroke();
+  // the two racers on the bar: the Gobbler's face and yours, with the gap between them going red as it closes in
+  const px = bx + bw * prog, gx = Math.max(bx, Math.min(bx + bw * clamp(gob.y / len, 0, 1), px - 23)); // never hidden under your face
+  if (gob.on) { const danger = clamp((560 - gap) / 460, 0, 1); ctx.fillStyle = `rgba(255,${Math.round(210 - 150 * danger)},${Math.round(90 - 30 * danger)},${0.5 + 0.5 * danger})`; ctx.fillRect(Math.min(gx, px), 11, Math.abs(px - gx), 5);
+    ctx.fillStyle = "rgba(10,18,38,0.8)"; ctx.beginPath(); ctx.arc(gx, 13.5, 11, 0, TAU); ctx.fill(); ctx.save(); ctx.beginPath(); ctx.arc(gx, 13.5, 10, 0, TAU); ctx.clip(); drawGob(ctx, gx, 13.5 + 17, 9.5, tt, 0.5); ctx.restore();
+    ctx.strokeStyle = danger > 0.6 && Math.floor(tt * 6) % 2 ? "#ff3d5e" : "#ffffff"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(gx, 13.5, 11, 0, TAU); ctx.stroke(); }
+  ctx.fillStyle = "rgba(10,18,38,0.8)"; ctx.beginPath(); ctx.arc(px, 13.5, 11, 0, TAU); ctx.fill(); ctx.strokeStyle = CHARS.byId(SAVE.char).color; ctx.lineWidth = 2; ctx.stroke();
+  CHARS.draw(ctx, SAVE.char, px, 14.5, 6.5, tt);
   ctx.font = "900 14px system-ui"; ctx.textAlign = "left"; ctx.fillStyle = "rgba(10,18,38,0.7)"; ctx.fillText(`${Math.round(p.s * 0.25)} km/h`, 12, cssH - 12);
   if (banner) { const a = Math.min(1, banner.t * 5, (banner.dur - banner.t) * 4); ctx.globalAlpha = Math.max(0, a); ctx.textAlign = "center"; ctx.font = "900 36px system-ui"; ctx.lineWidth = 6; ctx.strokeStyle = "rgba(10,18,38,0.85)";
     ctx.strokeText(banner.text, cssW / 2, cssH * 0.5); ctx.fillStyle = "#ffffff"; ctx.fillText(banner.text, cssW / 2, cssH * 0.5);
@@ -811,7 +832,7 @@ function resultMenu() {
   } else {
     const gobbed = lostWhy === "gob";
     openMenu(`<p class="kicker">${S.short} · Run ${li + 1}</p><h2>${gobbed ? "Gobbled!" : "Wiped out!"}</h2>
-      <p>${gobbed ? "The <b>Frost Gobbler</b> caught you. Keep your speed up: every crash and every hard brake lets it close in." : "Out of hearts. Trees, rocks and lava each cost a <b>♥</b>. Stay near the gates: the path through them is always clear."}</p>
+      <p>${gobbed ? "The <b>Frost Gobbler</b> caught you. Keep your speed up: every crash, missed gate and hard brake lets it close in." : "Out of hearts. Trees, rocks and lava each cost a <b>♥</b>. Stay near the gates: the path through them is always clear."}</p>
       <p class="score">You got ${Math.round(clamp(p.y / len, 0, 1) * 100)}% of the way down.</p>
       <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
       <button class="big" data-act="stage" data-arg="${si}">All runs</button>`, null, "result");
@@ -830,10 +851,10 @@ function pauseMenu() {
 // How to play
 const HOWTO = [
   { title: "Steer", lines: ["Your alien heads <b>toward your finger</b>", "Finger a little to the side = <b>gentle turn</b>, far to the side = <b>sharp turn</b>", "All the way across = <b class='r'>brake</b> (but the Gobbler likes that)"], demo: demoSteer },
-  { title: "Gates", lines: ["Ride <b>between the two flags</b> of every gate", "<b class='g'>+100</b> for each one. Missed gates turn <b>grey</b>", "The path through the gates is <b class='c'>always clear</b> of trees"], demo: demoGates },
+  { title: "Gates", lines: ["Ride <b>between the two flags</b> of every gate", "<b class='g'>+100</b> each. Miss one: <b class='r'>−50</b> and the Gobbler <b class='r'>speeds up</b>", "The path through the gates is <b class='c'>always clear</b> of trees"], demo: demoGates },
   { title: "Jumps and spins", lines: ["Hit a <b class='o'>ramp</b> to fly. Bumps give little hops", "<b>Tap</b> while in the air to <b class='y'>spin</b>. 360, 720, 1080…", "Land before the spin ends, or <b class='r'>wipe out</b>. <b class='c'>Blue pads</b> = boost"], demo: demoJump },
   { title: "Watch out", lines: ["Trees, rocks, snowmen and saucers cost a <b class='r'>♥</b>", "Lose every heart and you're <b class='r'>wiped out</b>", "<b class='y'>Crystals</b> are bonus points: grab them"], demo: demoHazards },
-  { title: "The Frost Gobbler", lines: ["It rolls down the mountain <b>right behind you</b>", "Crashes and braking let it <b class='r'>catch up</b>. Watch the red edge", "The white dot on the top bar is the Gobbler"], demo: demoGobbler },
+  { title: "The Frost Gobbler", lines: ["It rolls down <b>right behind you</b>, and every so often it <b class='r'>lunges</b> into view", "Crashes (<b class='r'>−100</b>), braking and missed gates let it <b class='r'>catch up</b>", "Keep moving and it can't quite reach you. The white dot on the top bar is the Gobbler"], demo: demoGobbler },
   { title: "Your alien", lines: ["Blip <b>extra ♥</b> · Runner <b>speed</b> · Goo <b>grip</b>", "Jelly <b>float</b> · Chonk <b>smash</b> · Mother Blob <b>magnet</b>", "Pick in <b>Your alien</b> on the main menu"], demo: demoAliens },
   { title: "Worlds and stars", lines: ["<b class='c'>Moon</b> low gravity, craters · <b class='c'>Comet</b> ice · <b class='o'>Lava</b> rivers · <b class='g'>Earth</b> sleds", "Finish = <b class='y'>★</b> · 70% of gates = <b class='y'>★★</b> · every gate = <b class='y'>★★★</b>"], demo: demoStars },
 ];
