@@ -243,8 +243,8 @@ let cur = "sumo", gi = 0, si = 0, li = 0, SS = SUMO[0], LV = sumoLevel(0, 0), BU
 // ---------- save ----------
 const KEY = "alienBall.v1";
 const blankStars = () => SUMO.map(() => Array(LEVELS).fill(0));
-let SAVE = { char: "chonk", stars: { sumo: blankStars(), glide: blankStars() }, seenHelp: false, sound: true, ginv: false };
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) { SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "chonk"; SAVE.seenHelp = !!s.seenHelp; SAVE.sound = s.sound !== false; SAVE.ginv = !!s.ginv;
+let SAVE = { char: "chonk", stars: { sumo: blankStars(), glide: blankStars() }, sound: true, ginv: false };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) { SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "chonk"; SAVE.sound = s.sound !== false; SAVE.ginv = !!s.ginv;
   for (const g of ["sumo", "glide"]) if (s.stars && s.stars[g]) SAVE.stars[g] = [0, 1, 2, 3].map(i => Array.from({ length: LEVELS }, (_, l) => clamp(+((s.stars[g][i] || [])[l]) || 0, 0, 3))); } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
 const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every level for testing
@@ -263,7 +263,10 @@ const inp = { on: false, id: -1, ox: 0, oy: 0, x: 0, y: 0, dash: false }, keys =
 const sumoTouch = { tap: null, stroke: null, aim: null };
 let idleT = 0, pressure = null;
 function newMatch(s = si, l = li) {
-  cur = "sumo"; $("hTimeL").textContent = "Shrinks in";
+  const fromGlide = cur === "glide";
+  cur = "sumo";
+  if (fromGlide && glideMobile) resize();
+  $("hTimeL").textContent = "Shrinks in";
   idleT = 0; pressure = null; sumoTouch.tap = sumoTouch.stroke = sumoTouch.aim = null;
   si = s; li = l; SS = SUMO[s]; LV = sumoLevel(s, l); BUMPERS = LV.bumpers.map(b => ({ ...b }));
   $("hStage").textContent = `${SS.short} · Sumo`; $("hLevel").textContent = `Level ${l + 1}`;
@@ -471,8 +474,10 @@ function hudTime() {
 //  DRAWING
 // ============================================================
 let cssW = 360, cssH = 600, K = 1, CX = 0, CY = 0, bgCv = null, padCv = null;
+const glideMobile = matchMedia("(pointer: coarse)").matches;
+const gameDpr = () => Math.min(cur === "glide" && glideMobile ? 1.5 : 3, devicePixelRatio || 1);
 function resize() {
-  const st = $("stage"), d = Math.min(3, devicePixelRatio || 1);
+  const st = $("stage"), d = gameDpr();
   cssW = Math.max(1, st.clientWidth); cssH = Math.max(1, st.clientHeight); cv.width = Math.round(cssW * d); cv.height = Math.round(cssH * d); if (typeof G3 !== "undefined") g3Size();
   // the pad fills the screen; the player cards sit above it in portrait and beside it in landscape
   const land = cssW > cssH * 1.1, top = land ? 8 : 64, bottom = 8;
@@ -864,6 +869,12 @@ function glideLevel(s, l) {
     if (L.plats.some(p => Math.hypot(p.x - x, p.z - z) < p.r + 22) || (Math.abs(x) < 40 && z < 60)) continue;
     const air = kind === "cloud"; L.decor.push({ x, z, y: air ? rr(45, 80) : L.floor, kind: s === 0 ? "rock" : kind, s: rr(6, 16), seed: rand() }); k++; }
   L.terrain = glideTerrain(s, l);
+  L.aiObstacles = [
+    ...L.towers,
+    ...L.asteroids.map(a => ({ x: a.cx, z: a.cz, r: a.R + 7, h: a.cy + 8 })),
+    ...L.geysers.map(q => ({ x: q.x, z: q.z, r: 13, h: 99 })),
+    ...L.mills.map(m => ({ x: m.x, z: m.z, r: m.R + 5, h: m.h + m.R + 4 })),
+  ];
   return L;
 }
 function skyDecor(hy, tt) { // big things far away in the sky, fixed in direction so they turn with you
@@ -894,7 +905,9 @@ const gl = { L: null, round: 0, list: [], state: "ready", stateT: 0, doneT: 0, f
 let GS = GLIDE[0];
 const gme = () => gl.list[0];
 function glideStart(s, l) {
-  cur = "glide"; si = s; li = l; GS = GLIDE[s]; gl.L = glideLevel(s, l); gl.round = 0;
+  cur = "glide";
+  if (glideMobile) resize();
+  si = s; li = l; GS = GLIDE[s]; gl.L = glideLevel(s, l); gl.round = 0;
   const others = CHARS.list.map(c => c.id).filter(id => id !== SAVE.char).sort(() => Math.random() - 0.5).slice(0, 3);
   gl.list = [SAVE.char, ...others].map((id, i) => ({ id, me: i === 0, lane: LANES[[1, 0, 2, 3][i]], total: 0, pts: 0, st: STATS[id] }));
   $("hStage").textContent = `${GS.short} · Glide`; $("hLevel").textContent = `Level ${l + 1}`;
@@ -902,7 +915,7 @@ function glideStart(s, l) {
   glideRound();
 }
 function glideRound() {
-  gl.round++; gl.t = 0; gl.state = "ready"; gl.stateT = 0.9; gl.doneT = 0; gl.fast = false; gl.pops = []; gl.fx = []; gl.pulse = null; gl.trail = [];
+  gl.round++; gl.t = 0; gl.state = "ready"; gl.stateT = 0.9; gl.doneT = 0; gl.fast = false; gl.pops = []; gl.fx = []; gl.pulse = null; gl.trail = []; gl.landingPreview = null;
   for (const g of gl.list) Object.assign(g, { x: g.lane, y: 62, z: -100, vx: 0, vy: 0, vz: 0, yaw: 0, V: 0, gam: 0, phase: "ramp", rampT: 0, airT: 0, open: false, opened: false, openQueued: false, closed: false,
     wingK: 0, roll: 0, pts: 0, plat: null, ring: null, result: "", bank: 0, ai: {}, ix: 0, iy: 0, bounces: 0, stallT: 0, stallWarn: 0, dead: false });
   Object.assign(gl.cam, { x: gme().x, y: 81, z: -135, yaw: 0, roll: 0, pitch: 0.39 });
@@ -939,8 +952,7 @@ function gAI(g) {
   if (!g.open) return c;
   const dx = A.ax - g.x, dz = A.az - g.z, hd = Math.hypot(dx, dz), want = Math.atan2(dx, dz);
   let wantYaw = want; // a tower in the way? aim past its side instead
-  const obst = [...L.towers, ...L.asteroids.map(a => ({ x: a.cx, z: a.cz, r: a.R + 7, h: a.cy + 8 })), ...L.geysers.map(q => ({ x: q.x, z: q.z, r: 13, h: 99 })), ...L.mills.map(m => ({ x: m.x, z: m.z, r: m.R + 5, h: m.h + m.R + 4 }))];
-  for (const w of obst) { if (g.y > w.h + 3) continue; const ux = Math.sin(want), uz = Math.cos(want), ax = w.x - g.x, az = w.z - g.z, along = ax * ux + az * uz, side = ax * uz - az * ux;
+  for (const w of L.aiObstacles) { if (g.y > w.h + 3) continue; const ux = Math.sin(want), uz = Math.cos(want), ax = w.x - g.x, az = w.z - g.z, along = ax * ux + az * uz, side = ax * uz - az * ux;
     if (along > 0 && along < Math.min(hd, 160) && Math.abs(side) < w.r + 12) { const sgn = side > 0 ? -1 : 1; wantYaw = Math.atan2(w.x + uz * sgn * (w.r + 18) - g.x, w.z - ux * sgn * (w.r + 18) - g.z); break; } }
   const hgt = g.y - A.target.top;
   if (hd < 50 && hgt > 22) { A.spin = A.spin || (Math.random() < 0.5 ? 1 : -1); wantYaw = want + 1.4 * A.spin; } // far too high when we get there: spiral down
@@ -949,7 +961,8 @@ function gAI(g) {
   c.iy = hgt > wantH + 4 ? -0.5 : hgt < wantH - 3 ? 0.35 : -0.05;
   if (g.V > 15) c.iy = Math.max(c.iy, 0.25); if (g.V < 9) c.iy = Math.min(c.iy, -0.35);
   // Commit when the projected stop is near the chosen ring.
-  if (hd < A.target.r + 55 && hgt > 0.5) {
+  if (hd < A.target.r + 55 && hgt > 0.5 && gl.t >= (A.nextProbe || 0)) {
+    A.nextProbe = gl.t + (glideMobile ? G_DT * 2.9 : 0);
     const stop = gPredict(g);
     if (stop.plat === A.target && Math.hypot(stop.x - A.ax, stop.z - A.az) < A.target.r * (0.68 - L.skill * 0.28)) {
       c.toggle = true;
@@ -1091,7 +1104,7 @@ function P3(x, y, z) {
   if (zc < 0.6) return null; return [cssW / 2 + rx * C.F / zc, C.cy - yc * C.F / zc, zc];
 }
 function glideDraw(tt) {
-  const dpr = Math.min(3, devicePixelRatio || 1); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const dpr = gameDpr(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   if (!gl.L) return;
   if (G3.ok && G3.scene && G3.built === gl.L) { // the real 3D view, with the 2D sparks, numbers and HUD drawn on top
     G3.on = true; G3.cvs.style.display = "block"; camFollow(1 / 60); const C = gl.cam; C.F = glideFocalLength(); C.cy = cssH * 0.5;
@@ -1345,7 +1358,11 @@ function glideHud(tt) {
   }
   let canScore = false;
   if (m.phase === "air" && gl.state === "fly" && m.opened && !m.dead) {
-    const stop = gPredict(m);
+    const cached = gl.landingPreview;
+    if (!cached || cached.open !== m.open || gl.t - cached.t >= (glideMobile ? G_DT * 1.9 : G_DT * 0.9)) {
+      gl.landingPreview = { t: gl.t, open: m.open, stop: gPredict(m) };
+    }
+    const stop = gl.landingPreview.stop;
     canScore = stop.phase === "stop";
     const bull = canScore && stop.ring?.x === 5;
     const col = bull ? "#ffe29a" : canScore ? "#8dffcf" : "#c6d1e6";
@@ -1451,7 +1468,7 @@ function g3Init() {
   try {
     const T = THREE, cvs = document.createElement("canvas"); cvs.id = "cv3"; cvs.style.cssText = "position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none";
     $("stage").insertBefore(cvs, cv);
-    const r = new T.WebGLRenderer({ canvas: cvs, antialias: true }); r.setPixelRatio(Math.min(2, devicePixelRatio || 1)); r.shadowMap.enabled = true; r.shadowMap.type = T.PCFSoftShadowMap; r.outputEncoding = T.sRGBEncoding;
+    const r = new T.WebGLRenderer({ canvas: cvs, antialias: !glideMobile }); r.setPixelRatio(Math.min(glideMobile ? 1.25 : 2, devicePixelRatio || 1)); r.shadowMap.enabled = !glideMobile; r.shadowMap.type = T.PCFSoftShadowMap; r.outputEncoding = T.sRGBEncoding;
     G3.r = r; G3.cvs = cvs; G3.cam = new T.PerspectiveCamera(60, 1, 0.5, 2600); G3.v = new T.Vector3(); G3.ok = true; g3Size(); return true;
   } catch (e) { return false; }
 }
@@ -1490,7 +1507,22 @@ function padTex(p) { // the target's top: coloured rings with their points writt
   }); }
 function spriteTex(fn, n = 256) { const t = canvasTex(n, n, fn); return new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false }); }
 // ---------- build the whole scene for a level ----------
+function disposeGlideScene(scene) {
+  const resources = new Set();
+  scene.traverse(o => {
+    if (o.geometry && !o.isSprite) resources.add(o.geometry);
+    for (const mat of [].concat(o.material || [])) {
+      resources.add(mat);
+      for (const value of Object.values(mat)) if (value?.isTexture && value !== G3.swirl) resources.add(value);
+    }
+    if (o.isLight && o.shadow?.map) resources.add(o.shadow.map);
+  });
+  for (const resource of resources) resource.dispose();
+}
 function g3Build() {
+  if (G3.scene) disposeGlideScene(G3.scene);
+  if (G3.swirl) G3.swirl.dispose();
+  G3.scene = null;
   const T = THREE, L = gl.L, st = GS, S = new T.Scene(), s = GLIDE.indexOf(GS);
   const fogCol = new T.Color(st.sky[1]); S.fog = new T.Fog(fogCol, 260, 1250);
   // sky dome: colour by height
@@ -1507,7 +1539,8 @@ function g3Build() {
   if (s === 2 || s === 3) skyThing(s === 2 ? 0.2 : -0.6, s === 2 ? 0.08 : 0.3, s === 2 ? 900 : 420, (c, n) => { const m = n / 2, g = c.createRadialGradient(m, m, n * 0.05, m, m, m); g.addColorStop(0, s === 2 ? "#ffe0b0" : "#fffbe8"); g.addColorStop(0.25, s === 2 ? "#ff6a1a" : "#ffe27a"); g.addColorStop(1, "rgba(255,180,80,0)"); c.fillStyle = g; c.fillRect(0, 0, n, n); });
   // light: soft sky light plus a sun that casts shadows (it follows you, see g3Frame)
   S.add(new T.HemisphereLight(new T.Color(st.sky[0]).lerp(new T.Color(0xffffff), 0.6), new T.Color(st.ground[1]), s === 0 ? 0.7 : s === 1 ? 0.6 : 0.85));
-  const sun = new T.DirectionalLight(s === 2 ? 0xffc8a0 : 0xffffff, s === 0 ? 1.0 : s === 1 ? 0.85 : 1.15); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  const sun = new T.DirectionalLight(s === 2 ? 0xffc8a0 : 0xffffff, s === 0 ? 1.0 : s === 1 ? 0.85 : 1.15); sun.castShadow = !glideMobile; sun.shadow.mapSize.set(1024, 1024);
+  if (glideMobile) sun.position.set(160, 260, 120);
   Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120, near: 10, far: 700 }); S.add(sun); S.add(sun.target); G3.sun = sun;
   // Layered crater walls and a launch shelf, with the course suspended over the basin.
   const terrainStyle = GLIDE_TERRAIN[s], rockBands = terrainStyle.bands;
@@ -1701,15 +1734,28 @@ function g3Build() {
     const rotor = new T.Group(); rotor.position.z = 0; head.add(rotor);
     for (let k = 0; k < 3; k++) { const piv = new T.Group(); piv.rotation.z = k * TAU / 3; const bl = new T.Mesh(new T.BoxGeometry(m.R, 1.6, 0.5), bladeM); bl.position.x = m.R / 2 + 1; piv.add(bl); const tip = new T.Mesh(new T.BoxGeometry(2.4, 1.7, 0.55), tipM); tip.position.x = m.R; piv.add(tip); rotor.add(piv); }
     grp.traverse(o => o.castShadow = true); S.add(grp); return rotor; });
-  // the gliders: a glassy bubble, the alien inside (redrawn each frame, from behind in flight), and real wings
+  // On phones, small contact shadows keep the altitude cue without a second render pass.
+  const contactMap = glideMobile ? canvasTex(32, 32, (c, w) => {
+    const gradient = c.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+    gradient.addColorStop(0, "#0009"); gradient.addColorStop(1, "#0000");
+    c.fillStyle = gradient; c.fillRect(0, 0, w, w);
+  }) : null;
+  const contactGeometry = contactMap ? new T.PlaneGeometry(7, 7).rotateX(-PI / 2) : null;
+  const contactMaterial = contactMap ? new T.MeshBasicMaterial({ map: contactMap, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }) : null;
+  // The gliders: a glassy bubble, the alien inside, and wings.
   G3.gl = gl.list.map(g => { const grp = new T.Group(), col = new T.Color(CHARS.byId(g.id).color);
     const bub = new T.Mesh(new T.SphereGeometry(2, 28, 20), new T.MeshStandardMaterial({ color: col.clone().lerp(new T.Color(0xffffff), 0.35), transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.3, depthWrite: false })); bub.castShadow = true; bub.renderOrder = 2;
-    const c2 = document.createElement("canvas"); c2.width = c2.height = 128; const tex = new T.CanvasTexture(c2); tex.encoding = T.sRGBEncoding; const al = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); al.scale.set(3.6, 3.6, 1); al.renderOrder = 1;
+    const c2 = document.createElement("canvas"); c2.width = c2.height = 128;
+    const tex = new T.CanvasTexture(c2); tex.encoding = T.sRGBEncoding;
+    if (glideMobile) { tex.generateMipmaps = false; tex.minFilter = T.LinearFilter; } const al = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); al.scale.set(3.6, 3.6, 1); al.renderOrder = 1;
     const wm = new T.MeshStandardMaterial({ color: col, side: T.DoubleSide, roughness: 0.45, metalness: 0.1, emissive: col, emissiveIntensity: 0.25 }), wg = new T.BufferGeometry();
     wg.setAttribute("position", new T.Float32BufferAttribute([1.4, 0, -2.2, 7.5, 1.3, -0.6, 7.2, 1.2, 1.2, 1.4, 0, 1.8, -1.4, 0, -2.2, -7.5, 1.3, -0.6, -7.2, 1.2, 1.2, -1.4, 0, 1.8, 0, 0.4, 1.6, 0, 2.6, 2.6, 0, 0.4, 3.0], 3));
     wg.setIndex([0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 8, 9, 10]); wg.computeVertexNormals(); // two wings and a little tail fin
     const wings = new T.Mesh(wg, wm); wings.castShadow = true; const tilt = new T.Group(); tilt.add(wings); grp.add(tilt); grp.add(bub); grp.add(al); S.add(grp);
-    return { grp, tilt, wings, al, c2, tex, bub }; });
+    const contact = contactGeometry ? new T.Mesh(contactGeometry, contactMaterial) : null;
+    if (contact) S.add(contact);
+    return { grp, tilt, wings, art: c2.getContext("2d"), tex, contact };
+  });
   G3.scene = S; G3.built = gl.L;
 }
 // ---------- each frame: move things, aim the camera, render ----------
@@ -1718,12 +1764,33 @@ function g3Frame(tt) {
   cam.position.copy(W3(C.x, C.y, C.z)); cam.rotation.set(-C.pitch, -C.yaw, C.roll || 0, "YXZ"); const fov = 2 * Math.atan(cssH / (2 * C.F)) * 180 / PI;
   if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
   cam.updateMatrixWorld();
-  const m = gme(); G3.sun.position.copy(W3(m.x + 160, 260, m.z - 120)); G3.sun.target.position.copy(W3(m.x, 0, m.z + 40)); G3.sun.target.updateMatrixWorld();
+  const m = gme();
+  if (!glideMobile) {
+    G3.sun.position.set(m.x + 160, 260, 120 - m.z);
+    G3.sun.target.position.set(m.x, 0, -m.z - 40);
+    G3.sun.target.updateMatrixWorld();
+  }
   gl.list.forEach((g, i) => { const o = G3.gl[i], back = g.phase !== "stop" && g.phase !== "done";
-    o.grp.position.copy(W3(g.x, g.y + 2, g.z)); o.grp.rotation.set(0, -g.yaw, 0, "YXZ"); o.tilt.rotation.set(g.open ? g.gam * 0.8 : 0, 0, -g.bank, "YXZ");
+    o.grp.position.set(g.x, g.y + 2, -g.z); o.grp.rotation.set(0, -g.yaw, 0, "YXZ"); o.tilt.rotation.set(g.open ? g.gam * 0.8 : 0, 0, -g.bank, "YXZ");
     const wk = Math.max(0.001, g.wingK); o.wings.scale.set(wk, wk, wk); o.wings.visible = g.wingK > 0.02;
-    const c = o.c2.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, 128, 128); const wob = Math.sin(g.roll) * 0.2;
-    if (back) drawAlienBack(c, g.id, 64, 70, 34, tt + i, wob); else CHARS.draw(c, g.id, 64, 70, 34, tt + i, 0, wob); o.tex.needsUpdate = true; });
+    if (o.contact) {
+      const p = platUnder(g.x, g.z);
+      const floor = p && g.y >= p.top ? p.top : gl.L.floor;
+      o.contact.visible = g.y >= floor;
+      o.contact.position.set(g.x, floor + 0.11, -g.z);
+    }
+    const artFrame = Math.floor(tt * 15);
+    if (!glideMobile || o.artFrame !== artFrame || o.back !== back) {
+      const c = o.art;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.clearRect(0, 0, 128, 128);
+      const wob = Math.sin(g.roll) * 0.2;
+      if (back) drawAlienBack(c, g.id, 64, 70, 34, tt + i, wob);
+      else CHARS.draw(c, g.id, 64, 70, 34, tt + i, 0, wob);
+      o.tex.needsUpdate = true;
+      o.artFrame = artFrame; o.back = back;
+    }
+  });
   G3.coins.forEach((coin, i) => {
     coin.visible = !gl.L.coins[i].got.includes(m);
     coin.rotation.y = tt * 2.1 + i * 0.24;
@@ -1772,7 +1839,7 @@ function miniScene(c, w, h, tt, script) { // a small pad with a few balls, for t
 function titleMenu() { // the Alien Ball hub: pick a game
   const ch = CHARS.byId(SAVE.char);
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Ball</h1>
-    <p>Every alien rolls in a <b>bubble ball</b>. Pick a game: each one has its own stages, levels and stars.</p>
+    <p><b>Select a game.</b> Each one has its own stages, levels and stars.</p>
     ${GAMES.map((g, i) => `<button class="big gameCard ${g.ready ? "" : "soon"}" data-act="${g.ready ? "game" : "soon"}" data-arg="${i}"><canvas data-game="${i}"></canvas>
       <span>${g.name}<small>${g.ready ? `${g.tag} · <span class="stars">${gameStars(g.id)}/96 ★</span>` : `${g.tag} · coming soon`}</small></span></button>`).join("")}
     <button class="big" data-act="chars">Your alien: <b>${ch.name}</b> · ${STATS[ch.id].name} ›</button>
@@ -1875,12 +1942,12 @@ const HOWTO = [
   { title: "Winning", lines: ["Last ball rolling wins: get off the red edge fast!", "1st = <b class='y'>★★★</b> · 2nd = <b class='y'>★★</b> · 3rd = <b class='y'>★</b> (top 3 opens the next level)", "<b class='c'>Comet</b> ice · <b class='o'>Lava</b> tilting pad · <b class='g'>Earth</b> wind and bumpers"], demo: demoWin },
 ];
 function helpMenu(back, page = 0) {
-  const H = cur === "glide" ? GHOWTO : HOWTO, pg = H[page], lastPage = page === H.length - 1, first = back === "first", done = first ? "start" : back === "game" ? "resume" : back === "gm" ? "game" : "title";
+  const H = cur === "glide" ? GHOWTO : HOWTO, pg = H[page], lastPage = page === H.length - 1, done = back === "game" ? "resume" : back === "gm" ? "game" : "title";
   openMenu(`<p class="kicker">How to play ${cur === "glide" ? "Glide" : "Sumo"} · ${page + 1} of ${H.length}</p><h2>${pg.title}</h2>
     <canvas id="howCv"></canvas><ul class="how">${pg.lines.map(l => `<li>${l}</li>`).join("")}</ul>
     <div class="dots">${H.map((_, k) => `<i class="${k === page ? "on" : ""}"></i>`).join("")}</div>
-    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">${first ? "Skip" : "Close"}</button>`}
-      ${lastPage ? `<button class="big main" data-act="${done}">${first ? "Let's go ▶" : "Done"}</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
+    <div class="row">${page ? `<button class="big" data-act="help" data-arg="${back}|${page - 1}">◀ Back</button>` : `<button class="big" data-act="${done}">Close</button>`}
+      ${lastPage ? `<button class="big main" data-act="${done}">Done</button>` : `<button class="big main" data-act="help" data-arg="${back}|${page + 1}">Next ▶</button>`}</div>`,
     tt => { const cvs = $("howCv"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs); pg.demo(c, tt, w, h); }, "help");
 }
 function finger(c, x, y, down) { c.fillStyle = down ? "rgba(93,255,155,0.35)" : "rgba(255,255,255,0.22)"; c.beginPath(); c.arc(x, y, 15, 0, TAU); c.fill(); c.fillStyle = down ? "#5dff9b" : "#fff"; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
@@ -1903,7 +1970,6 @@ const ACT = {
   soon: i => { const b = $("box").querySelector(`[data-arg="${i}"] small`); if (b) b.innerHTML = "We haven't built this one yet: coming soon!"; tone(300, 0.1, "triangle", 0.05); },
   stage: s => stageMenu(+s),
   play: a => { const [s, l] = (a || `${si}|${li}`).split("|").map(Number); if (cur === "glide") glideStart(s, l); else newMatch(s, l); closeMenu(); },
-  start: () => { SAVE.seenHelp = true; save(); cur = "sumo"; newMatch(0, 0); closeMenu(); },
   resume: () => closeMenu(),
   help: a => { const [back, page] = a.split("|"); helpMenu(back, +page || 0); },
   sound: () => { SAVE.sound = !SAVE.sound; save(); if (!SAVE.sound && keepAlive) keepAlive.pause(); else audio();
@@ -1954,7 +2020,7 @@ function frame(now) {
 }
 resize();
 newMatch(); banner = null;
-if (SAVE.seenHelp) titleMenu(); else helpMenu("first", 0);
+titleMenu();
 requestAnimationFrame(frame);
 </script>
 </body>
