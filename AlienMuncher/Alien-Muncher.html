@@ -518,6 +518,17 @@ function patrolling() { let t = modeT; for (let k = 0; k < PATROL.length; k++) {
 function droneDecide(d) {
   const c = wrapC(d.tx), r = d.ty;
   if (d.mode === "eyes" && c === door[0] && r === door[1] - 1) { d.mode = "dock"; d.releaseAt = levelT + 1.2; d.dir = -1; return false; }
+  // A nearby player in a clear corridor takes priority over patrol and wandering.
+  if (d.mode === "chase") {
+    const px = wrapC(p.tx), py = p.ty;
+    for (let k = 0; k < 4; k++) {
+      for (let step = 1; step <= 3; step++) {
+        const nx = wrapC(c + DX[k] * step), ny = r + DY[k] * step;
+        if (!passable(d, nx, ny)) break;
+        if (nx === px && ny === py) { d.dir = k; return true; }
+      }
+    }
+  }
   const opts = []; for (let k = 0; k < 4; k++) { if (d.dir >= 0 && k === opp(d.dir)) continue; if (passable(d, c + DX[k], r + DY[k])) opts.push(k); }
   if (!opts.length) { if (d.dir >= 0 && passable(d, c + DX[opp(d.dir)], r + DY[opp(d.dir)])) opts.push(opp(d.dir)); else { d.dir = -1; return false; } }
   // frightened drones flee at random; hunting drones sometimes take a wrong turn (less often on later levels)
