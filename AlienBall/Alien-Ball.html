@@ -787,6 +787,7 @@ function hitMill(m, x, y, z, t) { // the pole, or one of the three spinning blad
   const ang = Math.atan2(v, u); for (let k = 0; k < 3; k++) { let d = ang - (m.w * t + k * TAU / 3); d = ((d % TAU) + TAU + PI) % TAU - PI; if (Math.abs(d) * rad < 1.8) return true; }
   return false;
 }
+const G_PLAYBACK_RATE = 1.08;
 const G_ROUNDS = 3, G_LAUNCH = 34, G_LIP = 0.32, G_DRAG = 0.006, G_HOLD = 90, G_STALL = 7.5, G_DT = 1 / 60, G_MOON_PAD_DEPTH = 6.5, LANES = [-21, -7, 7, 21];
 function seeded(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 // Each world progresses from a single target to compact formations ahead of the ramp.
@@ -970,7 +971,7 @@ function glideStart(s, l) {
   glideRound();
 }
 function glideRound() {
-  gl.round++; gl.t = 0; gl.state = "ready"; gl.stateT = 0.9; gl.doneT = 0; gl.fast = false; gl.pops = []; gl.fx = []; gl.pulse = null; gl.trail = []; gl.landingPreview = null;
+  gl.round++; gl.t = 0; gl.state = "ready"; gl.stateT = 0.9; gl.doneT = 0; gl.fast = false; gl.pops = []; gl.fx = []; gl.pulse = null; gl.trail = [];
   for (const g of gl.list) Object.assign(g, { x: g.lane, y: 62, z: -100, vx: 0, vy: 0, vz: 0, yaw: 0, V: 0, gam: 0, phase: "ramp", rampT: 0, airT: 0, open: false, opened: false, openQueued: false, closed: false,
     wingK: 0, roll: 0, pts: 0, plat: null, ring: null, result: "", bank: 0, ai: {}, ix: 0, iy: 0, bounces: 0, stallT: 0, stallWarn: 0, dead: false });
   Object.assign(gl.cam, { x: gme().x, y: 81, z: -135, yaw: 0, roll: 0, pitch: 0.39 });
@@ -1411,27 +1412,6 @@ function glideHud(tt) {
       label2(ctx, p.name, q[0], q[1] - 11, p.col);
     }
   }
-  let canScore = false;
-  if (m.phase === "air" && gl.state === "fly" && m.opened && !m.dead) {
-    const cached = gl.landingPreview;
-    if (!cached || cached.open !== m.open || gl.t - cached.t >= (glideMobile ? G_DT * 1.9 : G_DT * 0.9)) {
-      gl.landingPreview = { t: gl.t, open: m.open, stop: gPredict(m) };
-    }
-    const stop = gl.landingPreview.stop;
-    canScore = stop.phase === "stop";
-    const bull = canScore && stop.ring?.x === 5;
-    const col = bull ? "#ffe29a" : canScore ? "#8dffcf" : "#c6d1e6";
-    const text = canScore ? `${bull ? "BULLSEYE" : m.open ? "DROP NOW" : stop.ring.name.toUpperCase()} · +${stop.pts - m.pts}` : m.open ? "KEEP GLIDING" : "OFF TARGET";
-    const q = P3(stop.x, stop.y + 0.4, stop.z);
-    if (q && q[0] > 16 && q[0] < cssW - 16 && q[1] > 110 && q[1] < cssH - 16) {
-      ctx.beginPath(); ctx.ellipse(q[0], q[1], 11, 6, 0, 0, TAU);
-      ctx.strokeStyle = "#101529"; ctx.lineWidth = 5; ctx.stroke();
-      ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.stroke();
-      ctx.fillStyle = col; ctx.fillRect(q[0] - 1.5, q[1] - 1.5, 3, 3);
-    }
-    ctx.fillStyle = "rgba(9,14,35,0.86)"; rrect(ctx, cssW / 2 - 95, 54, 190, 28, 14); ctx.fill();
-    label2(ctx, text, cssW / 2, 72, col);
-  }
   // altitude bar and speed
   const bx = 10, by = 60, bh = Math.min(170, cssH * 0.26), height = m.y - L.floor, alt = clamp(height / (70 - L.floor), 0, 1);
   ctx.fillStyle = "rgba(4,6,18,0.55)"; rrect(ctx, bx, by, 12, bh, 6); ctx.fill(); ctx.fillStyle = m.V < G_STALL && m.open ? "#ff5d7a" : "#5dff9b"; rrect(ctx, bx, by + bh * (1 - alt), 12, Math.max(6, bh * alt), 6); ctx.fill();
@@ -1458,9 +1438,8 @@ function glideHud(tt) {
     const dx = inp.x - inp.ox, dy = inp.y - inp.oy, mm = Math.hypot(dx, dy), k = mm > 55 ? 55 / mm : 1; ctx.fillStyle = "rgba(93,255,155,0.55)"; ctx.beginPath(); ctx.arc(inp.ox + dx * k, inp.oy + dy * k, 20, 0, TAU); ctx.fill();
     ctx.font = "800 10px system-ui"; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fillText(SAVE.ginv ? "dive" : "climb", inp.ox, inp.oy - 62); ctx.fillText(SAVE.ginv ? "climb" : "dive", inp.ox, inp.oy + 72); }
   const D = dashBtn(), label = m.phase === "air" ? (!m.opened ? "OPEN" : m.open ? "DROP" : "") : m.phase === "ramp" ? m.openQueued ? "READY" : "OPEN" : "";
-  if (label) { const live = m.phase === "air" || (m.phase === "ramp" && m.rampT >= 1.25); ctx.fillStyle = !live ? "rgba(60,60,80,0.7)" : label !== "DROP" ? "#21758c" : canScore ? "#176c59" : "#5c4963"; ctx.beginPath(); ctx.arc(D.x, D.y, D.r, 0, TAU); ctx.fill();
+  if (label) { const live = m.phase === "air" || (m.phase === "ramp" && m.rampT >= 1.25); ctx.fillStyle = !live ? "rgba(60,60,80,0.7)" : label === "DROP" ? "#176c59" : "#21758c"; ctx.beginPath(); ctx.arc(D.x, D.y, D.r, 0, TAU); ctx.fill();
     if (live && label === "OPEN" && Math.floor(tt * 4) % 2) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(D.x, D.y, D.r + 4, 0, TAU); ctx.stroke(); }
-    if (label === "DROP" && canScore) { ctx.strokeStyle = "#8dffcf"; ctx.lineWidth = 2.5; ctx.stroke(); }
     ctx.fillStyle = "#fff"; ctx.font = `900 ${Math.round(D.r * 0.4)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(label, D.x, D.y); ctx.textBaseline = "alphabetic"; }
   if (m.phase === "stop" || m.phase === "done") { // your result, shown until the round ends
     const R = m.ring, bull = R && R.x === 5, main = m.phase === "stop" ? (bull ? `BULLSEYE! ${m.result}` : m.result) : m.result === "crashed" ? "Crashed!" : "Missed!";
@@ -1493,7 +1472,7 @@ function glideRoundMenu() {
 const GHOWTO = [
   { title: "Launch", lines: ["All four aliens roll down <b class='o'>ramps</b> and launch at once", "Tap <b class='c'>OPEN</b> near the lip to spread your wings at takeoff", "Open early to give yourself time to line up a target"], demo: demoGLaunch },
   { title: "Fly", lines: ["Drag <b>up</b> to climb (you slow down), <b>down</b> to dive (you speed up). You can flip this", "Drag <b>left/right</b> to turn. The <b>radar</b> shows the targets", "Too slow and you <b class='r'>stall</b> and drop. Steer round the <b>towers</b>!"], demo: demoGFly },
-  { title: "Drop", lines: ["The <b>ring marker</b> shows where you'll stop and what you'll score if you drop now", "Tap <b class='o'>DROP</b> to brake, fold your wings, and fall toward the target", "Drop from high up and you <b>bounce</b>; come in fast and you <b>roll</b>. Where you <b>stop</b> scores"], demo: demoGDrop },
+  { title: "Drop", lines: ["Line up with the target and use your <b>height and speed</b> to judge when to drop", "Tap <b class='o'>DROP</b> to brake, fold your wings, and fall toward the target", "Drop from high up and you <b>bounce</b>; come in fast and you <b>roll</b>. Where you <b>stop</b> scores"], demo: demoGDrop },
   { title: "Points and stars", lines: ["<b class='r'>10</b> · <b class='o'>20</b> · 40 · 50 · <b class='c'>100</b> · <b class='g'>200</b> · <b class='y'>300</b> · <b class='y'>500</b>: smaller and further = more", "Middle ring <b>×2</b>, white <b>×3</b>, bullseye <b>×5</b>. Coins <b>+5</b>, tucked in risky spots", "3 rounds: most points wins. 1st ★★★ · 2nd ★★ · 3rd ★"], demo: demoGPoints },
 ];
 function sideSky(c, w, h) { const g = c.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#1a4a7a"); g.addColorStop(0.7, "#9ad4f4"); g.addColorStop(0.7, "#1a7aa8"); g.addColorStop(1, "#0a3050"); c.fillStyle = g; c.fillRect(0, 0, w, h); }
@@ -2079,7 +2058,9 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = clamp((now - last) / 1000, 0, 0.1);
   last = now;
-  acc += dt; let n = 0;
+  // Keep the same physics step and give Glide less real time between steps in flight.
+  acc += dt * (cur === "glide" && !paused && gl.state === "fly" ? G_PLAYBACK_RATE : 1);
+  let n = 0;
   while (acc >= 1 / 60 && n < 6) { update(1 / 60); acc -= 1 / 60; n++; }
   if (n === 6) acc = 0;
   if (menuAnim) menuAnim(now / 1000);
