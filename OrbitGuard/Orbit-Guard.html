@@ -50,7 +50,7 @@
   }
   .stars { color:#ffd777; letter-spacing:.12em; }
 </style>
-<link rel="stylesheet" href="../lib/arcade-menu.css">
+<link rel="stylesheet" href="../lib/arcade-menu.css?phone=2">
 </head>
 <body>
 <main>
@@ -210,7 +210,7 @@ function sectors() {
     return `<button class="arcade-stage" data-act="sector" data-index="${si}" ${unlocked(i)?"":"disabled"}>
       <i class="arcade-planet" data-world="${si}" aria-hidden="true"></i>
       <span>${sector.name}<small>${unlocked(i)?stars+" / 9 stars":"Locked"}</small></span></button>`;
-  }).join("")}</div><button data-act="title">Back</button>${ARCADE}`);
+  }).join("")}</div><div class="arcade-footer"><button data-act="title">Back</button>${ARCADE}</div>`);
 }
 function missions(si) {
   const sector=SECTORS[si];
