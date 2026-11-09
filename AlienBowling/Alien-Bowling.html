@@ -572,18 +572,39 @@ const TAUNTS={
   chonk:["Chonk not moving.","Bring it, tiny ball!","Chonk does not fall.","That ball needs a snack.","Chonk is the final boss."],
   mother:["Mother is watching.","My babies will dodge.","Is that your best?","Deep breath, dear.","I've raised scarier things."],
 };
-const GENERIC=["Hit me, I dare you!","My grandma bowls better!","Is that a ball or a moon?","Nice shoes, Earthling!","Big windup. Tiny threat.","We had time to stretch."];
+const GENERIC=["Hit me, I dare you!","My grandma bowls better!","Is that a ball or a moon?","Nice shoes, Earthling!","Big windup. Tiny threat.","We had time to stretch.","Nice aim. Is it rented?","Try pointing that thing at us.","That ball looks nervous.","Keep the receipt for those shoes."];
 const SCARED=["Uh-oh!","Incoming!","Duck!","Mommy!","I take it back!","Scatter!"];
 const OUCH=["Ow!","Oof!","My antenna!","Not the face!","Bonk!","Noooo!","My dignity!","I felt that!"];
-const GUTTER_LINES=["Gutter ball!","The gutter says thanks.","Nice tour of the gutter.","The lane is over here!","Even the gutter flinched."];
-const MISS=["Missed us ALL!","Whoosh! Hahaha!","Did you even aim?","You hit the air!","Clean miss. Impressive.","Was that a warning shot?"];
+const GUTTER_LINES=["Gutter ball!","The gutter says thanks.","Nice tour of the gutter.","The lane is over here!","Even the gutter flinched.","The gutter wants a rematch.","That’s the scenic route."];
+const MISS=["Missed us ALL!","Whoosh! Hahaha!","Did you even aim?","You hit the air!","Clean miss. Impressive.","Was that a warning shot?","The lane felt a breeze.","That one’s going in the blooper reel."];
 const LIGHT_HIT=["That was a breeze.","Was that a practice roll?","We call that a tickle.","Did the ball lose power?","Still plenty of us here."];
 const SOLID_HIT=["You woke us up!","Hey! We needed those guys.","Okay, that one had some heat.","I'm calling for backup.","You got the loud ones."];
 const CLOSE_HIT=["So close!","That's all you get!","I felt the wind on that one.","I definitely meant to dodge.","Still standing, barely."];
 const LONE_PIN=["Last pin standing!","You missed the important one.","It's just you and me now.","Tell the others I won.","I get the lane to myself!"];
-const STRIKE_LINES=["Nooo! Not all of us!","Lucky shot…","We weren't ready!","Ow… everything hurts.","Who invited a professional?","I want a replay.","Nobody tell my mother."];
-const SPARE_LINES=["Lucky shot!","Fine. FINE.","That one was a fluke!","You needed two tries.","I was just about to move.","You found the last of us."];
+const STRIKE_LINES=["Nooo! Not all of us!","Lucky shot…","We weren't ready!","Ow… everything hurts.","Who invited a professional?","I want a replay.","Nobody tell my mother.","Okay, who taught you that?","I was standing here a second ago."];
+const SPARE_LINES=["Lucky shot!","Fine. FINE.","That one was a fluke!","You needed two tries.","I was just about to move.","You found the last of us.","Fine, you can have the lane."];
 const BORED=["Hellooo? Any day now!","Zzz…","Did the Earthling fall asleep?","We're getting old here!","Roll it already!","I could've gone for lunch."];
+const SLIDE_TAUNTS=[
+  "Aim here. Oops, over here!", "Follow the headpin!", "Keep up, Earthling!", "One step ahead of you!",
+  "We're a moving target, genius.", "You aim. We scoot.", "Line it up. We'll move it.", "Nice spot. We just left it.",
+  "Your aim's good. Your timing isn't.", "The whole rack can dance!", "Try to hit us mid-shuffle.",
+  "Who taught you to aim at yesterday?", "We practiced this in the break room.", "You ready? We can wait. Sort of.",
+];
+const SLIDE_TURNS=[
+  "And back the other way!", "Fake-out!", "Changed our minds!", "Thought we were going that way?",
+  "New spot! Catch up!", "Wrong way, bowler!", "Watch the switch!", "Oops. We reversed.",
+];
+const SIDESTEP_TAUNTS=[
+  "Corner pin coming through!", "I'm borrowing your spot.", "Bet you aimed at where I was.",
+  "This corner has wheels.", "Try catching the back row.", "Scoot first, gloat later.",
+];
+const STAGGER_TAUNTS=["Find the pocket now!", "We redecorated.", "The front pin's over here this time.", "New spots. Same bad attitude."];
+const MOVING_WAIT=["We're doing laps back here.", "Roll before we wear out the floor!", "How many laps do you need?", "Our dance break is almost over."];
+const MOVING_INCOMING=["Freeze! Here it comes!", "Stop the shuffle!", "Wait, it's actually headed here!", "Hold still! No, don't!", "Should've kept moving!"];
+const MOVING_MISS=["You hit our old spot!", "Nice shot at where we used to be.", "Too late! We already left.", "Can't catch a moving rack!", "Aim where we're going next time."];
+const MOVING_SURVIVOR=["The shuffle worked!", "That's why we move!", "Next time, watch our feet.", "Still standing. Fancy footwork.", "That was my emergency sidestep."];
+const MOVING_STRIKE=["You timed the shuffle?!", "Who yelled freeze?", "We moved right into that one.", "Next time we move faster.", "That was our best dodge!", "I want my old spot back."];
+const MOVING_SPARE=["Okay, you caught the stragglers.", "We should've shuffled again.", "There goes the cleanup crew.", "Fine. You found the new pocket."];
 const recentLines=[];
 function nextLine(pool){
   const available=pool.filter(line=>!recentLines.includes(line));
@@ -592,7 +613,7 @@ function nextLine(pool){
   if(recentLines.length>4)recentLines.shift();
   return line;
 }
-let bubbles=[], tauntT=1, idleT=0, boredDone=false;
+let bubbles=[], tauntT=1, idleT=0, boredDone=false, slideDirection=0;
 // alien voices: made-up gibberish, one squeaky syllable per few letters. Each alien has its own pitch and tone.
 const VOICE={blip:{f:520,type:"square"},runner:{f:780,type:"square"},goo:{f:430,type:"sine",bubbly:true},
   jelly:{f:620,type:"triangle",bubbly:true},chonk:{f:170,type:"sawtooth"},mother:{f:115,type:"sawtooth"}};
@@ -620,10 +641,10 @@ function speak(p,text,life=2,kind="talk"){
   bubbles=bubbles.filter(b=>b.pin!==p);bubbles.push({pin:p,text,t:0,life});while(bubbles.length>2)bubbles.shift();
   voice(p.id,kind,Math.ceil(text.length/5));
 }
-function taunt(){
+function taunt(pool){
   const up=pins.filter(p=>!p.down);if(!up.length)return;
   const p=pick(up);p.act=pick(["hop","wiggle","wave"]);p.actT=1.2;
-  speak(p,nextLine(Math.random()<.35?GENERIC:TAUNTS[p.id]),2.2);
+  speak(p,nextLine(pool??(Math.random()<.35?GENERIC:TAUNTS[p.id])),2.2);
 }
 function laughAt(lines){
   const up=pins.filter(p=>!p.down);if(!up.length)return;
@@ -646,28 +667,41 @@ function reactions(dt){
   }
   for(const b of bubbles)b.t+=dt;
   bubbles=bubbles.filter(b=>b.t<b.life);
-  if(state==="aim"&&!pins.some(p=>p.walk)&&(tauntT-=dt)<=0){taunt();tauntT=1.8+Math.random()*1.8;}
+  if(state==="aim"&&!pins.some(p=>p.walk)){
+    const sliding=slidingRack(), sidestepping=sidesteppingPins();
+    const direction=sliding?Math.sign(Math.cos(time*3)):0;
+    const turned=direction!==0&&slideDirection!==0&&direction!==slideDirection;
+    slideDirection=direction;
+    tauntT-=dt;
+    if(tauntT<=0||(turned&&tauntT<.4&&!bubbles.length)){
+      const pool=sliding?(turned?SLIDE_TURNS:SLIDE_TAUNTS):sidestepping?SIDESTEP_TAUNTS:lane().kind==="stagger"?STAGGER_TAUNTS:null;
+      taunt(pool);
+      tauntT=sliding?1.8+Math.random()*.65:1.8+Math.random()*1.8;
+    }
+  }
   if(state==="aim"&&(idleT+=dt)>7&&!boredDone){ // take too long and they all get impatient
     boredDone=true;const up=pins.filter(p=>!p.down);
     for(const p of up){p.act="wiggle";p.actT=2;}
-    if(up.length){speak(pick(up),nextLine(BORED),2.6);tauntT=3;}
+    if(up.length){speak(pick(up),nextLine(slidingRack()||sidesteppingPins()?MOVING_WAIT:BORED),2.6);tauntT=3;}
   }
   if(state==="roll"&&ball&&!ball.scared&&!ball.gutter&&ball.y>9.5){ // here it comes!
     ball.scared=true;const up=pins.filter(p=>!p.down);
     for(const p of up){p.act="scared";p.actT=1.5;}
-    if(up.length){speak(pick(up),nextLine(SCARED),1.2,"scared");up.slice(0,2).forEach((p,i)=>voice(p.id,"scared",2,.1+i*.08));}
+    if(up.length){speak(pick(up),nextLine(ball.dodged?MOVING_INCOMING:SCARED),1.2,"scared");up.slice(0,2).forEach((p,i)=>voice(p.id,"scared",2,.1+i*.08));}
   }
 }
 function obstacleOn(){return frame>=2&&(frame%2===0||frame>=6);}
+function slidingRack(){return lane().kind==="moving"&&frame%3===1&&!rolls()?.length&&!pins.some(p=>p.walk);}
+function sidesteppingPins(){return lane().kind!=="moving"&&frame>=6&&!rolls()?.length&&pins.length===10;}
 function moveHecklers(){
   if(lane().kind==="moving"){
-    if(frame%3===1&&!rolls()?.length&&!pins.some(p=>p.walk)){
+    if(slidingRack()){
       const shift=.23*Math.sin(time*3);
       for(const p of pins)p.x=p.homeX+shift;
     }
     return;
   }
-  if(frame<6||rolls()?.length||pins.length!==10)return;
+  if(!sidesteppingPins())return;
   for(const pin of pins){
     if(pin.mischief&&!pin.walk)pin.x=pin.homeX+Math.sign(pin.homeX)*.14*Math.sin(time*3.4);
   }
@@ -854,7 +888,7 @@ function start(i, l=0){
   worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);bankBonuses=Array(10).fill(0);frame=0;time=0;position=0;hook=0;rack(true);ready();
 }
 function ready(){
-  state="aim";gesture=null;tauntT=.9;poked();ball=null;bubbles=[];hitMessage="";$("overlay").hidden=true;showControls(true);paintScore();setStatus(hint());
+  state="aim";gesture=null;tauntT=.9;slideDirection=0;poked();ball=null;bubbles=[];hitMessage="";$("overlay").hidden=true;showControls(true);paintScore();setStatus(hint());
 }
 function launch(curve=hook){
   if(state!=="aim")return;
@@ -862,7 +896,7 @@ function launch(curve=hook){
   moveHecklers();
   if(lane().kind==="moving")for(const pin of pins)pin.homeX=pin.x;
   const target=aim(), B=myBall(), sp=BALL_SPEED*B.speed;
-  ball={x:position,y:.52,vx:(target-position)*sp/13.6,vy:sp,spin:0,hook:curve*B.hook,hookVelocity:0,gutter:false,earlyGutter:false,touchedPin:false,scared:false,banked:false,bumped:new Set()};
+  ball={x:position,y:.52,vx:(target-position)*sp/13.6,vy:sp,spin:0,hook:curve*B.hook,hookVelocity:0,gutter:false,earlyGutter:false,touchedPin:false,scared:false,banked:false,dodged:slidingRack()||sidesteppingPins(),bumped:new Set()};
   state="roll";rollTime=0;hitMessage="";hitCount=0;bubbles=[];showControls(true);
   setStatus("Ball on the lane…");playSound(190,.26,"triangle");
 }
@@ -982,8 +1016,9 @@ function finishRoll(){
   if(!ball.earlyGutter||hitCount>0){
     bubbles=[];
     if(strike||spare){
-      if(downs.length)speak(pick(downs),nextLine(strike?STRIKE_LINES:SPARE_LINES),2);
-    }else if(hitCount===0)laughAt(MISS);
+      if(downs.length)speak(pick(downs),nextLine(ball.dodged?(strike?MOVING_STRIKE:MOVING_SPARE):(strike?STRIKE_LINES:SPARE_LINES)),2);
+    }else if(hitCount===0)laughAt(ball.dodged?MOVING_MISS:MISS);
+    else if(up.length&&ball.dodged)speak(pick(up),nextLine(MOVING_SURVIVOR),2);
     else if(up.length===1)speak(up[0],nextLine(LONE_PIN),2);
     else if(up.length)speak(pick(up),nextLine(hitCount<=3?LIGHT_HIT:hitCount<=7?SOLID_HIT:CLOSE_HIT),2);
   }
