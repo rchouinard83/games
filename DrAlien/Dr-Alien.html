@@ -128,7 +128,8 @@
   .settings { display: grid; gap: 8px; }
   .hud .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
   .settings label { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-  #play-controls { margin-top: 8px; }
+  #play-controls { grid-column: 2; grid-row: 2; margin: -10px 0 0; }
+  .menu-layout #play-controls { display: none; }
   #play-controls button {
     width: 100%; min-height: 56px; padding: 4px; font-size: 20px;
     border-color: #5386a6; background: #183456; touch-action: none; user-select: none;
@@ -222,10 +223,13 @@
     }
     header { align-items: start; margin-bottom: 10px; }
     .lab { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-    .lab:not(.menu-layout) { grid-template-rows: auto 1fr; }
+    .lab:not(.menu-layout) { grid-template-rows: auto minmax(0, 1fr) auto; }
+    .lab:not(.menu-layout) .hud { grid-area: 2 / 1 / 4 / 2; }
+    #play-controls { grid-area: 3 / 2; margin: 0; }
     .chamber {
       grid-area: 1 / 2 / 3 / 3; align-self: start; margin: 0;
-      width: clamp(176px, min(calc(100vw - 112px), calc((100dvh - 177px) / 2)), 258px);
+      width: clamp(132px, min(calc(100vw - 116px), calc((var(--visible-height, 100dvh)
+        - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom)) - 129px) / 2)), 320px);
     }
     .lab:not(.menu-layout) .panel { padding: 8px; }
     .lab:not(.menu-layout) .queen-art { margin: 2px auto; max-width: 94px; }
@@ -244,13 +248,43 @@
     #next { padding: 6px 0 8px; }
     .hud button, .hud #control-mode { min-height: 32px; }
   }
+  @media (orientation: portrait) and (max-width: 670px) and (min-height: 770px) {
+    main:has(.lab:not(.menu-layout)) header { display: none; }
+    .lab:not(.menu-layout) {
+      grid-template-columns: minmax(80px, 0.3fr) minmax(0, 1fr);
+      grid-template-rows: auto auto auto;
+    }
+    .lab:not(.menu-layout) .chamber, .lab:not(.menu-layout) #play-controls {
+      justify-self: center;
+      width: clamp(180px, min(calc(100vw - 26px), calc((var(--visible-height, 100dvh)
+        - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom)) - 196px) / 2)), 385px);
+    }
+    .lab:not(.menu-layout) .chamber { grid-area: 1 / 1 / 2 / 3; }
+    .lab:not(.menu-layout) #play-controls { grid-area: 2 / 1 / 3 / 3; }
+    .lab:not(.menu-layout) .queen { grid-area: 3 / 1; align-self: stretch; text-align: center; }
+    .lab:not(.menu-layout) .hud {
+      grid-area: 3 / 2; display: grid; gap: 4px;
+      grid-template-columns: auto minmax(0, 1fr); align-items: center;
+    }
+    .lab:not(.menu-layout) .hud > .tag { display: none; }
+    .lab:not(.menu-layout) .hud #next { margin: 0; padding: 0; }
+    .lab:not(.menu-layout) .hud dl {
+      display: flex; justify-content: space-around; margin: 0; text-align: center;
+    }
+    .lab:not(.menu-layout) .hud dl div { display: grid; padding: 0 2px; }
+    .lab:not(.menu-layout) .hud dt { font-size: 10px; }
+    .lab:not(.menu-layout) .hud .settings {
+      grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .lab:not(.menu-layout) #control-mode { grid-column: span 2; }
+  }
   #fullscreen { line-height: 1.05; }
   #fullscreen[aria-pressed="true"] { border-color: var(--cyan); }
   @media (orientation: landscape) {
     main:has(.lab:not(.menu-layout)) {
       --top: max(8px, env(safe-area-inset-top));
       --bottom: max(8px, env(safe-area-inset-bottom));
-      --play-height: calc(100dvh - var(--top) - var(--bottom));
+      --play-height: calc(var(--visible-height, 100dvh) - var(--top) - var(--bottom));
       max-width: none;
       padding: var(--top) max(12px, env(safe-area-inset-right))
         var(--bottom) max(12px, env(safe-area-inset-left));
@@ -262,7 +296,10 @@
       grid-template-rows: 18px minmax(0, 1fr) auto;
       gap: 4px clamp(8px, 2vw, 30px);
     }
-    .lab:not(.menu-layout) .chamber { display: contents; }
+    .lab:not(.menu-layout) .chamber {
+      grid-area: 1 / 2 / 4 / 3; display: flex; flex-direction: column;
+      width: 100%; height: 100%; min-height: 0; gap: 4px;
+    }
     .lab:not(.menu-layout) .queen {
       grid-area: 1 / 1 / 4 / 2; align-self: center; justify-self: center;
       width: min(100%, 330px); padding: clamp(8px, 2.5vh, 20px); text-align: center;
@@ -270,7 +307,7 @@
     .lab:not(.menu-layout) .queen-art { max-width: min(100%, 36dvh, 250px); }
     .lab:not(.menu-layout) .queen h2 { font-size: clamp(14px, 3dvh, 28px); }
     .chamber-label { grid-area: 1 / 2; margin: 0; font-size: clamp(8px, 1.5vw, 11px); letter-spacing: .07em; }
-    .tank { grid-area: 2 / 2 / 4 / 3; align-self: stretch; min-height: 0; padding: 4px; }
+    .tank { flex: 1; min-height: 0; padding: 4px; }
     #board {
       height: 100%; grid-template-columns: repeat(8, minmax(0, 1fr));
       grid-template-rows: repeat(16, minmax(0, 1fr));
@@ -279,7 +316,8 @@
     #board .piece { font-size: clamp(7px, 2.5dvh, 23px); }
     .hud {
       grid-area: 1 / 3 / 3 / 4; align-self: center; justify-self: center;
-      width: min(100%, 330px); padding: clamp(6px, 2dvh, 16px);
+      width: min(100%, 330px); max-height: 100%; min-height: 0;
+      padding: clamp(6px, 2dvh, 16px); overflow: auto; touch-action: pan-y;
     }
     .hud button { min-height: 36px; padding: 4px; }
     .hud dl { margin-bottom: 8px; }
@@ -288,7 +326,7 @@
       grid-area: 3 / 3; justify-self: center;
       width: min(100%, 330px); margin: 0;
     }
-    #play-controls button { min-height: clamp(56px, 15dvh, 92px); font-size: clamp(19px, 4dvh, 26px); }
+    #play-controls button { min-height: clamp(46px, 13dvh, 82px); font-size: clamp(19px, 4dvh, 26px); }
   }
   @media (orientation: landscape) and (max-height: 500px) {
     .hud dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; }
@@ -416,7 +454,8 @@
           <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
         </div>
       </div>
-      <div id="play-controls" aria-label="Capsule controls">
+    </section>
+    <div id="play-controls" aria-label="Capsule controls" hidden>
         <button id="soft-drop" type="button" data-drop><span aria-hidden="true">↓</span> Soft Drop</button>
         <div id="arrow-controls" hidden>
           <button type="button" data-move="left" aria-label="Move left">←</button>
@@ -424,8 +463,7 @@
           <button type="button" data-drop aria-label="Soft drop">↓</button>
           <button type="button" data-move="right" aria-label="Move right">→</button>
         </div>
-      </div>
-    </section>
+    </div>
     <section class="panel hud" id="hud" aria-label="Mission data" hidden>
       <p class="tag">Next capsule</p><div id="next" aria-label="Next capsule">—</div>
       <dl>
@@ -623,11 +661,14 @@ function updateMusic() {
 }
 
 function showMenu(open) {
+  resetTouch();
   menuOpen = open;
   byId("lab").classList.toggle("menu-layout", open);
   showMenuPanel(open ? "menu" : null);
   byId("chamber").hidden = open;
   byId("hud").hidden = open;
+  byId("play-controls").hidden = open;
+  if (!open) syncPlayViewport();
   byId("resume-game").hidden = phase === "ready";
   const saved = loadProgress();
   byId("play").textContent = phase === "ready" ? (saved && saved.level > 0 ? `Continue · Level ${saved.level}` : "Start mission") : `Restart level ${level}`;
@@ -957,11 +998,17 @@ function command(name) {
 
 function togglePause() {
   if (phase === "ready" || phase === "won" || phase === "lost") return;
+  resetTouch();
   paused = !paused;
   byId("pause").textContent = paused ? "Resume" : "Pause";
   byId("signal").textContent = paused ? "Paused" : "Live";
   if (paused) setOverlay("Mission paused", "The chamber is on standby.", "Resume");
-  else byId("overlay").hidden = true;
+  else {
+    byId("overlay").hidden = true;
+    renderControlMode();
+    syncPlayViewport();
+    byId("board").focus({ preventScroll: true });
+  }
 }
 
 const fullscreenButton = byId("fullscreen");
@@ -982,6 +1029,7 @@ document.addEventListener("fullscreenchange", () => {
   fullscreenButton.textContent = active ? "Exit Full Screen" : "Full Screen";
   fullscreenButton.setAttribute("aria-label", active ? "Exit fullscreen" : "Enter fullscreen");
   fullscreenButton.setAttribute("aria-pressed", String(active));
+  syncPlayViewport();
 });
 
 byId("play").addEventListener("click", () => {
@@ -993,6 +1041,7 @@ byId("play").addEventListener("click", () => {
 byId("resume-game").addEventListener("click", () => {
   unlockAudio();
   showMenu(false);
+  if (paused) togglePause();
 });
 byId("main-menu").addEventListener("click", () => showMenu(true));
 byId("action").addEventListener("click", () => {
@@ -1012,6 +1061,7 @@ function stopSoftDrop() {
 }
 
 function repeatSoftDrop() {
+  if (menuOpen || paused || document.hidden) return;
   command("down");
   dropTimer = setTimeout(repeatSoftDrop, 80);
 }
@@ -1061,9 +1111,31 @@ controlMode.addEventListener("click", () => {
   }
 });
 renderControlMode();
-window.addEventListener("blur", stopSoftDrop);
 const playScreen = document.querySelector("main");
 let gesture;
+
+function resetTouch() {
+  stopSoftDrop();
+  if (gesture && playScreen.hasPointerCapture(gesture.id)) playScreen.releasePointerCapture(gesture.id);
+  gesture = null;
+}
+
+function syncPlayViewport() {
+  const viewport = window.visualViewport;
+  const height = viewport && viewport.scale === 1 ? viewport.height : window.innerHeight;
+  if (height > 0) playScreen.style.setProperty("--visible-height", `${height}px`);
+}
+
+window.addEventListener("blur", resetTouch);
+window.addEventListener("pagehide", resetTouch);
+window.addEventListener("pageshow", () => {
+  resetTouch();
+  renderControlMode();
+  syncPlayViewport();
+});
+window.addEventListener("resize", syncPlayViewport);
+window.visualViewport?.addEventListener("resize", syncPlayViewport);
+syncPlayViewport();
 
 playScreen.addEventListener("pointerdown", event => {
   if (event.pointerType === "mouse" || !event.isPrimary || menuOpen || paused || phase !== "fall") return;
@@ -1105,7 +1177,13 @@ window.addEventListener("keydown", event => {
   if (!event.repeat || action === "down" || action === "left" || action === "right") command(action);
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden && !menuOpen && !paused) togglePause();
+  if (document.hidden) {
+    resetTouch();
+    if (!menuOpen && !paused) togglePause();
+  } else {
+    renderControlMode();
+    syncPlayViewport();
+  }
 });
 
 const queenCanvas = byId("queen");
