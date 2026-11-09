@@ -1837,12 +1837,10 @@ function miniScene(c, w, h, tt, script) { // a small pad with a few balls, for t
     drawBall(c, fake, tt); }
 }
 function titleMenu() { // the Alien Ball hub: pick a game
-  const ch = CHARS.byId(SAVE.char);
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Ball</h1>
     <p><b>Select a game.</b> Each one has its own stages, levels and stars.</p>
     ${GAMES.map((g, i) => `<button class="big gameCard ${g.ready ? "" : "soon"}" data-act="${g.ready ? "game" : "soon"}" data-arg="${i}"><canvas data-game="${i}"></canvas>
       <span>${g.name}<small>${g.ready ? `${g.tag} · <span class="stars">${gameStars(g.id)}/96 ★</span>` : `${g.tag} · coming soon`}</small></span></button>`).join("")}
-    <button class="big" data-act="chars">Your alien: <b>${ch.name}</b> · ${STATS[ch.id].name} ›</button>
     ${soundBtn()}
     <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim, "title");
   for (const cvs of $("box").querySelectorAll("canvas[data-game]")) gameIcon(cvs, +cvs.dataset.game);
@@ -1900,16 +1898,25 @@ function stageMenu(s) {
     <p>${st.intro}</p>
     <div class="facts"><span>${fact}</span><span>Rivals get better each level</span></div>
     <p class="score"><span class="stars">${stageStars(s)}/24 ★</span></p>
-    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !stars()[s][i] ? "main" : ""}" data-act="play" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStrS(stars()[s][i])}</small></button>`).join("")}</div>
+    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !stars()[s][i] ? "main" : ""}" data-act="setup" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStrS(stars()[s][i])}</small></button>`).join("")}</div>
     <button class="big" data-act="game">◀ ${name} stages</button>`, null, "stage");
 }
-function charMenu() {
-  const P = STATS[SAVE.char];
+function setupMenu(s, l) {
+  const glide = cur === "glide", st = stagesOf(cur)[s], ch = CHARS.byId(SAVE.char);
+  const perk = STATS[ch.id];
+  openMenu(`<p class="kicker">${glide ? "Glide" : "Sumo"} · Level setup</p><h2>${st.short} · Level ${l + 1}</h2>
+    <button class="big" data-act="chars" data-arg="${s}|${l}">Alien: <b>${ch.name}</b><small>Change alien ›</small></button>
+    <p class="powerDesc">${glide ? "All aliens use the same glider handling." : `<b>${perk.name}</b> · ${perk.text}`}</p>
+    <button class="big main" data-act="play" data-arg="${s}|${l}">Play ▶</button>
+    <button class="big" data-act="stage" data-arg="${s}">Back to levels</button>`, null, "setup");
+}
+function charMenu(s, l) {
+  const glide = cur === "glide", P = STATS[SAVE.char];
   openMenu(`<p class="kicker">Choose your alien</p><h2>Who's rolling?</h2>
-    <p>Every ball handles differently. Heavy balls push, light balls fly.</p>
-    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}<small>${STATS[ch.id].name}</small></button>`).join("")}</div>
-    <p class="powerDesc"><b>${P.name}:</b> ${P.text}</p>
-    <button class="big main" data-act="title">Done</button>`,
+    <p>${glide ? "Pick who flies. All aliens use the same glider handling." : "Every ball handles differently. Heavy balls push, light balls fly."}</p>
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${s}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}${glide ? "" : `<small>${STATS[ch.id].name}</small>`}</button>`).join("")}</div>
+    ${glide ? "" : `<p class="powerDesc"><b>${P.name}:</b> ${P.text}</p>`}
+    <button class="big main" data-act="setup" data-arg="${s}|${l}">Done</button>`,
     tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const id = cvs.dataset.char, on = id === SAVE.char;
       drawBall(c, { id, x: w / 2, y: h * 0.52 - (on ? Math.abs(Math.sin(tt * 5)) * 5 : 0), r: w * 0.3 * (STATS[id].size ? 1.12 : 1), roll: tt * (on ? 4 : 1), face: 1, falling: 0, respawn: 0, ghost: 0, hover: 0, st: STATS[id], me: false }, tt + w); } }, "chars");
 }
@@ -1962,8 +1969,14 @@ function demoWin(c, tt, w, h) { miniScene(c, w, h, tt, R => [{ id: SAVE.char, x:
 
 const ACT = {
   title: () => titleMenu(),
-  chars: () => charMenu(),
-  pick: id => { SAVE.char = id; save(); charMenu(); },
+  setup: a => setupMenu(...a.split("|").map(Number)),
+  chars: a => charMenu(...a.split("|").map(Number)),
+  pick: a => {
+    const [s, l, id] = a.split("|");
+    SAVE.char = id;
+    save();
+    charMenu(+s, +l);
+  },
   game: a => gameMenu(a !== undefined ? GAMES[+a].id : cur),
   gnext: () => { glideRound(); closeMenu(); },
   ginv: () => { SAVE.ginv = !SAVE.ginv; save(); if (menuName === "pause") pauseMenu(); else gameMenu("glide"); },
