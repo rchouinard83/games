@@ -376,11 +376,15 @@ function loadLevel(s, l) {
   me = makeAlien(SAVE.char, px, MY_SHIELDS); foe = makeAlien(L.enemy, ex, L.hp); foe.aim = L.aim;
   shot = null; myTrail = null; throws = 0; fx = []; bubbles = []; shake = 0; resultShown = false; plan = null; drag = null;
   streaks = Array.from({ length: Math.round(W / 14) }, () => ({ x: Math.random() * W, y: 20 + Math.random() * 380, len: 8 + Math.random() * 14 }));
-  newWind(); state = "aim"; hud(true);
+  newWind(true); state = "aim"; hud(true);
   updateView(); introT = 1.6; camX = camGoal()[0]; camY = camGoal()[1]; // start looking at the enemy, then pan over to you
   speak(foe, l === LEVELS - 1 ? "Boss fight! Bring it!" : pickLine(TAUNT), 2.2);
 }
-function newWind() { const m = L.windMax; wind = Math.round((Math.random() < 0.5 ? -1 : 1) * m * (0.35 + Math.random() * 0.65)); }
+function newWind(initial = false) {
+  const limit = L.windMax, target = (Math.random() * 2 - 1) * limit;
+  const change = limit * 0.25;
+  wind = Math.round(initial ? target : clamp(target, wind - change, wind + change));
+}
 function throwFrom(a, vx, vy) {
   shot = { x: a.x, y: a.y - 28, vx, vy, age: 0, owner: a, trail: [], spin: 0 };
   a.hop = 0.3; state = "fly"; tone(240, 0.18, "triangle", 0.07, 1.8);
@@ -734,7 +738,7 @@ function pauseMenu() {
 // How to play: short pages with demos
 const HOWTO = [
   { title: "Pull back to lob", lines: ["<b>Pull back</b> anywhere and <b>let go</b> to throw goo", "Longer pull = <b>harder</b> throw. The dots show the start of the arc"], demo: demoPull },
-  { title: "Wind and gravity", lines: ["The <b class='c'>wind</b> gauge at the top: it changes every turn", "Each planet has its own <b class='y'>gravity</b>: low g floats, high g drops fast", "Faded dots show <b>your last throw</b>, to adjust from"], demo: demoWind },
+  { title: "Wind and gravity", lines: ["The <b class='c'>wind</b> gauge at the top: it shifts gradually between turns", "Each planet has its own <b class='y'>gravity</b>: low g floats, high g drops fast", "Faded dots show <b>your last throw</b>, to adjust from"], demo: demoWind },
   { title: "Blast the scenery", lines: ["Goo blows <b>craters</b> in towers and rock", "Blow away the ground under an alien and it <b class='r'>falls</b>", "Splash damage counts, even <b class='r'>on you</b>!"], demo: demoBlast },
   { title: "Stars", lines: ["Win in <b>par</b> throws or fewer = <b class='y'>★★★</b>", "Up to par + 2 = <b class='y'>★★</b> · any win = <b class='y'>★</b>", "You have <b class='r'>3 shields</b>. Lose them and try again"], demo: demoStars },
 ];
