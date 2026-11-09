@@ -14,7 +14,7 @@
 <style>
   :root { --bg: #070a1c; --panel: #131838; --line: #313a78; --ink: #eef0ff; --dim: #a0a8d4; --good: #5dff9b; --bad: #ff5d7a; --accent: #ff9a3c; --gold: #ffd25d; --blue: #4fd1ff; --pink: #ff8bd0; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
   #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; padding: calc(4px + env(safe-area-inset-top)) calc(4px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom)) calc(4px + env(safe-area-inset-left)); gap: 4px; }
   #hud { display: flex; gap: 5px; align-items: stretch; width: 100%; max-width: 760px; margin: 0 auto; }
@@ -24,16 +24,41 @@
   .hudBtn { background: rgba(19,24,56,0.92); color: var(--ink); border: 1px solid var(--line); border-radius: 11px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; min-width: 40px; }
   #stage { flex: 1; min-height: 0; width: 100%; position: relative; }
   #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(4,6,18,0.78); }
+  /* Menu styles travel with this HTML when it is published on its own. */
+  #overlay {
+    position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
+    padding: 12px;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background: rgba(5, 5, 16, .78);
+  }
   #overlay.hidden { display: none; }
-  #box { width: 100%; max-width: 430px; max-height: calc(100% - 16px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; box-shadow: 0 0 40px rgba(255,154,60,0.14); }
-  #box h1 { font-size: 46px; line-height: 1.02; background: linear-gradient(90deg, #ff9a3c, #ffd25d 35%, #5dff9b 65%, #4fd1ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #box h2 { font-size: 26px; margin-bottom: 4px; }
-  #box p { color: #dcdff7; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
-  #box .kicker { font-size: 11px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
-  #titleArt { width: 100%; height: 170px; display: block; border-radius: 12px; }
-  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #20265a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
-  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
+  #box {
+    width: min(100%, 430px); max-height: 100%; overflow: auto; overscroll-behavior: contain;
+    touch-action: pan-y; padding: 16px; border: 1px solid #33336e; border-radius: 18px;
+    background: #141436; color: #eef0ff; text-align: center; box-shadow: 0 0 40px #7070ca26;
+  }
+  #box h1 {
+    margin: 8px 0 5px; font-size: clamp(32px, 9vw, 46px); letter-spacing: -.04em; line-height: 1.04;
+    background: linear-gradient(90deg, #ff8bd0, #ffd25d 40%, #5dff9b 70%, #4fd1ff);
+    background-clip: text; -webkit-background-clip: text; color: transparent;
+  }
+  #box h2 { margin: 4px 0 6px; font-size: 26px; line-height: 1.14; }
+  #box p { margin: 6px 0 10px; color: #dcdff7; font-size: 15px; line-height: 1.4; }
+  #box .kicker { margin: 6px 0 4px; color: #8fe9dc; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  #titleArt { width: 100%; height: 145px; display: block; border-radius: 12px; }
+  .big {
+    display: block; width: 100%; min-height: 48px; margin: 8px 0; padding: 10px 11px;
+    border: 1px solid #33336e; border-radius: 12px; background: #22225a; color: #eef0ff;
+    font: 800 16px/1.2 system-ui, sans-serif; text-align: center; text-decoration: none;
+  }
+  a.big { display: grid; place-items: center; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: #82f7b2; }
+  #box :is(button, a):focus-visible { outline: 2px solid #a7f5e5; outline-offset: 2px; }
+  .menuList { display: grid; gap: 8px; margin: 8px 0; }
+  .menuList .big { margin: 0; }
+  .menuFooter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .menuFooter .big { width: auto; flex: 1 1 135px; margin: 0; }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
   .row { display: flex; gap: 8px; } .row .big { flex: 1; }
   .bigStars { font-size: 46px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0 6px; } .bigStars i { color: #313a78; font-style: normal; }
@@ -69,6 +94,36 @@
   #fsSheet .sheet { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 14px calc(14px + env(safe-area-inset-bottom)); text-align: left; }
   #fsSheet h3 { font-size: 19px; margin-bottom: 6px; } #fsSheet p { font-size: 14px; color: #dcdff7; line-height: 1.4; margin: 4px 0 8px; }
   #fsSheet ol { list-style: none; display: grid; gap: 8px; margin: 0 0 10px; } #fsSheet li { background: #0d1130; border-radius: 10px; padding: 8px 10px; font-size: 14px; line-height: 1.35; } #fsSheet li b { color: var(--accent); }
+  @media (max-width: 520px), (max-height: 500px) and (pointer: coarse) {
+    #overlay {
+      bottom: auto; height: 100vh; height: 100dvh;
+      background: radial-gradient(ellipse at 50% 18%, #20214a, #090c24 74%);
+      -webkit-text-size-adjust: 100%;
+    }
+    #box { padding: clamp(12px, 4vw, 16px); }
+    #box h1 { font-size: clamp(29px, 8vw, 39px); }
+    #box h2 { font-size: clamp(23px, 6vw, 26px); }
+    #box p { font-size: 14px; }
+    #titleArt { height: clamp(100px, 19vh, 122px); }
+    .big.main { min-height: 52px; background: #21744f; border-color: #429e70; color: #f3fff7; }
+    .charBtn canvas { width: min(100%, 62px); margin: 0 auto; }
+    #box:has(> .menuList) { display: flex; flex-direction: column; }
+    #box:has(> .menuList) > :not(.menuList) { flex: 0 0 auto; }
+    .menuList {
+      min-height: min(112px, 32vh); overflow-y: auto; overscroll-behavior: contain;
+      grid-auto-rows: max-content; padding: 2px;
+    }
+    .menuList canvas { width: 42px; height: 42px; }
+  }
+  @media (max-height: 500px) and (pointer: coarse) {
+    #box { width: min(100%, 580px); padding: 12px; }
+    #titleArt { height: min(90px, 27vh); }
+    #box:has(> .menuList) #titleArt { display: none; }
+    .menuList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chars { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .charBtn canvas { width: min(100%, 42px); }
+    #howCv { height: min(100px, 28vh); }
+  }
 </style>
 </head>
 <body>
@@ -79,7 +134,7 @@
     <div class="spacer"></div>
     <button class="hudBtn" id="fsBtn" aria-label="Full screen" aria-pressed="false"></button>
     <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
-    <button class="hudBtn" id="menuBtn">Menu</button>
+    <button class="hudBtn" id="menuBtn">Pause</button>
   </div>
   <div id="stage"><canvas id="cv"></canvas></div>
 </div>
@@ -1838,11 +1893,11 @@ function miniScene(c, w, h, tt, script) { // a small pad with a few balls, for t
 }
 function titleMenu() { // the Alien Ball hub: pick a game
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Ball</h1>
-    <p><b>Select a game.</b> Each one has its own stages, levels and stars.</p>
-    ${GAMES.map((g, i) => `<button class="big gameCard ${g.ready ? "" : "soon"}" data-act="${g.ready ? "game" : "soon"}" data-arg="${i}"><canvas data-game="${i}"></canvas>
-      <span>${g.name}<small>${g.ready ? `${g.tag} · <span class="stars">${gameStars(g.id)}/96 ★</span>` : `${g.tag} · coming soon`}</small></span></button>`).join("")}
-    ${soundBtn()}
-    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim, "title");
+    <p>Select a game</p>
+    <div class="menuList">${GAMES.map((g, i) => `<button class="big gameCard ${g.ready ? "main" : "soon"}" data-act="${g.ready ? "game" : "soon"}" data-arg="${i}"><canvas data-game="${i}"></canvas>
+      <span>${g.name}<small>${g.ready ? `${g.tag} · <span class="stars">${gameStars(g.id)}/96 ★</span>` : `${g.tag} · coming soon`}</small></span></button>`).join("")}</div>
+    <div class="menuFooter">${soundBtn()}
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a></div>`, titleAnim, "title");
   for (const cvs of $("box").querySelectorAll("canvas[data-game]")) gameIcon(cvs, +cvs.dataset.game);
 }
 function titleAnim(tt) { // your ball rams a rival off the edge, over and over
@@ -1866,11 +1921,11 @@ function gameMenu(g = cur) { // a game's four stages
   cur = g; const ST = stagesOf(g), name = g === "glide" ? "Glide" : "Sumo";
   openMenu(`<p class="kicker">Alien Ball</p><h2>${name}</h2>
     <p>${g === "glide" ? "Everyone launches off a ramp at once. Open your wings, glide, then <b>drop</b> onto the floating targets. Start with one big target. Later courses split it into smaller scoring islands ahead. 3 rounds a level." : "One life. Bump the others off the floating pad: every hit adds <b>wobble</b>, and wobbly balls fly. The pad shrinks as you go."}</p>
-    ${ST.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
-      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear every ${ST[i - 1].short} level to unlock`}</small></span></button>`).join("")}
-    <button class="big" data-act="help" data-arg="gm|0">How to play ${name}</button>
+    <div class="menuList">${ST.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
+      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear every ${ST[i - 1].short} level to unlock`}</small></span></button>`).join("")}</div>
+    <div class="menuFooter"><button class="big" data-act="help" data-arg="gm|0">How to play ${name}</button>
     ${g === "glide" ? invBtn() : ""}
-    <button class="big" data-act="title">◀ All games</button>`, null, "game");
+    <button class="big" data-act="title">◀ All games</button></div>`, null, "game");
   for (const cvs of $("box").querySelectorAll("canvas[data-stage]")) stageIcon(cvs, +cvs.dataset.stage);
 }
 function stageIcon(cvs, s) {
@@ -1914,7 +1969,7 @@ function charMenu(s, l) {
   const glide = cur === "glide", P = STATS[SAVE.char];
   openMenu(`<p class="kicker">Choose your alien</p><h2>Who's rolling?</h2>
     <p>${glide ? "Pick who flies. All aliens use the same glider handling." : "Every ball handles differently. Heavy balls push, light balls fly."}</p>
-    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${s}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}${glide ? "" : `<small>${STATS[ch.id].name}</small>`}</button>`).join("")}</div>
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${s}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}${glide ? "" : `<small>${STATS[ch.id].name}</small>`}</button>`).join("")}</div>
     ${glide ? "" : `<p class="powerDesc"><b>${P.name}:</b> ${P.text}</p>`}
     <button class="big main" data-act="setup" data-arg="${s}|${l}">Done</button>`,
     tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const id = cvs.dataset.char, on = id === SAVE.char;
