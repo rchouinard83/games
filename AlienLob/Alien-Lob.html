@@ -9,7 +9,7 @@
 <style>
   :root { --bg: #060c1c; --panel: #0e1a30; --line: #2a3e66; --ink: #e6f0ff; --dim: #93a6c9; --good: #5dff9b; --bad: #ff5d7a; --accent: #4fd1ff; --gold: #ffd25d; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; touch-action: none; overscroll-behavior: none;
+  html, body { height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; overscroll-behavior: none;
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   #app { height: 100%; height: 100dvh; display: flex; flex-direction: column; align-items: center; padding: calc(6px + env(safe-area-inset-top)) 6px calc(8px + env(safe-area-inset-bottom)); gap: 6px; }
   #hud { width: 100%; max-width: 480px; display: flex; gap: 5px; align-items: stretch; }
@@ -20,17 +20,42 @@
   .hudBtn { background: rgba(14,26,48,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; }
   #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
   #cv { display: block; border-radius: 14px; touch-action: none; }
-  #overlay { position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(3,6,14,0.8); }
+  /* Menu styles travel with this HTML when it is published on its own. */
+  #overlay {
+    position: fixed; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
+    padding: 12px;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    background: rgba(5, 5, 16, .78);
+  }
   #overlay.hidden { display: none; }
-  #box { width: 100%; max-width: 420px; max-height: calc(100% - 20px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px 16px; text-align: center; }
-  #box h1 { font-size: 44px; line-height: 1.05; background: linear-gradient(90deg, #5dff9b, #ffd25d 55%, #ff8f5d); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  #box h2 { font-size: 26px; margin-bottom: 4px; }
-  #box p { color: #d6e2f5; font-size: 15px; line-height: 1.4; margin: 6px 0 10px; }
-  #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
-  #titleArt { width: 100%; height: 150px; display: block; border-radius: 12px; }
-  .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17284a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; text-decoration: none; }
-  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
-  .big:disabled { opacity: 0.4; }
+  #box {
+    width: min(100%, 430px); max-height: 100%; overflow: auto; overscroll-behavior: contain;
+    touch-action: pan-y; padding: 16px; border: 1px solid #33336e; border-radius: 18px;
+    background: #141436; color: #eef0ff; text-align: center; box-shadow: 0 0 40px #7070ca26;
+  }
+  #box h1 {
+    margin: 8px 0 5px; font-size: clamp(32px, 9vw, 46px); letter-spacing: -.04em; line-height: 1.04;
+    background: linear-gradient(90deg, #ff8bd0, #ffd25d 40%, #5dff9b 70%, #4fd1ff);
+    background-clip: text; -webkit-background-clip: text; color: transparent;
+  }
+  #box h2 { margin: 4px 0 6px; font-size: 26px; line-height: 1.14; }
+  #box p { margin: 6px 0 10px; color: #dcdff7; font-size: 15px; line-height: 1.4; }
+  #box .kicker { margin: 6px 0 4px; color: #8fe9dc; font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+  #titleArt { width: 100%; height: 145px; display: block; border-radius: 12px; }
+  .big {
+    display: block; width: 100%; min-height: 48px; margin: 8px 0; padding: 10px 11px;
+    border: 1px solid #33336e; border-radius: 12px; background: #22225a; color: #eef0ff;
+    font: 800 16px/1.2 system-ui, sans-serif; text-align: center; text-decoration: none;
+  }
+  a.big { display: grid; place-items: center; }
+  .big.main { background: #1d4a3a; border-color: #2f7a5c; color: #82f7b2; }
+  #box :is(button, a):focus-visible { outline: 2px solid #a7f5e5; outline-offset: 2px; }
+  .menuList { display: grid; gap: 8px; margin: 8px 0; }
+  .menuList .big { margin: 0; }
+  .menuFooter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .menuFooter .big { width: auto; flex: 1 1 135px; margin: 0; }
+  .big:disabled { opacity: .44; }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
   .row { display: flex; gap: 8px; } .row .big { flex: 1; }
   .stageCard { display: flex; align-items: center; gap: 12px; text-align: left; }
@@ -56,6 +81,35 @@
   .dots { display: flex; justify-content: center; gap: 6px; margin: 4px 0 2px; }
   .dots i { width: 7px; height: 7px; border-radius: 50%; background: #2a3e66; }
   .dots i.on { background: var(--accent); }
+  @media (max-width: 520px), (max-height: 500px) and (pointer: coarse) {
+    #overlay {
+      bottom: auto; height: 100vh; height: 100dvh;
+      background: radial-gradient(ellipse at 50% 18%, #20214a, #090c24 74%);
+      -webkit-text-size-adjust: 100%;
+    }
+    #box { padding: clamp(12px, 4vw, 16px); }
+    #box h1 { font-size: clamp(29px, 8vw, 39px); }
+    #box h2 { font-size: clamp(23px, 6vw, 26px); }
+    #box p { font-size: 14px; }
+    #titleArt { height: clamp(100px, 19vh, 122px); }
+    .big.main { min-height: 52px; background: #21744f; border-color: #429e70; color: #f3fff7; }
+    .charBtn canvas { width: min(100%, 62px); margin: 0 auto; }
+    #box:has(> .menuList) { display: flex; flex-direction: column; }
+    #box:has(> .menuList) > :not(.menuList) { flex: 0 0 auto; }
+    .menuList {
+      min-height: min(112px, 32vh); overflow-y: auto; overscroll-behavior: contain;
+      grid-auto-rows: max-content; padding: 2px;
+    }
+    .menuList canvas { width: 42px; height: 42px; }
+  }
+  @media (max-height: 500px) and (pointer: coarse) {
+    #box { width: min(100%, 580px); padding: 12px; }
+    #titleArt { height: min(90px, 27vh); }
+    .menuList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .chars { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .charBtn canvas { width: min(100%, 42px); }
+    #howCv { height: min(100px, 28vh); }
+  }
 </style>
 </head>
 <body>
@@ -68,7 +122,7 @@
     <div class="spacer"></div>
     <button class="hudBtn" id="fsBtn" aria-label="Full screen" aria-pressed="false" hidden></button>
     <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
-    <button class="hudBtn" id="menuBtn">Menu</button>
+    <button class="hudBtn" id="menuBtn">Pause</button>
   </div>
   <div id="stage"><canvas id="cv"></canvas></div>
 </div>
@@ -597,15 +651,19 @@ function stageIcon(cvs, s) {
   if (!stageOpen(s)) { c.fillStyle = "rgba(3,6,14,0.65)"; c.fillRect(0, 0, n, n); c.font = "900 38px system-ui"; c.textAlign = "center"; c.fillText("🔒", n / 2, n / 2 + 13); }
 }
 function titleMenu() {
-  const ch = CHARS.byId(SAVE.char);
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Lob</h1>
     <p><b>Pull back</b> and lob goo across the skyline. Read the <b>wind</b>, feel the <b>gravity</b>, splat the other alien.</p>
-    ${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
-      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}
-    <button class="big" data-act="chars">Your alien: <b>${ch.name}</b> ›</button>
-    <button class="big" data-act="help" data-arg="title|0">How to play</button>
+    <button class="big main" data-act="worlds">Play ▶</button>
+    <div class="menuFooter"><button class="big" data-act="help" data-arg="title|0">How to play</button>
     ${soundBtn()}
-    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`, titleAnim);
+    <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a></div>`, titleAnim);
+}
+
+function worldsMenu() {
+  openMenu(`<p class="kicker">Alien Lob</p><h2>Choose a stage</h2>
+    <div class="menuList">${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
+      <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>`);
 }
 function titleAnim(tt) { // you lob goo over a tower at the other alien
   const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs);
@@ -619,11 +677,19 @@ function titleAnim(tt) { // you lob goo over a tower at the other alien
   if (!hitNow) drawGoo(c, bx, by, CHARS.byId(SAVE.char).color, tt * 10);
   else { c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("SPLAT!", x1 - 10, h * 0.3); }
 }
-function charMenu() {
+function setupMenu(w, l) {
+  const ch = CHARS.byId(SAVE.char);
+  openMenu(`<p class="kicker">Alien Lob · Level setup</p><h2>${STAGES[w].short} · Level ${l + 1}</h2>
+    <button class="big" data-act="chars" data-arg="${w}|${l}">Alien: <b>${ch.name}</b><small>Change alien ›</small></button>
+    <p>Opponent · ${CHARS.byId(STAGES[w].enemies[l]).name}</p>
+    <button class="big main" data-act="play" data-arg="${w}|${l}">Play ▶</button>
+    <button class="big" data-act="stage" data-arg="${w}">Back to levels</button>`);
+}
+function charMenu(w, l) {
   openMenu(`<p class="kicker">Choose your alien</p><h2>Who's lobbing?</h2>
     <p>The First Contact crew from Alien Defense.</p>
-    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
-    <button class="big main" data-act="title">Done</button>`,
+    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${w}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <button class="big main" data-act="setup" data-arg="${w}|${l}">Done</button>`,
     tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
       CHARS.draw(c, cvs.dataset.char, w / 2, h * 0.55, w * 0.24, tt + w, on ? Math.abs(Math.sin(tt * 5)) * 6 : 0); } });
 }
@@ -633,8 +699,8 @@ function stageMenu(s) {
     <p>${st.intro}</p>
     <div class="facts"><span>Gravity ${(st.g / EARTH_G).toFixed(1)}g</span><span>Wind up to ${st.wind[1]}</span><span>Boss: ${CHARS.byId(st.enemies[LEVELS - 1]).name}</span></div>
     <p class="score"><span class="stars">${stageStars(s)}/24 ★</span></p>
-    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !SAVE.best[s][i] ? "main" : ""}" data-act="play" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStr(SAVE.best[s][i])}</small></button>`).join("")}</div>
-    <button class="big" data-act="title">Back</button>`);
+    <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !SAVE.best[s][i] ? "main" : ""}" data-act="setup" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStr(SAVE.best[s][i])}</small></button>`).join("")}</div>
+    <button class="big" data-act="worlds">Back</button>`);
 }
 function resultMenu() {
   if (state === "won") {
@@ -716,13 +782,16 @@ function demoStars(c, tt, w, h) {
   label(c, "for a par-2 level", w / 2, h - 10, "#93a6c9");
 }
 
+let pending;
 const ACT = {
   title: () => titleMenu(),
   stage: s => stageMenu(+s),
-  chars: () => charMenu(),
-  pick: id => { SAVE.char = id; save(); charMenu(); },
-  play: a => { const [s, l] = a.split("|").map(Number); loadLevel(s, l); closeMenu(); },
-  start: () => { SAVE.seenHelp = true; save(); loadLevel(0, 0); closeMenu(); },
+  worlds: () => worldsMenu(),
+  setup: a => setupMenu(...a.split("|").map(Number)),
+  chars: a => charMenu(...a.split("|").map(Number)),
+  pick: a => { const [w, l, id] = a.split("|"); SAVE.char = id; save(); charMenu(+w, +l); },
+  play: a => { pending = a.split("|").map(Number); if (SAVE.seenHelp) ACT.start(); else helpMenu("first", 0); },
+  start: () => { if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); } loadLevel(...pending); closeMenu(); },
   resume: () => closeMenu(),
   help: a => { const [back, page] = a.split("|"); helpMenu(back, +page || 0); },
   sound: () => { SAVE.sound = !SAVE.sound; save(); for (const b of $("box").querySelectorAll("[data-act='sound']")) b.textContent = SAVE.sound ? "🔊 Sound: On" : "🔇 Sound: Off"; tone(520, 0.1, "triangle", 0.07); },
@@ -756,7 +825,7 @@ function frame(now) {
 }
 resize();
 loadLevel(0, 0); bubbles = [];
-if (SAVE.seenHelp) titleMenu(); else helpMenu("first", 0);
+titleMenu();
 requestAnimationFrame(frame);
 </script>
 </body>
