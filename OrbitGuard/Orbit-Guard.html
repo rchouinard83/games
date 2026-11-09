@@ -50,6 +50,7 @@
   }
   .stars { color:#ffd777; letter-spacing:.12em; }
 </style>
+<link rel="stylesheet" href="../lib/arcade-menu.css">
 </head>
 <body>
 <main>
@@ -66,7 +67,7 @@
   <p id="progress" class="progress"></p>
   <div class="arena">
     <canvas id="sky" width="600" height="480" aria-label="Orbit Guard skyline and interceptor battlefield"></canvas>
-    <section class="overlay" id="overlay" aria-label="Game menu"><div class="panel" id="panel"></div></section>
+    <section class="overlay arcade-menu" id="overlay" aria-label="Game menu"><div class="panel arcade-panel" id="panel" style="--menu-accent:#8beee0"></div></section>
   </div>
   <p class="status" id="status" role="status">Three cities are counting on you.</p>
   <div class="controls" id="controls" hidden><button id="pause">Pause</button><button data-act="start">Restart</button></div>
@@ -110,6 +111,7 @@ try {
   sound = saved?.sound ?? true;
 } catch {}
 const level = () => MISSIONS[mission];
+const campaignProgress = () => mission / (MISSIONS.length - 1);
 const nextLevel = () => MISSIONS[mission + 1];
 const sectorBoundary = next => next.si !== level().si;
 const nextDestination = next => sectorBoundary(next) ? next.sector.name : next.name;
@@ -153,14 +155,16 @@ function menu(name, body) {
   $("overlay").hidden = false; $("controls").hidden = true;
   $("panel").classList.toggle("guide", name === "help");
   $("panel").innerHTML = body;
+  $("panel").scrollTop = 0;
 }
 function title() {
-  menu("title", `<h2>Planetary Defense</h2><p>Four sectors. Twelve missions. Keep the cities lit.</p>
-  <div class="choices"><button class="primary" data-act="sectors">Play</button><button data-act="help">How to play</button>
-  <button data-act="difficulty">Difficulty: ${settings().name}</button><button data-act="sound">Sound: ${sound?"On":"Off"}</button></div>${ARCADE}`);
+  menu("title", `<svg class="arcade-hero" viewBox="0 0 360 112" aria-hidden="true"><g fill="#9fb4ef"><circle cx="55" cy="20" r="1.7"/><circle cx="286" cy="17" r="1.5"/><circle cx="309" cy="74" r="1.3"/><circle cx="87" cy="86" r="1.5"/></g><path d="M65 98H295" stroke="#74eed5" stroke-width="2"/><path d="M85 98V82h11V69h13v13h14v16m23 0V77h13V65h17v12h11v21m25 0V82h10V69h14v13h15v16" fill="#335d75" stroke="#8cdbdb" stroke-width="2"/><path d="M170 99l53-64M286 16l-65 19" stroke="#ffc188" stroke-width="2" stroke-dasharray="4 4"/><circle cx="224" cy="35" r="15" fill="#96f7dc24" stroke="#a4fbe1" stroke-width="2"/><circle cx="224" cy="35" r="6" fill="#c5fff0"/></svg><p class="kicker">Alien Arcade</p><h1>Orbit Guard</h1><p>Four sectors. Twelve missions. Keep the cities lit.</p>
+  <button class="primary" data-act="sectors">Play</button>
+  <div class="choices"><button data-act="help">How to play</button><button data-act="sound">Sound: ${sound?"On":"Off"}</button></div>
+  <button data-act="difficulty">Difficulty: ${settings().name}</button>${ARCADE}`);
 }
 const GUIDE = [
-  { title: "Lead the shot", copy: "<b>Tap ahead</b> of the target. Let the launcher reload.", diagram: `
+  { title: "Lead the shot", copy: "<b>Tap ahead</b> of the target. Watch the sides for fast rockets in later missions.", diagram: `
     <path d="M57 15l75 62" stroke="#ff9a72" stroke-width="2" stroke-dasharray="5 5"/>
     <path d="M44 6l30 25" stroke="#ff9a72" stroke-width="4" stroke-linecap="round"/>
     <circle cx="74" cy="31" r="5" fill="#ffe5ae"/>
@@ -169,7 +173,7 @@ const GUIDE = [
     <path d="M137 58v7m0 22v7m-18-18h7m22 0h7" stroke="#74eed5" stroke-width="2"/>
     <path d="M224 122h20l-4-8h-12z" fill="#74eed5"/>
     <text x="156" y="69">Tap here</text>` },
-  { title: "Chain the blast", copy: "<b>Close hits</b> can chain. <b>Armor</b> takes two blasts.", diagram: `
+  { title: "Chain the blast", copy: "<b>Close hits</b> can chain. <b>Armor</b> takes two blasts. Blasts get smaller as you advance.", diagram: `
     <circle cx="87" cy="64" r="36" fill="#74eed520" stroke="#74eed5" stroke-width="3"/>
     <circle cx="143" cy="60" r="28" fill="#ffd77720" stroke="#ffd777" stroke-width="3"/>
     <circle cx="187" cy="68" r="22" fill="#ffd77712" stroke="#ffd777" stroke-width="2" stroke-dasharray="4 3"/>
@@ -201,17 +205,19 @@ function difficulty() {
   <button data-act="title">Back</button>`);
 }
 function sectors() {
-  menu("sectors", `<h2>Choose a sector</h2><p>${settings().name} campaign</p><div class="choices">${SECTORS.map((sector,si)=>{
+  menu("sectors", `<p class="kicker">Orbit Guard</p><h2>Choose a sector</h2><p>${settings().name} campaign</p><div class="choices arcade-stages">${SECTORS.map((sector,si)=>{
     const i=si*3, stars=sector.missions.reduce((sum,_,j)=>sum+best(i+j).stars,0);
-    return `<button data-act="sector" data-index="${si}" ${unlocked(i)?"":"disabled"}>${sector.name}<small>${unlocked(i)?stars+" / 9 stars":"Locked"}</small></button>`;
-  }).join("")}</div><button data-act="title">Back</button><br>${ARCADE}`);
+    return `<button class="arcade-stage" data-act="sector" data-index="${si}" ${unlocked(i)?"":"disabled"}>
+      <i class="arcade-planet" data-world="${si}" aria-hidden="true"></i>
+      <span>${sector.name}<small>${unlocked(i)?stars+" / 9 stars":"Locked"}</small></span></button>`;
+  }).join("")}</div><button data-act="title">Back</button>${ARCADE}`);
 }
 function missions(si) {
   const sector=SECTORS[si];
   menu("missions", `<h2>${sector.name}</h2><p>${sector.tag} · ${settings().name}</p><div class="choices">${sector.missions.map((name,mi)=>{
     const i=si*3+mi, record=best(i);
     return `<button data-act="start" data-index="${i}" ${unlocked(i)?"":"disabled"}>${mi+1}. ${name}<small>${unlocked(i)?starsText(record.stars)+" · "+record.score.toLocaleString():"Locked"}</small></button>`;
-  }).join("")}</div><button data-act="sectors">Back</button><br>${ARCADE}`);
+  }).join("")}</div><button data-act="sectors">Back</button>${ARCADE}`);
 }
 function reset(index=mission) {
   if (!MISSIONS[index] || !unlocked(index)) return;
@@ -223,9 +229,10 @@ function beginWave() {
   const spec=WAVES[wave], {si,mi}=level(), config=settings();
   const packs=spec.packs+mi+(si>=2?1:0);
   const interval=spec.every*config.spacing*(1-si*.025-mi*.025);
-  const speed=(spec.speed+si*4+mi*3)*config.speed;
+  const progress = campaignProgress();
+  const speed=(spec.speed+si*4+mi*3)*config.speed*(1 + progress * .10);
   const spread=mode === 0 ? 26 : 33 + si * 2 + mode * 2;
-  ammo=spec.shots+mi*2+(si>=2?8:0)+config.shots;
+  ammo=spec.shots+mi*2+(si>=2?8:0)+config.shots+Math.round(progress*(mode===2?7:5))+(si===1?mi+1:0)+(mode===2?2:0);
   clock=blastId=readyAt=0; mark=null;
   threats=[]; shots=[]; blasts=[]; queue=[];
   const targets = cities.filter(city => city.hp > 0);
@@ -239,9 +246,16 @@ function beginWave() {
       const flanker = flank && j === count - 1;
       const target = flanker ? flankTarget : primary;
       const entrySide = (i % 2 ? 1 : -1) * (flanker ? -1 : 1);
-      const from = clamp(target.x + entrySide * 90, 60, W - 60);
+      const from = clamp(target.x + entrySide * (90 + progress * 85), 60, W - 60);
+      const sideEntry = mission >= 3 && (
+        (flanker && ((i + wave * 2) % 3 === 0 || (mission >= 8 && (i + wave * 2) % 3 === 1))) ||
+        (mode === 0 && mission >= 8 && i === wave + 1 && j === count - 1)
+      );
+      const x = sideEntry ? (entrySide < 0 ? -8 : W + 8) :
+        clamp(from + (flanker ? 0 : (j - (count - 1) / 2) * spread), 12, W - 12);
+      const y = sideEntry ? 34 + ((i * 17 + wave * 13) % 57) : -8;
       queue.push({ at: 0.8 + i * interval + j * .38,
-        x: clamp(from + (flanker ? 0 : (j - (count - 1) / 2) * spread), 12, W - 12),
+        x, y,
         target, speed: speed + j * 2 + (flanker ? 5 : 0),
         probe: (wave >= 1 || si >= 1) && j === count - 1,
         armored: si >= 2 && j === 0 && (i + wave + mi) % (si === 3 ? 2 : 3) === 0 });
@@ -261,7 +275,8 @@ function fire(x,y) {
 }
 function burst(x,y,chain = 0) { blasts.push({ x,y,age:0,chain,id:blastId++ }); }
 function radius(blast) {
-  const reach = blast.chain ? Math.max(14, 29 - (blast.chain - 1) * 6) : 48;
+  const progress = campaignProgress();
+  const reach = blast.chain ? Math.max(14, 29 - (blast.chain - 1) * 6) * (1 - progress * .10) : 48 - 8 * progress;
   return reach * settings().blast * Math.min(1, blast.age / .24);
 }
 function endWave() {
@@ -273,7 +288,7 @@ function endWave() {
   menu("between", `<p class="eyebrow">${level().name}</p><h2>Wave ${wave + 1} of ${WAVES.length} cleared</h2>
     <p><b>${remaining === 1 ? "One more wave to clear this mission." : `${remaining} waves left in this mission.`}</b><br>
     ${aliveCount()} cities standing · Score ${score.toLocaleString()}</p>
-    <button class="primary" data-act="next">${nextWave}</button> <button data-act="start">Restart</button>`);
+    <button class="primary" data-act="next">${nextWave}</button><button data-act="start">Restart mission</button>`);
 }
 function finish() {
   const stars=aliveCount(), old=best(mission);
@@ -288,14 +303,14 @@ function finish() {
     <p><b class="stars" aria-label="${stars} of 3 stars">${starsText(stars)}</b><br>Score ${score.toLocaleString()} · Best ${best(mission).score.toLocaleString()}</p>
     ${next ? `<p><b>${sectorBoundary(next) ? "Next sector" : "Next mission"}:</b> ${nextDestination(next)}</p>` : ""}
     <div class="choices">${next?`<button class="primary" data-act="advance">${sectorBoundary(next)?"Enter next sector":"Start next mission"}</button>`:""}
-    <button data-act="start">Play again</button><button data-act="missions">Missions</button></div>${ARCADE}`);
+    <button ${next ? "" : 'class="primary"'} data-act="start">${stars ? "Play again" : "Try again"}</button><button data-act="missions">Missions</button></div>${ARCADE}`);
 }
 function update(dt) {
   clock += dt;
   while (queue.length && queue[0].at <= clock) {
     const spawn = queue.shift();
     const target = spawn.target.hp ? spawn.target : cities.find(city => city.hp > 0);
-    const x = spawn.x, y = -8, speed = spawn.speed * (spawn.probe ? 1.22 : 1);
+    const { x, y } = spawn, speed = spawn.speed * (spawn.probe ? 1.22 : 1);
     const dx = target.x - x, dy = GROUND - y, distance = Math.hypot(dx,dy);
     threats.push({x,y,vx:dx / distance * speed,vy:dy / distance * speed,target,probe:spawn.probe,armor:spawn.armored?2:1,hitBy:new Set()});
   }
