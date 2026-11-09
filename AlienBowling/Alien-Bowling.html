@@ -55,7 +55,7 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
 [hidden]{display:none!important}
 @media(max-width:360px){body{padding:7px}.panel{padding:9px}.frame strong{font-size:.62rem}}
 </style>
-<link rel="stylesheet" href="../lib/arcade-menu.css">
+<link rel="stylesheet" href="../lib/arcade-menu.css?phone=2">
 </head>
 <body><main>
 <header class="top"><div><div class="kicker">Alien Arcade · Ten-pin</div><h1>Alien <span>Bowling</span></h1></div><div class="topRight"><span class="stage" id="stage"></span><button id="fsBtn" type="button" aria-label="Full screen" aria-pressed="false" hidden></button></div></header>
@@ -447,7 +447,7 @@ function worldsMenu(){
     <div class="worlds arcade-stages">${WORLDS.map((w,i)=>`<button class="arcade-stage" data-act="world" data-index="${i}" ${isOpen(i)?"":"disabled"}>
       <i class="arcade-planet" data-world="${i}" aria-hidden="true"></i>
       <span>${w.name}<small>${isOpen(i)?w.caption+(records[i]?` · Best ${records[i]}`:""):`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name}`}</small></span></button>`).join("")}</div>
-    <button data-act="menu">Back</button>${ARCADE_LINK}`);
+    <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
 }
 function matchMenu(i){
   if(!WORLDS[i]||!isOpen(i))return;
