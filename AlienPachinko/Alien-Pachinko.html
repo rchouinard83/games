@@ -358,7 +358,8 @@ function stretchBoard(pegs, bumpers, k) {
 let si = 0, li = 0, S = STAGES[0], pegs = [], bumpers = [], ballsLeft = START_BALLS, balls = [], state = "aim", endT = 0, resultShown = false;
 let score = 0, freed = 0, podsTotal = 0, aimA = PI / 2, aiming = false, shotHits = 0, shotScore = 0, wind = 0, t = 0, shake = 0, slowmo = 0;
 let fx = [], floaters = [], pops = [], banner = null, bucketX = BW / 2, bucketT = 0, popQueue = [], popT = 0, purpleIdx = -1;
-let farSight = 0, wideCatch = 0, lastPodHit = false, stuckT = 0;
+const SHOT_SECONDS = 10;
+let farSight = 0, wideCatch = 0, lastPodHit = false, stuckT = 0, shotClock = SHOT_SECONDS;
 function loadLevel(s, l) {
   si = s; li = l; S = STAGES[s]; const b = genBoard(s, l); pegs = b.pegs; bumpers = b.bumpers;
   podsTotal = pegs.filter(p => p.type === "orange").length; freed = 0; ballsLeft = START_BALLS; balls = []; score = 0;
@@ -368,6 +369,7 @@ function loadLevel(s, l) {
   hud(true);
 }
 function newShot() { // a fresh purple bonus peg and (on Jupiter) new wind each shot
+  shotClock = SHOT_SECONDS;
   boardId++;
   const blues = pegs.map((p, i) => (!p.gone && p.type === "blue" ? i : -1)).filter(i => i >= 0);
   for (const p of pegs) if (p.type === "purple") p.type = "blue";
@@ -377,6 +379,7 @@ function newShot() { // a fresh purple bonus peg and (on Jupiter) new wind each 
 const gravityNow = b => GRAVITY * S.gravity * (b.float > 0 ? 0.4 : 1);
 function fire() {
   if (state !== "aim" || ballsLeft <= 0 || paused) return;
+  aiming = false;
   ballsLeft--; state = "shot"; shotHits = 0; shotScore = 0; stuckT = 0;
   balls = [{ x: GUN.x + Math.cos(aimA) * 26, y: GUN.y + Math.sin(aimA) * 26, vx: Math.cos(aimA) * SHOT_SPEED, vy: Math.sin(aimA) * SHOT_SPEED, float: 0, smash: 0, r: BALL_R, trail: [] }];
   if (farSight > 0) farSight--; if (wideCatch > 0) wideCatch--;
@@ -439,6 +442,10 @@ function update(dt) {
   for (let i = floaters.length - 1; i >= 0; i--) { floaters[i].t += dt; if (floaters[i].t > 2.2) floaters.splice(i, 1); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (paused || !pegs.length) return;
+  if (state === "aim") {
+    shotClock = Math.max(0, shotClock - dt);
+    if (shotClock <= 1e-6) fire();
+  }
   for (const p of pegs) { pegPos(p); p.pop = Math.max(0, p.pop - dt); }
   for (const q of bumpers) q.flash = Math.max(0, q.flash - dt);
   bucketT += dt; bucketX = BW / 2 + Math.sin(bucketT * BUCKET.speed * (1 + li * 0.05)) * (BW / 2 - 40);
@@ -568,8 +575,11 @@ function draw(tt) {
   for (const f of floaters) { const k = f.t / 2.2; ctx.globalAlpha = 1 - k; CHARS.draw(ctx, f.id, f.x + Math.sin(f.t * 4) * 8 * f.dir, f.y - f.t * 90, 8, tt * 2, 0, Math.sin(f.t * 6) * 0.3); } ctx.globalAlpha = 1; // freed aliens float away, waving
   ctx.globalCompositeOperation = "lighter"; for (const p of fx) { ctx.globalAlpha = clamp(p.life / p.max, 0, 1); ctx.fillStyle = p.col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, TAU); ctx.fill(); } ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
   for (const p of pops) { if (p.t < 0) continue; ctx.globalAlpha = 1 - p.t / 0.9; ctx.fillStyle = p.col; ctx.font = `900 ${p.big ? 20 : 10}px system-ui`; ctx.textAlign = "center"; ctx.fillText(p.text, p.x, p.y - p.t * 26); } ctx.globalAlpha = 1;
-  // balls left, as little balls down the left edge
-  for (let k = 0; k < Math.min(ballsLeft, 15); k++) { ctx.fillStyle = "rgba(184,196,230,0.85)"; ctx.beginPath(); ctx.arc(12, 130 + k * 14, 4.5, 0, TAU); ctx.fill(); }
+  if (state === "aim" && !paused) {
+    ctx.fillStyle = shotClock <= 3 ? "#ff8b9d" : "#e5e9ff";
+    ctx.font = "800 15px system-ui"; ctx.textAlign = "left";
+    ctx.fillText(`Auto-fire in ${Math.ceil(shotClock)}s`, 12, 24);
+  }
   if (banner) { const a = clamp(Math.min(banner.t * 2, 1), 0, 1); ctx.globalAlpha = a; ctx.textAlign = "center"; const y = banner.small ? 120 : 250;
     ctx.fillStyle = "rgba(14,8,32,0.78)"; ctx.beginPath(); ctx.roundRect(BW / 2 - 160, y - 30, 320, banner.sub ? 64 : 44, 14); ctx.fill();
     ctx.font = `900 ${banner.small ? 20 : 24}px system-ui`; ctx.fillStyle = S.color; ctx.fillText(banner.text, BW / 2, y);
@@ -720,7 +730,7 @@ function pauseMenu() {
 }
 // How to play
 const HOWTO = [
-  { title: "Aim and fire", lines: ["<b>Touch</b> the board to point the cannon", "<b>Drag</b> to fine-tune, <b>let go</b> to fire", "The dots show where the ball heads first"], demo: demoAim },
+  { title: "Aim and fire", lines: ["<b>Touch</b> the board to point the cannon", "<b>Drag</b> to fine-tune, <b>let go</b> to fire", "The dots show the ball’s path. The cannon fires on its own after <b>10 seconds</b>."], demo: demoAim },
   { title: "Free the aliens", lines: ["<b class='o'>Orange pods</b> have aliens trapped inside", "Hit them <b>all</b> to clear the board", "Pegs you hit <b>light up</b>, then vanish when the ball's gone"], demo: demoFree },
   { title: "Free balls", lines: ["You get <b>10 balls</b> a board", "Land the ball in the sliding <b class='c'>catcher saucer</b> = <b>free ball</b>", "<b class='p'>Purple</b> peg = big bonus (it moves every shot)"], demo: demoBucket },
   { title: "Powers", lines: ["<b class='g'>Green pegs ⚡</b> fire your alien's power", "Blip: <b>Far Sight</b> · Runner: <b>Wide Catch</b> · Goo: <b>Split</b>", "Jelly: <b>Float</b> · Chonk: <b>Smash</b> · Mother Blob: <b>Call Home</b>"], demo: demoPower },
