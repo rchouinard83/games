@@ -36,9 +36,6 @@ h2{margin:3px 0;font-size:1.55rem;letter-spacing:-.04em}.panel p{font-size:.88re
 .worlds{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0}.worlds button{display:grid;justify-items:start;align-content:center;text-align:left;min-height:50px}
 .worlds small{font-size:.67rem;color:#d2c9e8}.actions{display:flex;flex-wrap:wrap;gap:6px}.actions>*{flex:1;font-size:.76rem}
 .help{display:grid;gap:6px;margin:8px 0}.help div{background:#171832;border-radius:8px;padding:7px 9px;font-size:.83rem}.help b{color:var(--accent)}
-.balls{display:grid;gap:6px;margin:9px 0}.balls button{justify-content:flex-start;gap:11px;text-align:left;padding:8px 10px}
-.balls button.on{border-color:var(--accent);background:#343d42}.balls i{width:40px;height:40px;border-radius:50%;flex:none;box-shadow:inset -4px -5px 8px #0006}
-.balls b{display:block}.balls small{display:block;font-size:.68rem;color:#d2c9e8;font-weight:700}.balls .stats{color:var(--accent);letter-spacing:.02em}
 #howCv{width:100%;height:130px;display:block;border-radius:10px;background:#171832;border:1px solid #424464;margin:6px 0}
 .how{list-style:none;padding:0;margin:6px 0;display:grid;gap:5px;text-align:left}.how li{font-size:.86rem;line-height:1.3;padding:6px 9px;background:#171832;border-radius:8px}
 .how b{color:var(--accent)}.how b.r{color:#ff8f9f}.how b.y{color:#ffd25d}
@@ -137,7 +134,7 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
   letter-spacing: 0;
 }
 #panel.arcade-panel > :is(button, a) { margin: 8px 0 0; }
-#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds, .balls) { gap: 8px; margin: 8px 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds) { gap: 8px; margin: 8px 0; }
 #panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -183,10 +180,18 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
   border-radius: 12px;
   background: radial-gradient(ellipse at 50% 80%, #272759, #0b1231 70%);
 }
-#panel.arcade-panel button.arcade-choice { justify-content: space-between; text-align: left; }
-#panel.arcade-panel button.arcade-choice > span:last-child { color: #94f0c4; font-size: 13px; }
-#panel.arcade-panel .balls button { justify-content: flex-start; text-align: left; }
-#panel.arcade-panel .balls button.on { background: #193d37; border-color: #589d80; }
+#panel .match-options { text-align: left; margin: 10px 0; }
+#panel .match-options label { display: block; }
+#panel .lane-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0 0 10px; }
+#panel.arcade-panel .lane-options button { padding: 7px; }
+#panel.arcade-panel .lane-options button[aria-pressed="true"] { background: #1d4a3a; border-color: #62c594; }
+#panel #ballSelect {
+  display: block; width: 100%; min-height: 48px; padding: 8px 11px; border: 1px solid #33336e;
+  border-radius: 12px; background: #22225a; color: #eef0ff; font: 800 16px system-ui, sans-serif;
+}
+#panel :is(#ballDetails, #laneDetails) { margin: 5px 0 0; font-size: 13px; }
+#panel #ballDetails small { color: #aeb4dd; }
+#panel > .arcade-footer { margin-top: 8px; }
 #panel.arcade-panel .stars { color: #ffd25d; }
 
 #panel.arcade-panel .arcade-footer {
@@ -226,15 +231,15 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
     border-color: #429e70;
     color: #f3fff7;
   }
-  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) {
+  #panel.arcade-panel:has(> .arcade-stages) {
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
-  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) > :not(.balls, .arcade-stages) {
+  #panel.arcade-panel:has(> .arcade-stages) > :not(.arcade-stages) {
     flex: 0 0 auto;
   }
-  #panel.arcade-panel > :is(.balls, .arcade-stages) {
+  #panel.arcade-panel > .arcade-stages {
     grid-auto-rows: max-content;
     align-content: start;
     min-height: 0;
@@ -243,7 +248,6 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
     padding: 2px;
     -webkit-overflow-scrolling: touch;
   }
-  #panel.arcade-panel .balls i { width: 32px; height: 32px; }
 }
 @media (max-height: 500px) and (pointer: coarse) {
   #panel.arcade-panel { width: min(100%, 580px); padding: 12px; }
@@ -262,11 +266,14 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
   #panel.arcade-panel p { margin: 4px 0 7px; }
   #panel.arcade-panel > :is(button, a) { margin-top: 6px; }
   #panel.arcade-panel :is(.actions, .choices, .menu-actions) { margin: 6px 0; }
-  #panel.arcade-panel :is(.balls, .arcade-stages) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #panel.arcade-panel .arcade-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #panel.arcade-panel button.arcade-stage { gap: 9px; padding: 7px 10px; }
   #panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex-basis: 40px; }
   #panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
   #panel.arcade-panel :is(.guide svg, #howCv) { height: min(85px, 25dvh); }
+  #panel .match-options { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+  #panel .lane-options { margin-bottom: 0; }
+  #panel #laneDetails { font-size: 12px; }
 }
 </style>
 </head>
@@ -403,20 +410,36 @@ const BALLS=[
 ];
 const BALL_KEY="alienArcade.bowling.ball";
 let ballPick=0;
-try{ballPick=clamp(+localStorage.getItem(BALL_KEY)||0,0,BALLS.length-1);}catch{}
+try{const saved=Number(localStorage.getItem(BALL_KEY));if(BALLS[saved])ballPick=saved;}catch{}
 const myBall=()=>BALLS[ballPick];
-let records=[];
+const LANES=[
+  {name:"Original"},
+  {name:"Bumper Rails",kind:"rails",hint:"Bank off the rails. The gutters are covered."},
+  {name:"Gravity Well",kind:"gravity",hint:"The glowing well pulls the ball sideways. Aim against the pull."},
+  {name:"Staggered Rack",kind:"stagger",hint:"The pin rows are offset and mirror each frame. Find the new pocket."},
+];
+const LANE_STORAGE="alienArcade.bowling.lanes.v2";
+const validScore=v=>Number.isInteger(v)&&v>=0&&v<=300?v:0;
+let records=[], storedLanes=[];
 try{
   const saved=JSON.parse(localStorage.getItem(STORAGE));
-  if(Array.isArray(saved))records=saved.map(v=>Number.isInteger(v)&&v>=0&&v<=300?v:0);
+  if(Array.isArray(saved))records=saved.map(validScore);
 }catch{}
-let worldIndex=0, frames=[], frame=0, pins=[], ball=null, position=0, time=0, rollTime=0;
+try{
+  const saved=JSON.parse(localStorage.getItem(LANE_STORAGE));
+  if(Array.isArray(saved))storedLanes=saved;
+}catch{}
+const laneRecords=WORLDS.map((_,w)=>LANES.map((_,l)=>validScore(storedLanes[w]?.[l])));
+let worldIndex=0, laneIndex=0, frames=[], frame=0, pins=[], ball=null, position=0, time=0, rollTime=0;
 let state="menu", resumeState="aim", last=0, carry=0, width=0,height=0,ratio=1, hitMessage="", hitCount=0;
 let audioCtx,gesture=null,hook=0;
 const HOOK_START=7, HOOK_DISTANCE=7.12, MAX_HOOK=.44;
 const hookProgress=y=>clamp((y-HOOK_START)/HOOK_DISTANCE,0,1);
 const hookFromSwipe=(dx,up)=>Math.abs(dx)>=10?MAX_HOOK*clamp(dx/Math.max(18,up)*1.75,-1,1):null;
 const world=()=>WORLDS[worldIndex];
+const lane=()=>laneIndex===0?world():LANES[laneIndex];
+const laneBest=(w,l)=>l===0?(records[w]??0):laneRecords[w][l];
+const starText=n=>"★".repeat(n)+"☆".repeat(3-n);
 const rolls=()=>frames[frame];
 const isOpen=i=>i===0||(records[i-1]??0)>=WORLDS[i-1].unlock;
 const stars=(i,score)=>WORLDS[i].stars.filter(target=>score>=target).length;
@@ -500,13 +523,14 @@ function paintScore(){
     const r=frames[i]??[];
     return `<div class="frame ${i===frame&&state!=="result"&&frames.length?"now":""}"><small>${i+1}</small><strong>${r.map((_,j)=>mark(r,j)).join(" ")||"&nbsp;"}</strong><strong class="total">${totals[i]??"&nbsp;"}</strong></div>`;
   }).join("");
-  $("stage").textContent=frames.length?`${world().name} · Frame ${frame+1}/10`:world().name;
+  $("stage").textContent=frames.length?`${world().name}${laneIndex===0?"":` · ${lane().name}`} · Frame ${frame+1}/10`:world().name;
 }
 // enter = the aliens walk in from the back of the lane and take their spots
 function rack(enter=false){
   pins=[];bubbles=[];
+  const stagger=lane().kind==="stagger"?(frame%2?-1:1):0;
   for(let row=0;row<4;row++)for(let col=0;col<=row;col++){
-    const x=(col-row/2)*.53,y=14.1+row*.42;
+    const x=(col-row/2)*.53+stagger*[.21,-.16,.13,-.09][row],y=14.1+row*.42;
     const p={x,y,homeX:x,homeY:y,vx:0,vy:0,down:false,spin:0,angle:0,id:CHARS.list[pins.length%CHARS.list.length].id,mischief:row===3&&(col===0||col===3),
       act:null,actT:0,fall:0,walk:null,seed:Math.random()*10};
     if(enter){p.walk={x0:x+(Math.random()-.5)*1.2,y0:17.3+Math.random()*.4,t:-pins.length*.06};p.x=p.walk.x0;p.y=p.walk.y0;}
@@ -623,14 +647,15 @@ function aim(){
 }
 function laneEvents(){
   if(!obstacleOn())return [];
-  const kind=world().kind;
-  if(kind==="ice"||kind==="wind")return [];
+  const kind=lane().kind;
+  if(kind!=="crystal"&&kind!=="saucer")return [];
   const first={x:.87*Math.sin(time*(kind==="saucer"?2.4:1.5)),y:8.7,r:kind==="saucer"?.21:.19};
   return frame>=7?[first,{x:.8*Math.sin(time*2+1.6),y:11.5,r:.18}]:[first];
 }
 function hint(){
   const lines=["Bet you miss!","That your space ball?","We saw that bank!","No pressure, Earthling!"];
-  return obstacleOn()?`${world().event} · ${world().hint}`:`${lines[frame%lines.length]} · Aim just off the front alien.`;
+  if(laneIndex!==0)return lane().hint;
+  return obstacleOn()?`${lane().event} · ${lane().hint}`:`${lines[frame%lines.length]} · Aim just off the front alien.`;
 }
 function setStatus(message){$("status").textContent=message;}
 function showControls(active){
@@ -650,7 +675,7 @@ function showMenu(html){
   helpAnim=null;$("panel").innerHTML=html;$("panel").scrollTop=0;$("overlay").hidden=false;showControls(false);
 }
 const ARCADE_LINK = '<a class="button" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
-let pendingWorld = null;
+let pendingWorld = null, pendingLane = 0;
 function title(){
   state="menu";pendingWorld=null;frames=[];frame=0;ball=null;hitMessage="";rack();paintScore();setStatus("");
   showMenu(`<svg class="arcade-hero" viewBox="0 0 360 112" aria-hidden="true"><g fill="#9fb4ef"><circle cx="55" cy="20" r="1.7"/><circle cx="286" cy="17" r="1.5"/><circle cx="309" cy="74" r="1.3"/><circle cx="87" cy="86" r="1.5"/></g><path d="M100 107l47-72h66l47 72z" fill="#503f62" stroke="#9899c2" stroke-width="2"/><path d="M139 105l29-68m53 68l-28-68" fill="none" stroke="#e8ff83" opacity=".56"/><g fill="#86efb1" stroke="#163448" stroke-width="2"><ellipse cx="166" cy="30" rx="8" ry="13"/><ellipse cx="194" cy="30" rx="8" ry="13"/><ellipse cx="180" cy="42" rx="9" ry="15"/></g><g fill="#142c45"><circle cx="166" cy="27" r="2.5"/><circle cx="194" cy="27" r="2.5"/><circle cx="180" cy="38" r="3"/></g><circle cx="181" cy="83" r="16" fill="#aa8dfb" stroke="#e5d7ff" stroke-width="2"/><path d="M173 77q5-7 11-6" fill="none" stroke="#f2eaff" stroke-width="2" stroke-linecap="round"/></svg><p class="kicker">Alien Arcade</p><h1>Alien Bowling</h1>
@@ -663,27 +688,48 @@ function worldsMenu(){
   showMenu(`<p class="kicker">Alien Bowling</p><h2>Choose a world</h2><p>Ten frames per match</p>
     <div class="worlds arcade-stages">${WORLDS.map((w,i)=>`<button class="arcade-stage" data-act="world" data-index="${i}" ${isOpen(i)?"":"disabled"}>
       <i class="arcade-planet" data-world="${i}" aria-hidden="true"></i>
-      <span>${w.name}<small>${isOpen(i)?w.caption+(records[i]?` · Best ${records[i]}`:""):`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name}`}</small></span></button>`).join("")}</div>
+      <span>${w.name}<small>${isOpen(i)?`${LANES.reduce((sum,_,l)=>sum+stars(i,laneBest(i,l)),0)}/12 lane stars`:`Score ${WORLDS[i-1].unlock} on ${WORLDS[i-1].name} Original`}</small></span></button>`).join("")}</div>
     <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
 }
-function matchMenu(i){
+function ballDetails(){
+  const b=myBall(), [speed,hook,power,aim]=b.stats;
+  return `${b.desc}<br><small>Speed ${speed}/5 · Hook ${hook}/5 · Power ${power}/5 · Aim ${aim}/5</small>`;
+}
+function matchMenu(i, l=0){
   if(!WORLDS[i]||!isOpen(i))return;
-  state="setup";pendingWorld=i;
+  state="setup";pendingWorld=i;pendingLane=l;
   const w=WORLDS[i];
   showMenu(`<p class="kicker">Alien Bowling · Match setup</p><h2>${w.name}</h2>
-    <p>${w.caption} · Ten frames</p>
-    <button class="arcade-choice" data-act="balls"><span>Ball: ${myBall().name}</span><span>Change ›</span></button>
+    <div class="match-options">
+      <section aria-label="Lane selection"><p class="kicker">Lane</p>
+        <div class="lane-options">${LANES.map((lane,j)=>{const best=laneBest(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
+          <span>${lane.name}<small>${j===0?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best)} stars">${starText(stars(i,best))}</span>${best?` · ${best}`:""}</small></span></button>`;}).join("")}</div>
+        <p id="laneDetails">${pendingLane===0?w.hint:LANES[pendingLane].hint}</p>
+      </section>
+      <section aria-label="Ball selection"><label class="kicker" for="ballSelect">Ball</label>
+        <select id="ballSelect" aria-describedby="ballDetails">${BALLS.map((b,j)=>`<option value="${j}" ${j===ballPick?"selected":""}>${b.name}</option>`).join("")}</select>
+        <p id="ballDetails">${ballDetails()}</p>
+      </section>
+    </div>
     <button class="primary" data-act="bowl" data-index="${i}">Bowl ▶</button>
-    <button data-act="worlds">All worlds</button>${ARCADE_LINK}`);
+    <div class="arcade-footer"><button data-act="worlds">All worlds</button>${ARCADE_LINK}</div>`);
+  $("ballSelect").onchange=()=>{
+    const pick=Number($("ballSelect").value);
+    if(!BALLS[pick])return;
+    ballPick=pick;
+    try{localStorage.setItem(BALL_KEY,String(ballPick));}catch{}
+    $("ballDetails").innerHTML=ballDetails();
+    enableSound();playSound(300+ballPick*80,.1,"triangle");
+  };
 }
 // ---------- How to play: short pages, each with a little animated demo ----------
 const HOWTO=[
   {title:"Aim and roll",lines:["<b>Drag sideways</b> on the lane (or ◀ ▶) to slide the ball","<b>Swipe up</b> to roll it, or tap <b>ROLL</b> (Space on a keyboard)"],demo:demoRoll},
   {title:"Time it",lines:["The <b>aim ring</b> by the pins swings side to side","Roll when it lines up just off the <b>front alien</b>"],demo:demoTiming},
   {title:"Hook it",lines:["<b>Swipe up at an angle</b> for a late bend","Or pick <b>↶ Hook left</b> / <b>↷ Hook right</b> first (Q / E)","The <b class='y'>orange dots</b> show the bend"],demo:demoHook},
-  {title:"Pick a ball",lines:["Choose a world, then tap <b>Change</b> beside your ball before bowling","Each ball has its own <b>speed, hook, power and aim</b>","<b>Black Hole</b> smashes · <b>Ice Moon</b> is easiest to aim"],demo:demoBalls},
-  {title:"Lane trouble",lines:["From frame 3, each world adds a twist","<b>Oort</b> ice drift · <b>Jupiter</b> storm gusts","<b>Mars</b> crystals · <b>Earth</b> saucers: time the gap","Late frames: the back aliens <b>sidestep</b>"],demo:demoTrouble},
-  {title:"Score big",lines:["<b>X Strike</b>: all ten in one roll · <b>/ Spare</b>: in two","Frame 10 gives <b>bonus rolls</b> after a strike or spare",`Stars by score (Oort: <b class='y'>★ ${WORLDS[0].stars.join(" / ")}</b>)`,`Score <b>${WORLDS[0].unlock}</b> on a world to unlock the next`],demo:demoStrike},
+  {title:"Pick a ball",lines:["Choose a <b>lane and ball</b> on the match setup screen","Each ball has its own <b>speed, hook, power and aim</b>","<b>Black Hole</b> smashes · <b>Ice Moon</b> is easiest to aim"],demo:demoBalls},
+  {title:"Lane trouble",lines:["<b>Original</b> adds the world’s twist starting in frame 3","<b>Bumper Rails</b> bounce the ball back into play","<b>Gravity Well</b> bends the ball toward the glow","<b>Staggered Rack</b> mirrors the offset pin rows each frame"],demo:demoTrouble},
+  {title:"Score big",lines:["<b>X Strike</b>: all ten in one roll · <b>/ Spare</b>: in two","Frame 10 gives <b>bonus rolls</b> after a strike or spare",`Stars by score (Oort: <b class='y'>★ ${WORLDS[0].stars.join(" / ")}</b>)`,`Each lane earns its own stars. Clear the <b>Original</b> lane’s score goal to unlock the next world`],demo:demoStrike},
   {title:"The aliens",lines:["They <b>taunt</b> you and <b>panic</b> when the ball comes","They <b class='r'>laugh</b> at gutter balls and misses","Wait too long and they get <b>impatient</b>!"],demo:demoAliens},
 ];
 let helpAnim=null;
@@ -769,19 +815,10 @@ function demoAliens(c,tt,w,h){
       c.fillStyle="#fffbe8";c.beginPath();c.roundRect(bx,h*.12,tw,22,9);c.fill();c.beginPath();c.moveTo(x-5,h*.12+21);c.lineTo(x+5,h*.12+21);c.lineTo(x,h*.12+30);c.fill();
       c.fillStyle="#1d1a33";c.textAlign="center";c.textBaseline="middle";c.fillText(lines[say],bx+tw/2,h*.12+11.5);}});
 }
-function ballMenu(){
-  if(pendingWorld===null)return;
-  state="balls";
-  const bar=n=>"●".repeat(n)+"○".repeat(5-n);
-  showMenu(`<div class="kicker">Pick your ball</div><h2>Ball rack</h2><div class="balls">${BALLS.map((b,i)=>`<button data-act="ball" data-index="${i}" class="${i===ballPick?"on":""}">
-    <i style="background:radial-gradient(circle at 35% 30%,${b.colors[0]},${b.colors[1]} 45%,${b.colors[2]})"></i>
-    <span><b>${b.name}</b><small>${b.desc}</small><small class="stats">Speed ${bar(b.stats[0])} · Hook ${bar(b.stats[1])}<br>Power ${bar(b.stats[2])} · Aim ${bar(b.stats[3])}</small></span></button>`).join("")}</div>
-    <button class="primary" data-act="world" data-index="${pendingWorld}">Done</button>`);
-}
-function start(i){
-  if(!isOpen(i))return;
+function start(i, l=0){
+  if(!WORLDS[i]||!LANES[l]||!isOpen(i))return;
   pendingWorld=null;
-  worldIndex=i;frames=Array.from({length:10},()=>[]);frame=0;time=0;position=0;hook=0;rack(true);ready();
+  worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);frame=0;time=0;position=0;hook=0;rack(true);ready();
 }
 function ready(){
   state="aim";gesture=null;tauntT=.9;poked();ball=null;bubbles=[];hitMessage="";$("overlay").hidden=true;showControls(true);paintScore();setStatus(hint());
@@ -814,6 +851,7 @@ function collide(a,b,ra,rb,ma,mb){
   if(a!==ball&&Math.hypot(a.vx,a.vy)>PIN_TIP_SPEED)knock(a);
   if(Math.hypot(b.vx,b.vy)>PIN_TIP_SPEED)knock(b);
 }
+const gravityWellX=()=>frame%2?-.68:.68;
 function update(dt){
   if(state==="pause"||state==="result")return;
   time+=dt;
@@ -825,15 +863,21 @@ function update(dt){
   }
   if(state!=="roll")return;
   rollTime+=dt;
+  const kind=lane().kind;
   if(!ball.gutter&&ball.y<13.65){
-    if(obstacleOn()&&ball.y>5&&ball.y<11){
-      if(world().kind==="ice")ball.vx+=dt*(frame%2?-.52:.52);
-      if(world().kind==="wind")ball.vx+=dt*1.5*Math.sin(time*2.1);
+    if(ball.y>5&&ball.y<11){
+      if(kind==="gravity"){
+        const pull=Math.sin((ball.y-5)/6*Math.PI);
+        ball.vx+=dt*3.5*pull*clamp(gravityWellX()-ball.x,-1,1);
+      }else if(obstacleOn()){
+        if(kind==="ice")ball.vx+=dt*(frame%2?-.52:.52);
+        if(kind==="wind")ball.vx+=dt*1.5*Math.sin(time*2.1);
+      }
     }
     laneEvents().forEach((o,i)=>{
       if(ball.bumped.has(i)||Math.hypot(ball.x-o.x,ball.y-o.y)>o.r+BALL_R)return;
       ball.bumped.add(i);ball.vx+=(ball.x<o.x?-1:1)*1.35;ball.vy*=.89;
-      hitMessage=world().kind==="crystal"?"Crystal ricochet!":"Saucer deflection!";setStatus(hitMessage);playSound(410,.17,"triangle");
+      hitMessage=kind==="crystal"?"Crystal ricochet!":"Saucer deflection!";setStatus(hitMessage);playSound(410,.17,"triangle");
     });
   }
   if(!ball.gutter&&ball.y<HOOK_START+HOOK_DISTANCE&&ball.hook){
@@ -843,7 +887,12 @@ function update(dt){
   }
   ball.spin=(ball.spin+Math.hypot(ball.vx,ball.vy)*dt/BALL_R)%TAU;
   ball.x+=ball.vx*dt;ball.y+=ball.vy*dt;
-  if(!ball.gutter&&Math.abs(ball.x)>HALF_LANE&&ball.y<FINISH_Y){ // the gutters run the whole length, past the pins too
+  if(kind==="rails"&&!ball.gutter&&Math.abs(ball.x)>HALF_LANE&&ball.y<FINISH_Y){
+    const side=Math.sign(ball.x);
+    ball.x=side*Math.max(0,2*HALF_LANE-Math.abs(ball.x));
+    ball.vx=-side*Math.abs(ball.vx)*.9;
+    setStatus("Bumper bank!");playSound(330,.09,"triangle");
+  }else if(!ball.gutter&&Math.abs(ball.x)>HALF_LANE&&ball.y<FINISH_Y){
     ball.gutter=true;ball.x=Math.sign(ball.x)*1.27;ball.vx=0;
     // The ball can leave the lane behind the pins or after a ricochet.
     ball.earlyGutter=!ball.touchedPin&&ball.y<DECK;
@@ -905,15 +954,23 @@ function advance(){
 }
 function result(){
   state="result";paintScore();
-  const score=frameTotals(frames)[9], old=records[worldIndex]??0, medal=stars(worldIndex,score);
+  const score=frameTotals(frames)[9], old=laneBest(worldIndex,laneIndex), medal=stars(worldIndex,score);
   if(score>old){
-    records[worldIndex]=score;
-    try{localStorage.setItem(STORAGE,JSON.stringify(records));}catch{}
+    if(laneIndex===0){
+      records[worldIndex]=score;
+      try{localStorage.setItem(STORAGE,JSON.stringify(records));}catch{}
+    }else{
+      laneRecords[worldIndex][laneIndex]=score;
+      try{localStorage.setItem(LANE_STORAGE,JSON.stringify(laneRecords));}catch{}
+    }
   }
   const next=worldIndex+1, canAdvance=next<WORLDS.length&&isOpen(next);
-  showMenu(`<div class="kicker">${world().name} · Game complete</div><h2>${score} points</h2><p>${"★".repeat(medal)}${"☆".repeat(3-medal)} · ${score>old?"New best!":`Best ${old}`}</p>
-    <p>${canAdvance?`${WORLDS[next].name} is open.`:next<WORLDS.length?`Score ${world().unlock} to unlock ${WORLDS[next].name}.`:"You reached the Earth finals."}</p>
-    <div class="actions">${canAdvance?`<button class="primary" data-act="world" data-index="${next}">Next world</button>`:""}<button ${canAdvance ? "" : 'class="primary"'} data-act="retry">Bowl again</button><button data-act="worlds">All worlds</button></div>`);
+  showMenu(`<div class="kicker">${world().name} · ${LANES[laneIndex].name}</div><h2>${score} points</h2>
+    <p><span class="stars">${starText(medal)}</span> · ${score>old?"New lane best!":`Lane best ${old}`}</p>
+    <p>${canAdvance?`${WORLDS[next].name} is open.`:next<WORLDS.length?`Score ${world().unlock} on the Original lane to unlock ${WORLDS[next].name}.`:"You reached the Earth finals."}</p>
+    <div class="actions">${canAdvance?`<button class="primary" data-act="world" data-index="${next}">Next world</button>`:""}<button ${canAdvance ? "" : 'class="primary"'} data-act="retry">Bowl again</button>
+    <button data-act="setup">Change lane or ball</button><button data-act="worlds">All worlds</button></div>`);
+
 }
 function pause(){
   if(!["aim","roll","settle"].includes(state))return;
@@ -941,7 +998,7 @@ function circle(x,y,r,color){
   ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();
 }
 function paintLane(){
-  const w=world(), sky=ctx.createLinearGradient(0,0,0,height*.62);
+  const w=world(), kind=lane().kind, sky=ctx.createLinearGradient(0,0,0,height*.62);
   sky.addColorStop(0,w.sky);sky.addColorStop(1,w.ground);ctx.fillStyle=sky;ctx.fillRect(0,0,width,height);
   for(let i=0;i<42;i++){
     ctx.fillStyle=i%5?"#f6eeff7a":"#fff5dc";ctx.fillRect((i*107+29)%width,(i*39+11)%(height*.34),i%5?1:2,1);
@@ -981,9 +1038,22 @@ function paintLane(){
     const y=3.4-Math.abs(i)*.19, x=i*.232;
     polygon([[x-.024,y],[x+.024,y],[x,y+.20]],"#fff5d0bb");
   }
-  if(obstacleOn()&&(w.kind==="ice"||w.kind==="wind")){
-    strip(-HALF_LANE,HALF_LANE,5,11,w.kind==="ice"?"#8bedff75":"#ffe39f4b");
-    const direction=w.kind==="ice"?(frame%2?-1:1):Math.sign(Math.sin(time*2.1));
+  if(kind==="rails"){
+    for(const side of [-1,1]){
+      const edge=side*HALF_LANE;
+      strip(edge-.06,edge+.06,.35,FINISH_Y,"#185568");
+      strip(edge-.022,edge+.022,.35,FINISH_Y,"#7cf1ff");
+    }
+  }else if(kind==="gravity"){
+    const x=gravityWellX();
+    strip(-HALF_LANE,HALF_LANE,5,11,"#69238f48");
+    for(let i=0;i<3;i++){
+      const y=7.5+i*.42, size=.27-i*.06;
+      polygon([[x-size,y],[x,y-.37],[x+size,y],[x,y+.37]],i===0?"#a54bde":"#e6acff");
+    }
+  }else if(obstacleOn()&&(kind==="ice"||kind==="wind")){
+    strip(-HALF_LANE,HALF_LANE,5,11,kind==="ice"?"#8bedff75":"#ffe39f4b");
+    const direction=kind==="ice"?(frame%2?-1:1):Math.sign(Math.sin(time*2.1));
     for(let i=0;i<8;i++){
       const x=((time*.65+i*.32)%1.85-.925)*direction,y=5.5+i*.66;
       polygon([[x-.1*direction,y-.10],[x+.13*direction,y],[x-.1*direction,y+.10]],"#f8ffdbbd");
@@ -1041,7 +1111,7 @@ function paintBubbles(){
 }
 function paintObstacle(o){
   const p=project(o.x,o.y),r=width*.058*p.scale;
-  if(world().kind==="crystal"){
+  if(lane().kind==="crystal"){
     polygon([[o.x-.20,o.y],[o.x,o.y+.58],[o.x+.20,o.y],[o.x,o.y-.25]],"#ffe0a1");
     polygon([[o.x,o.y+.58],[o.x+.20,o.y],[o.x,o.y-.25]],"#ea6175");
   }else{
@@ -1120,12 +1190,17 @@ function act(name,i){
   switch(name){
     case "worlds":worldsMenu();break;
     case "world":matchMenu(i);break;
-    case "bowl":if(state==="setup"&&i===pendingWorld)start(i);break;
-    case "retry":start(worldIndex);break;
+    case "lane":
+      if(state!=="setup"||!LANES[i])break;
+      pendingLane=i;
+      $("laneDetails").textContent=i===0?WORLDS[pendingWorld].hint:LANES[i].hint;
+      for(const b of $("panel").querySelectorAll("[data-act='lane']"))b.setAttribute("aria-pressed",String(Number(b.dataset.index)===i));
+      break;
+    case "bowl":if(state==="setup"&&i===pendingWorld)start(i,pendingLane);break;
+    case "retry":start(worldIndex,laneIndex);break;
+    case "setup":matchMenu(worldIndex,laneIndex);break;
     case "help":help(clamp(i||0,0,HOWTO.length-1));break;
-    case "balls":ballMenu();break;
     case "sound":toggleSound();break;
-    case "ball":ballPick=clamp(i||0,0,BALLS.length-1);try{localStorage.setItem(BALL_KEY,String(ballPick));}catch{}playSound(300+ballPick*80,.1,"triangle");ballMenu();break;
     case "menu":title();break;
     case "left":case "right":
       if(state==="aim")position=clamp(position+(name==="left"?-.18:.18),-.72,.72);
@@ -1180,7 +1255,7 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{
   poked();
   if(e.code==="Escape"){
-    if(state==="pause")act("resume");else if(state==="balls")matchMenu(pendingWorld);else if(state==="setup")worldsMenu();else if(state==="help")title();else pause();
+    if(state==="pause")act("resume");else if(state==="setup")worldsMenu();else if(state==="help")title();else pause();
     return;
   }
   if(state!=="aim")return;
