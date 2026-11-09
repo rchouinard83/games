@@ -281,16 +281,17 @@ const STAGES = [
 ];
 function levelInfo(s, l) {
   return { rows: Math.min(12, 7 + Math.floor(l / 2) + Math.floor(s / 2)), colors: Math.min(6, 4 + Math.floor((l + s * 3) / 5)), aliens: Math.min(8, 3 + Math.floor(l / 2) + Math.floor(s / 2)),
-    dropEvery: Math.max(4, 8 - Math.floor(l / 3) - s), dropSeconds: Math.max(18, [36, 33, 30, 27][s] - l), wind: s === 1 ? 70 + l * 12 : 0 };
+    dropEvery: Math.max(4, 8 - Math.floor(l / 3) - s), dropSeconds: DIFFICULTIES[SAVE.difficulty].seconds, wind: s === 1 ? 70 + l * 12 : 0 };
 }
 
 // ---------- save ----------
+const DIFFICULTIES = [{ name: "Easy", seconds: 30 }, { name: "Medium", seconds: 20 }, { name: "Hard", seconds: 10 }];
 const KEY = "alienPop.v1";
-let SAVE = { best: STAGES.map(() => Array(LEVELS).fill(0)), score: STAGES.map(() => Array(LEVELS).fill(0)), char: "blip", sound: true };
+let SAVE = { best: STAGES.map(() => Array(LEVELS).fill(0)), score: STAGES.map(() => Array(LEVELS).fill(0)), char: "blip", sound: true, difficulty: 0 };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.best)) {
   SAVE.best = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => clamp(+((s.best[i] || [])[l]) || 0, 0, 3)));
   SAVE.score = STAGES.map((_, i) => Array.from({ length: LEVELS }, (_, l) => +(((s.score || [])[i] || [])[l]) || 0));
-  SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "blip"; SAVE.sound = s.sound !== false; } } catch (e) {}
+  SAVE.char = CHARS.list.some(c => c.id === s.char) ? s.char : "blip"; SAVE.sound = s.sound !== false; SAVE.difficulty = DIFFICULTIES[s.difficulty] ? s.difficulty : 0; } } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
 const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address to open every level for testing
 const stageOpen = s => TEST_ALL || s === 0 || SAVE.best[s - 1].every(n => n > 0);
@@ -657,16 +658,22 @@ function stageIcon(cvs, s) {
 function titleMenu() {
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Pop</h1>
     <p><b>Fire</b> goo bubbles, match <b>3 or more</b> to pop them, and free every alien trapped in the bubble wall before it reaches you.</p>
-    <button class="big main" data-act="worlds">Play ▶</button>
+    <button class="big main" data-act="difficulty">Play ▶</button>
     <div class="menuFooter"><button class="big" data-act="help" data-arg="title|0">How to play</button>
     ${soundBtn()}
     <a class="big" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a></div>`, titleAnim, "title");
+}
+function difficultyMenu() {
+  openMenu(`<p class="kicker">Alien Pop</p><h2>Choose a difficulty</h2>
+    <p>The ceiling also drops when you miss too many shots.</p>
+    ${DIFFICULTIES.map((d, i) => `<button class="big ${i === SAVE.difficulty ? "main" : ""}" data-act="setDifficulty" data-arg="${i}">${d.name}<small>Ceiling drops after ${d.seconds} seconds</small></button>`).join("")}
+    <button class="big" data-act="title">Back</button>`, null, "difficulty");
 }
 function worldsMenu() {
   openMenu(`<p class="kicker">Alien Pop</p><h2>Choose a stage</h2>
     <div class="menuList">${STAGES.map((st, i) => `<button class="big stageCard" data-act="stage" data-arg="${i}" ${stageOpen(i) ? "" : "disabled"}><canvas data-stage="${i}"></canvas>
       <span>${i + 1} · ${st.name}<small>${stageOpen(i) ? `8 levels · <span class="stars">${stageStars(i)}/24 ★</span>` : `Clear ${STAGES[i - 1].short} to unlock`}</small></span></button>`).join("")}</div>
-    <button class="big" data-act="title">Back</button>`, null, "worlds");
+    <button class="big" data-act="difficulty">Back to difficulty</button>`, null, "worlds");
 }
 function titleAnim(tt) { // a bubble flies up, joins two of its colour, and they pop and free an alien
   const cvs = $("titleArt"); if (!cvs) return; const [c, w, h] = fitCanvas(cvs);
@@ -787,6 +794,8 @@ function demoStars(c, tt, w, h) {
 
 const ACT = {
   title: () => titleMenu(),
+  difficulty: () => difficultyMenu(),
+  setDifficulty: i => { SAVE.difficulty = Number(i); save(); worldsMenu(); },
   worlds: () => worldsMenu(),
   stage: s => stageMenu(+s),
   setup: a => setupMenu(...a.split("|").map(Number)),
