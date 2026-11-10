@@ -19,7 +19,7 @@
   #hud { display: flex; gap: 5px; align-items: stretch; width: 100%; max-width: 760px; margin: 0 auto; }
   .chip { background: rgba(22,22,56,0.92); border: 1px solid var(--line); border-radius: 11px; padding: 3px 8px 4px; font-weight: 800; font-size: 14px; line-height: 1.15; white-space: nowrap; }
   .chip small { display: block; font-size: 9px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
-  #hHearts { color: var(--bad); letter-spacing: -1px; } #hHearts i { color: #2e2e5a; font-style: normal; } #hFreed { color: var(--accent); }
+  #hFreed { color: var(--accent); }
   .spacer { flex: 1; }
   .hudBtn { background: rgba(22,22,56,0.92); color: var(--ink); border: 1px solid var(--line); border-radius: 11px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; min-width: 40px; }
   @media (max-width: 420px) { #scoreChip { display: none; } .chip { padding: 3px 6px 4px; } .hudBtn { padding: 0 8px; min-width: 36px; } }
@@ -128,7 +128,7 @@
 <div id="app">
   <div id="hud">
     <div class="chip"><small id="hStage">Oort</small><span id="hLevel">Level 1</span></div>
-    <div class="chip"><small>Shields</small><span id="hHearts">♥♥♥♥♥</span></div>
+    <div class="chip"><small>Mode</small><span id="hMode">Easy</span></div>
     <div class="chip"><small>Freed</small><span id="hFreed">0/0</span></div>
     <div class="chip" id="scoreChip"><small>Score</small><span id="hScore">0</span></div>
     <div class="spacer"></div>
@@ -144,7 +144,7 @@
 // ============================================================
 //  ALIEN POP — a bubble shooter. Aim the launcher, fire goo bubbles, and match 3 or more of a colour to pop them.
 //  Anything left hanging with nothing holding it up falls. Some bubbles have aliens trapped inside: free them all to win.
-//  Time and misses bring the ceiling down. Reaching the danger line or running out of shields ends the run.
+//  The timer lowers the ceiling. The run ends if any attached bubble crosses the danger line.
 //  The board is 360 x 640 units, scaled to fit; the bubbles sit on a hexagon grid, 10 across.
 // ============================================================
 const $ = id => document.getElementById(id);
@@ -154,7 +154,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const BW = 360, BH = 640, LEVELS = 8;
 const R = 18, COLS = 10, ROW_H = R * Math.sqrt(3), TOP = 34;  // bubble radius, bubbles per (even) row, row spacing, top of the board
 const GUN = { x: 180, y: 590 }, SHOT_SPEED = 820, DANGER_Y = 536;
-const MAX_HEARTS = 5, POWER_FULL = 32;
+const POWER_FULL = 32;
 const SCORE = { pop: 10, drop: 20, alien: 250 };
 
 const CHARS = (() => {
@@ -281,7 +281,7 @@ const STAGES = [
 ];
 function levelInfo(s, l) {
   return { rows: Math.min(12, 7 + Math.floor(l / 2) + Math.floor(s / 2)), colors: Math.min(6, 4 + Math.floor((l + s * 3) / 5)), aliens: Math.min(8, 3 + Math.floor(l / 2) + Math.floor(s / 2)),
-    dropEvery: Math.max(4, 8 - Math.floor(l / 3) - s), dropSeconds: DIFFICULTIES[SAVE.difficulty].seconds, wind: s === 1 ? 70 + l * 12 : 0 };
+    dropSeconds: DIFFICULTIES[SAVE.difficulty].seconds, wind: s === 1 ? 70 + l * 12 : 0 };
 }
 
 // ---------- save ----------
@@ -297,7 +297,7 @@ const TEST_ALL = /[?&]all\b/.test(location.search); // add ?all to the address t
 const stageOpen = s => TEST_ALL || s === 0 || SAVE.best[s - 1].every(n => n > 0);
 const levelOpen = (s, l) => TEST_ALL || (l === 0 ? stageOpen(s) : SAVE.best[s][l - 1] > 0);
 const stageStars = s => SAVE.best[s].reduce((a, n) => a + n, 0);
-const starsFor = hearts => hearts >= MAX_HEARTS ? 3 : hearts >= 3 ? 2 : 1;
+const starsFor = drops => drops === 0 ? 3 : drops <= 2 ? 2 : 1;
 
 // ============================================================
 //  THE HEXAGON GRID: grid[r][c]. Even rows hold 10 bubbles, odd rows 9 (shifted half a bubble right).
@@ -340,13 +340,13 @@ function genLevel(s, l) {
 //  PLAYING
 // ============================================================
 let si = 0, li = 0, S = STAGES[0], L = null, state = "aim", endT = 0, resultShown = false, t = 0, shake = 0;
-let shot = null, current = null, next = null, aimA = -PI / 2, aiming = false, hearts = MAX_HEARTS, misses = 0, score = 0, power = 0, freed = 0, aliensTotal = 0, wind = 0;
+let shot = null, current = null, next = null, aimA = -PI / 2, aiming = false, score = 0, power = 0, freed = 0, aliensTotal = 0, wind = 0;
 let fx = [], falling = [], floaters = [], pops = [], banner = null, combo = 0, ceilingClock = 0;
 function coloursLeft() { const set = new Set(); for (const row of grid) for (const b of row) if (b && b.col >= 0 && !b.ice) set.add(b.col); if (!set.size) for (const row of grid) for (const b of row) if (b && b.col >= 0) set.add(b.col); return [...set]; }
 function newBubble() { const cs = coloursLeft(); return { col: cs.length ? cs[Math.floor(Math.random() * cs.length)] : 0 }; }
 function loadLevel(s, l) {
   si = s; li = l; S = STAGES[s]; L = genLevel(s, l);
-  aliensTotal = grid.flat().filter(b => b && b.alien).length; freed = 0; hearts = MAX_HEARTS; misses = 0; score = 0; power = 0; combo = 0;
+  aliensTotal = grid.flat().filter(b => b && b.alien).length; freed = 0; score = 0; power = 0; combo = 0;
   fx = []; falling = []; floaters = []; pops = []; shot = null; current = newBubble(); next = newBubble(); newWind();
   state = "aim"; endT = 0; resultShown = false; ceilingClock = L.dropSeconds;
   banner = { text: `${S.short.toUpperCase()} · LEVEL ${l + 1}`, sub: `Free ${aliensTotal} trapped aliens`, t: 2.4 };
@@ -403,8 +403,8 @@ function land(b) {
       for (const [a, bb] of g) { pop(a, bb); popped++; } for (const q of thaw) { q.ice = false; sparks(0, 0, "#cfeeff", 0); } if (thaw.size) tone(1400, 0.12, "sine", 0.04, 0.6); }
   }
   const dropped = dropLoose();
-  if (popped || dropped) { combo++; misses = 0; const pts = popped * SCORE.pop + dropped * SCORE.drop; if (pts) pops.push({ x: cellX(r, c), y: cellY(r) - 10, text: `+${pts * combo}${combo > 1 ? ` ×${combo}` : ""}`, col: "#ffd25d", t: 0 }); score += pts * (combo); }
-  else { combo = 0; misses++; if (misses >= L.dropEvery) ceilingDrop(); }
+  if (popped || dropped) { combo++; const pts = popped * SCORE.pop + dropped * SCORE.drop; if (pts) pops.push({ x: cellX(r, c), y: cellY(r) - 10, text: `+${pts * combo}${combo > 1 ? ` ×${combo}` : ""}`, col: "#ffd25d", t: 0 }); score += pts * (combo); }
+  else combo = 0;
   trimRows(); state = "settle"; endCheckT = 0.35;
 }
 let endCheckT = 0;
@@ -430,18 +430,24 @@ function dropLoose() { // everything not connected to the ceiling falls
   return n;
 }
 function trimRows() { while (grid.length && grid[grid.length - 1].every(b => !b)) grid.pop(); }
-function ceilingDrop(timed = false) {
-  ceiling++; ceilingClock = L.dropSeconds; misses = 0; hearts = Math.max(0, hearts - 1); shake = 0.45; tone(110, 0.5, "sawtooth", 0.08, 0.6);
-  banner = { text: "CEILING DROPS!", sub: hearts > 0 ? (timed ? "Time ran out · −1 shield" : "Too many misses · −1 shield") : "No shields left!", t: 1.6 }; hud(true);
+function ceilingDrop() {
+  ceiling++; ceilingClock = L.dropSeconds; shake = 0.45; tone(110, 0.5, "sawtooth", 0.08, 0.6);
+  banner = { text: "CEILING DROPS!", t: 1.2 };
 }
 function lowestBubbleY() { let y = 0; for (let r = 0; r < grid.length; r++) for (let c = 0; c < rowLen(r); c++) if (grid[r][c]) y = Math.max(y, cellY(r)); return y; }
+function checkDanger() {
+  if (lowestBubbleY() + R <= DANGER_Y) return false;
+  state = "lost"; endT = 0; shot = null; aiming = false;
+  banner = { text: "THE BUBBLES REACHED YOU!", sub: `${aliensTotal - freed} aliens still trapped`, t: 2.2 };
+  tone(140, 0.6, "sawtooth", 0.08, 0.4); shake = 0.5;
+  return true;
+}
 function afterShot() {
-  if (freed >= aliensTotal) { state = "won"; endT = 0; banner = { text: "ALL ALIENS FREE!", sub: `${hearts} shield${hearts === 1 ? "" : "s"} left`, t: 2.2 };
+  if (freed >= aliensTotal) { state = "won"; endT = 0; banner = { text: "ALL ALIENS FREE!", sub: `Ceiling drops: ${ceiling}`, t: 2.2 };
     // bonus: the rest of the board pops for points
     let n = 0; for (let r = 0; r < grid.length; r++) for (let c = 0; c < rowLen(r); c++) if (grid[r][c]) { const b = grid[r][c]; grid[r][c] = null; falling.push({ ...b, x: cellX(r, c), y: cellY(r), vx: (Math.random() - 0.5) * 120, vy: -100 - Math.random() * 120 }); n++; }
     score += n * 5; [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.22, "triangle", 0.08, 0, i * 0.09)); hud(true); return; }
-  if (ceilingClock <= 0 && hearts > 0 && lowestBubbleY() + R <= DANGER_Y) ceilingDrop(true);
-  if (hearts === 0 || lowestBubbleY() + R > DANGER_Y) { state = "lost"; endT = 0; banner = { text: hearts === 0 ? "NO SHIELDS LEFT!" : "THE BUBBLES REACHED YOU!", sub: `${aliensTotal - freed} aliens still trapped`, t: 2.2 }; tone(140, 0.6, "sawtooth", 0.08, 0.4); shake = 0.5; return; }
+  if (checkDanger()) return;
   if (power >= POWER_FULL && current && !current.special) { current = { col: current.col, special: POWER_SPECIAL[SAVE.char] }; power = 0; banner = { text: POWERS[SAVE.char].name.toUpperCase() + " READY!", sub: POWERS[SAVE.char].text, t: 2 }; tone(990, 0.3, "sine", 0.07, 1.5); }
   if (current && current.special === "home") { usePowerHome(); current = newBubble(); }
   if (current && !coloursLeft().includes(current.col) && !current.special) current = newBubble(); // never hand out a colour that's gone from the board
@@ -461,16 +467,18 @@ function update(dt) {
   for (let i = pops.length - 1; i >= 0; i--) { pops[i].t += dt; if (pops[i].t > 1) pops.splice(i, 1); }
   if (banner) { banner.t -= dt; if (banner.t <= 0) banner = null; }
   if (paused || !L) return;
-  if (playing()) ceilingClock = Math.max(0, ceilingClock - dt);
-  if (state === "aim" && ceilingClock <= 0) {
-    afterShot();
-    return;
+  if (playing() && freed < aliensTotal) {
+    ceilingClock -= dt;
+    if (ceilingClock <= 0) {
+      ceilingDrop();
+      if (checkDanger()) return;
+    }
   }
   if (state === "fly" && shot) {
     for (let k = 0; k < 8 && shot; k++) { const res = stepShot(shot, dt / 8);
       if (shot.special === "laser") { // pop everything the laser touches, then it fizzles at the top
         for (let r = 0; r < grid.length; r++) for (let c = 0; c < rowLen(r); c++) if (grid[r][c] && Math.hypot(cellX(r, c) - shot.x, cellY(r) - shot.y) < 2 * R - 4) pop(r, c);
-        if (res === "top") { shot = null; const d = dropLoose(); score += d * SCORE.drop; trimRows(); misses = 0; state = "settle"; endCheckT = 0.35; } }
+        if (res === "top") { shot = null; const d = dropLoose(); score += d * SCORE.drop; trimRows(); state = "settle"; endCheckT = 0.35; } }
       else if (res) land(shot); }
   } else if (state === "settle") { endCheckT -= dt; if (endCheckT <= 0) afterShot(); }
   else if (state === "won" || state === "lost") { endT += dt; if (endT > 1.8 && !resultShown) { resultShown = true; resultMenu(); } }
@@ -504,9 +512,9 @@ function guidePath() {
 let lastHud = "";
 function hud(force) {
   if (!L) return;
-  const key = `${si}|${li}|${hearts}|${freed}|${score}`; if (!force && key === lastHud) return; lastHud = key;
+  const key = `${si}|${li}|${SAVE.difficulty}|${freed}|${score}`; if (!force && key === lastHud) return; lastHud = key;
   $("hStage").textContent = S.short; $("hLevel").textContent = `Level ${li + 1}`;
-  $("hHearts").innerHTML = "♥".repeat(hearts) + `<i>${"♥".repeat(MAX_HEARTS - hearts)}</i>`;
+  $("hMode").textContent = DIFFICULTIES[SAVE.difficulty].name;
   $("hFreed").textContent = `${freed}/${aliensTotal}`; $("hScore").textContent = score.toLocaleString();
 }
 
@@ -578,7 +586,6 @@ function draw(tt) {
     ctx.font = "800 12px system-ui"; ctx.textAlign = "left";
     ctx.fillText(ceilingClock > 0 ? `DROP IN ${Math.ceil(ceilingClock)}s` : "DROP NEXT", 10, cy - 11);
   }
-  for (let k = 0; k < L.dropEvery; k++) { ctx.fillStyle = k < L.dropEvery - misses ? "#5dff9b" : "#ff5d7a"; ctx.beginPath(); ctx.arc(BW / 2 - (L.dropEvery - 1) * 6 + k * 12, cy - 14, 3.5, 0, TAU); ctx.fill(); } // shots before the ceiling drops
   const danger = lowestBubbleY() + R > DANGER_Y - ROW_H * 1.5; ctx.strokeStyle = danger ? `rgba(255,93,122,${0.5 + 0.5 * Math.sin(tt * 10)})` : "rgba(255,93,122,0.4)"; ctx.lineWidth = 2; ctx.setLineDash([8, 6]);
   ctx.beginPath(); ctx.moveTo(0, DANGER_Y); ctx.lineTo(BW, DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
   if (wind) { const dir = Math.sign(wind), n = Math.min(4, 1 + Math.floor(Math.abs(wind) / 40)); ctx.fillStyle = "rgba(255,220,170,0.7)"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.fillText((dir > 0 ? "»" : "«").repeat(n) + " WIND", BW / 2, DANGER_Y + 20); }
@@ -665,7 +672,7 @@ function titleMenu() {
 }
 function difficultyMenu() {
   openMenu(`<p class="kicker">Alien Pop</p><h2>Choose a difficulty</h2>
-    <p>The ceiling also drops when you miss too many shots.</p>
+    <p>The ceiling drops one row when the timer runs out. Clear the field before bubbles cross the red line.</p>
     ${DIFFICULTIES.map((d, i) => `<button class="big ${i === SAVE.difficulty ? "main" : ""}" data-act="setDifficulty" data-arg="${i}">${d.name}<small>Ceiling drops after ${d.seconds} seconds</small></button>`).join("")}
     <button class="big" data-act="title">Back</button>`, null, "difficulty");
 }
@@ -707,25 +714,25 @@ function stageMenu(s) {
   const st = STAGES[s];
   openMenu(`<p class="kicker">Stage ${s + 1} of ${STAGES.length}</p><h2>${st.name}</h2>
     <p>${st.intro}</p>
-    <div class="facts"><span>${{ ice: "Frozen bubbles", wind: "Storm wind", stone: "Rocks", bomb: "Goo bombs" }[st.twist]}</span><span>${MAX_HEARTS} shields</span></div>
+    <div class="facts"><span>${{ ice: "Frozen bubbles", wind: "Storm wind", stone: "Rocks", bomb: "Goo bombs" }[st.twist]}</span><span>${DIFFICULTIES[SAVE.difficulty].seconds}s between drops</span></div>
     <p class="score"><span class="stars">${stageStars(s)}/24 ★</span></p>
     <div class="levels">${Array.from({ length: LEVELS }, (_, i) => `<button class="big ${levelOpen(s, i) && !SAVE.best[s][i] ? "main" : ""}" data-act="setup" data-arg="${s}|${i}" ${levelOpen(s, i) ? "" : "disabled"}>${levelOpen(s, i) ? i + 1 : "🔒"}<small>${starStr(SAVE.best[s][i])}</small></button>`).join("")}</div>
     <button class="big" data-act="worlds">Back to stages</button>`, null, "stage");
 }
 function resultMenu() {
   if (state === "won") {
-    const st = starsFor(hearts); if (st > SAVE.best[si][li]) SAVE.best[si][li] = st; const newBest = score > SAVE.score[si][li]; if (newBest) SAVE.score[si][li] = score; save();
+    const st = starsFor(ceiling); if (st > SAVE.best[si][li]) SAVE.best[si][li] = st; const newBest = score > SAVE.score[si][li]; if (newBest) SAVE.score[si][li] = score; save();
     const next = li + 1 < LEVELS ? [si, li + 1] : si + 1 < STAGES.length && stageOpen(si + 1) ? [si + 1, 0] : null;
     openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>All ${aliensTotal} aliens free!</h2>
       <div class="bigStars">${starStr(st)}</div>
-      <p>Shields left <b>${hearts}/${MAX_HEARTS}</b> · Score <b>${score.toLocaleString()}</b>${newBest ? " · <b>New best!</b>" : ""}<br>${st === 3 ? "The ceiling never moved. Perfect!" : st === 2 ? "Don't let the ceiling drop at all for three stars." : "Lose 2 or fewer shields for two stars."}</p>
+      <p>Ceiling drops <b>${ceiling}</b> · Score <b>${score.toLocaleString()}</b>${newBest ? " · <b>New best!</b>" : ""}<br>${st === 3 ? "The ceiling never moved. Perfect!" : st === 2 ? "Don't let the ceiling drop at all for three stars." : "Clear it within two ceiling drops for two stars."}</p>
       <p class="score">${S.short}: <span class="stars">${stageStars(si)}/24 ★</span></p>
       ${next ? `<button class="big main" data-act="play" data-arg="${next[0]}|${next[1]}">${next[0] !== si ? `Next stage: ${STAGES[next[0]].short} ▶` : `Level ${next[1] + 1} ▶`}</button>`
         : si + 1 === STAGES.length && li + 1 === LEVELS ? `<p><b>Every alien is free!</b> Go back for any missing stars.</p>` : ""}
       <button class="big" data-act="play" data-arg="${si}|${li}">Play again</button>
       <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
   } else {
-    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>Bubbled!</h2>
+    openMenu(`<p class="kicker">${S.short} · Level ${li + 1}</p><h2>Bubbles crossed the line!</h2>
       <p>You freed <b>${freed}</b> of ${aliensTotal} aliens. Tip: pop bubbles <b>above</b> a trapped alien and everything below falls, alien and all.</p>
       <button class="big main" data-act="play" data-arg="${si}|${li}">Try again</button>
       <button class="big" data-act="stage" data-arg="${si}">All levels</button>`, null, "result");
@@ -733,7 +740,7 @@ function resultMenu() {
 }
 function pauseMenu() {
   openMenu(`<p class="kicker">Paused</p><h2>${S.short} · Level ${li + 1}</h2>
-    <p>Freed <b>${freed}/${aliensTotal}</b> · Shields <b>${hearts}</b> · Score <b>${score.toLocaleString()}</b></p>
+    <p>Freed <b>${freed}/${aliensTotal}</b> · Ceiling drops <b>${ceiling}</b> · Score <b>${score.toLocaleString()}</b></p>
     <button class="big main" data-act="resume">Resume ▶</button>
     <button class="big" data-act="play" data-arg="${si}|${li}">Restart level</button>
     <button class="big" data-act="help" data-arg="game|0">How to play</button>
@@ -745,9 +752,9 @@ function pauseMenu() {
 const HOWTO = [
   { title: "Aim and fire", lines: ["<b>Drag</b> anywhere to aim, <b>let go</b> to fire", "Bounce shots off the <b>side walls</b>", "<b>Tap</b> the small bubble to <b>swap</b> it in"], demo: demoAim },
   { title: "Match 3", lines: ["Join <b>3 or more</b> of one colour to <b>pop</b> them", "Anything left <b>hanging</b> with nothing above it <b>falls</b>", "Aliens are <b class='p'>trapped</b> in some bubbles: free them all!"], demo: demoMatch },
-  { title: "The ceiling", lines: ["Shots that pop nothing are <b>misses</b> (the dots at the top)", "When the timer runs out or you miss too often, the ceiling <b class='r'>drops</b> and costs a <b class='r'>♥</b>", "Cross the <b class='r'>red line</b> or lose all shields and the run ends"], demo: demoCeiling },
+  { title: "The ceiling", lines: ["When the timer reaches zero, the ceiling <b>drops one row</b>", "If an attached bubble crosses the <b class='r'>red line</b>, the run ends"], demo: demoCeiling },
   { title: "Power", lines: ["Popping fills the <b class='p'>power ring</b>", "Full ring = your alien's <b class='g'>special bubble</b>", "Blip <b>Laser</b> · Runner <b>Zap</b> · Goo <b>Rainbow</b> · Jelly <b>Burst</b> · Chonk <b>Bomb</b> · Mother <b>Call Home</b>"], demo: demoPower },
-  { title: "Worlds and stars", lines: ["<b class='c'>Oort</b> frozen bubbles · <b class='y'>Jupiter</b> wind · <b>Mars</b> rocks · <b class='g'>Earth</b> goo bombs", "Win with all <b>5 ♥</b> = <b class='y'>★★★</b> · 3+ = <b class='y'>★★</b> · any win = <b class='y'>★</b>"], demo: demoStars },
+  { title: "Worlds and stars", lines: ["<b class='c'>Oort</b> frozen bubbles · <b class='y'>Jupiter</b> wind · <b>Mars</b> rocks · <b class='g'>Earth</b> goo bombs", "Win with <b>no drops</b> for <b class='y'>★★★</b>, one or two for <b class='y'>★★</b>, or more for <b class='y'>★</b>"], demo: demoStars },
 ];
 function helpMenu(back, page = 0) {
   const p = HOWTO[page], lastPage = page === HOWTO.length - 1, done = back === "game" ? "resume" : "title";
@@ -777,19 +784,18 @@ function demoMatch(c, tt, w, h) {
 function demoCeiling(c, tt, w, h) {
   const T = tt % 4, drop = T > 2 ? Math.min(1, (T - 2) * 3) : 0, cy = 14 + drop * 22;
   c.fillStyle = "#2a2a5a"; c.fillRect(0, 0, w, cy); c.fillStyle = "#4a4a8a"; c.fillRect(0, cy - 3, w, 3);
-  for (let k = 0; k < 6; k++) { c.fillStyle = k < 6 - Math.min(6, Math.floor(T / 0.33)) ? "#5dff9b" : "#ff5d7a"; c.beginPath(); c.arc(w / 2 - 30 + k * 12, cy - 8 > 4 ? cy - 8 : 8, 3.5, 0, TAU); c.fill(); }
   for (let k = 0; k < 9; k++) drawBubble(c, { col: k % 6 }, 20 + k * 28, cy + 16, tt, 13);
   c.strokeStyle = "rgba(255,93,122,0.8)"; c.setLineDash([8, 6]); c.lineWidth = 2; c.beginPath(); c.moveTo(0, h - 30); c.lineTo(w, h - 30); c.stroke(); c.setLineDash([]);
-  if (T > 2) label(c, "CEILING DROPS · −1 ♥", w / 2, h * 0.6, "#ff5d7a");
+  label(c, T > 2 ? "CEILING DROPS" : `DROP IN ${Math.ceil(2 - T)}s`, w / 2, Math.max(12, cy - 3), T > 2 ? "#ff5d7a" : "#fff");
 }
 function demoPower(c, tt, w, h) {
   CHARS.list.forEach((ch, i) => { const x = w * (0.1 + i * 0.16), on = ch.id === SAVE.char; CHARS.draw(c, ch.id, x, h * 0.4 - (on ? Math.abs(Math.sin(tt * 5)) * 6 : 0), 11, tt + i); label(c, POWERS[ch.id].name, x, h * 0.72, on ? "#5dff9b" : "#a0a4d0"); });
   const p = (tt % 3) / 3; c.strokeStyle = "rgba(255,255,255,0.15)"; c.lineWidth = 4; c.beginPath(); c.arc(w / 2, h - 18, 12, 0, TAU); c.stroke(); c.strokeStyle = p > 0.95 ? "#5dff9b" : "#ff8bd0"; c.beginPath(); c.arc(w / 2, h - 18, 12, -PI / 2, -PI / 2 + p * TAU); c.stroke();
 }
 function demoStars(c, tt, w, h) {
-  [["♥♥♥♥♥", "★★★"], ["♥♥♥", "★★"], ["♥", "★"]].forEach(([a, b], i) => { const y = h * (0.28 + i * 0.25);
+  [["0 drops", "★★★"], ["1–2 drops", "★★"], ["3+ drops", "★"]].forEach(([a, b], i) => { const y = h * (0.28 + i * 0.25);
     c.font = "800 18px system-ui"; c.textAlign = "left"; c.fillStyle = "#ff5d7a"; c.fillText(a, w * 0.16, y); c.fillStyle = "#ffd25d"; c.fillText(b, w * 0.62, y); });
-  label(c, "shields left when the last alien is free → stars", w / 2, h - 10, "#a0a4d0");
+  label(c, "ceiling drops when the last alien is free → stars", w / 2, h - 10, "#a0a4d0");
 }
 
 const ACT = {
