@@ -268,12 +268,18 @@
     .hud button, .hud #control-mode { min-height: 32px; }
   }
   @media (orientation: portrait) and (max-width: 670px) {
+    main:has(.lab:not(.menu-layout)) {
+      height: var(--visible-height, 100vh);
+      min-height: 0;
+      padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 12px);
+      overflow-y: auto;
+      touch-action: auto;
+    }
     main:has(.lab:not(.menu-layout)) header { display: none; }
     .lab:not(.menu-layout) {
-      height: calc(var(--visible-height, 100vh) - max(10px, env(safe-area-inset-top))
-        - max(10px, env(safe-area-inset-bottom)) - 12px);
+      height: 100%;
       grid-template-columns: minmax(80px, 0.3fr) minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto auto;
+      grid-template-rows: minmax(120px, 1fr) auto auto;
     }
     .lab:not(.menu-layout) .chamber, .lab:not(.menu-layout) #play-controls {
       justify-self: center;
@@ -282,9 +288,11 @@
     .lab:not(.menu-layout) .chamber {
       grid-area: 1 / 1 / 2 / 3;
       display: flex; flex-direction: column;
-      height: 100%; min-height: 0;
+      align-self: stretch;
+      min-height: 0;
+      touch-action: none;
     }
-    .lab:not(.menu-layout) .tank { flex: 1; min-height: 0; }
+    .lab:not(.menu-layout) .tank { flex: 1 1 0; min-height: 0; }
     .lab:not(.menu-layout) #board {
       height: 100%; max-height: 172vw;
       grid-template-rows: repeat(16, minmax(0, 1fr));
@@ -1152,7 +1160,8 @@ function resetTouch() {
 
 function syncPlayViewport() {
   const viewport = window.visualViewport;
-  const height = viewport && viewport.scale === 1 ? viewport.height : window.innerHeight;
+  const layoutHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+  const height = viewport && viewport.scale === 1 ? Math.min(viewport.height, layoutHeight) : layoutHeight;
   if (height > 0) playScreen.style.setProperty("--visible-height", `${height}px`);
 }
 
