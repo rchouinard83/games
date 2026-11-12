@@ -280,6 +280,7 @@
       height: 100%;
       grid-template-columns: minmax(80px, 0.3fr) minmax(0, 1fr);
       grid-template-rows: auto minmax(120px, 1fr) auto auto;
+      row-gap: 4px;
     }
     .lab:not(.menu-layout) .chamber, .lab:not(.menu-layout) #play-controls {
       justify-self: center;
@@ -299,9 +300,7 @@
     }
     .lab:not(.menu-layout) #board .cell { aspect-ratio: auto; min-height: 0; }
     .lab:not(.menu-layout) #play-controls { grid-area: 3 / 1 / 4 / 3; }
-    .lab:not(.menu-layout) .queen { grid-area: 4 / 1; align-self: stretch; text-align: center; }
-    .lab:not(.menu-layout) .queen-art { max-width: 52px; }
-    .lab:not(.menu-layout) .queen h2 { margin: 2px 0 0; font-size: 12px; }
+    .lab:not(.menu-layout) .queen { display: none; }
     .lab:not(.menu-layout) .hud { display: contents; }
     .lab:not(.menu-layout) .hud > .tag { display: none; }
     .lab:not(.menu-layout) .hud #next {
@@ -314,7 +313,9 @@
     .lab:not(.menu-layout) .hud dl div { display: grid; padding: 0 2px; }
     .lab:not(.menu-layout) .hud dt { font-size: 10px; }
     .lab:not(.menu-layout) .hud .settings {
-      grid-area: 4 / 2; align-self: center;
+      grid-area: 4 / 1 / 5 / 3;
+      align-self: start; justify-self: center;
+      width: min(86vw, 100%);
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .lab:not(.menu-layout) #control-mode { grid-column: span 2; }
