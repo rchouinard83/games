@@ -6,18 +6,16 @@
 <meta name="theme-color" content="#070b16">
 <title>Dr. Alien · Hive Containment</title>
 <style>
-  :root {
-    color-scheme: dark;
-    --bg: #070b16;
-    --panel: #0e1530;
-    --line: #2a3a66;
-    --ink: #e6ecff;
-    --dim: #a3afd0;
-    --mint: #5dff9b;
-    --cyan: #4fd1ff;
-    font-family: system-ui, sans-serif;
-  }
   * { box-sizing: border-box; }
+  /* iOS: kill text selection, the press-and-hold callout, and the grey tap flash
+     (rapid-tapping the down arrow was selecting/highlighting the pieces). */
+  html, body, main, main * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
     margin: 0; min-height: 100vh; color: var(--ink);
     background: radial-gradient(ellipse at 50% 0, #1b2751, transparent 64%), var(--bg);
@@ -132,8 +130,19 @@
   .menu-layout #play-controls { display: none; }
   #play-controls button {
     width: 100%; min-height: 56px; padding: 4px; font-size: 20px;
-    border-color: #5386a6; background: #183456; touch-action: none; user-select: none;
+    border-color: #5386a6; background: #183456; touch-action: none;
   }
+  #play-controls button, #play-controls button::before {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* Draw arrows in CSS so a long press has no arrow text to select. */
+  #play-controls [data-drop]::before { content: "↓"; }
+  #play-controls [data-move="left"]::before { content: "←"; }
+  #play-controls [data-move="cw"]::before { content: "↻"; }
+  #play-controls [data-move="right"]::before { content: "→"; }
+  #soft-drop::before { margin-inline-end: .3em; }
   #play-controls button:active { background: #24527a; }
   #arrow-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
   #control-mode { grid-column: 1 / -1; min-height: 40px; }
@@ -248,7 +257,7 @@
     #next { padding: 6px 0 8px; }
     .hud button, .hud #control-mode { min-height: 32px; }
   }
-  @media (orientation: portrait) and (max-width: 670px) and (min-height: 770px) {
+  @media (orientation: portrait) and (max-width: 670px) {
     main:has(.lab:not(.menu-layout)) header { display: none; }
     .lab:not(.menu-layout) {
       grid-template-columns: minmax(80px, 0.3fr) minmax(0, 1fr);
@@ -256,10 +265,16 @@
     }
     .lab:not(.menu-layout) .chamber, .lab:not(.menu-layout) #play-controls {
       justify-self: center;
-      width: clamp(180px, min(calc(100vw - 26px), calc((var(--visible-height, 100dvh)
-        - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom)) - 196px) / 2)), 385px);
+      width: min(90vw, 100%);
     }
     .lab:not(.menu-layout) .chamber { grid-area: 1 / 1 / 2 / 3; }
+    .lab:not(.menu-layout) .tank { container-type: inline-size; }
+    .lab:not(.menu-layout) #board {
+      height: clamp(150cqw, calc(var(--visible-height, 100dvh)
+        - max(10px, env(safe-area-inset-top)) - max(10px, env(safe-area-inset-bottom)) - 196px), 200cqw);
+      grid-template-rows: repeat(16, minmax(0, 1fr));
+    }
+    .lab:not(.menu-layout) #board .cell { aspect-ratio: auto; min-height: 0; }
     .lab:not(.menu-layout) #play-controls { grid-area: 2 / 1 / 3 / 3; }
     .lab:not(.menu-layout) .queen { grid-area: 3 / 1; align-self: stretch; text-align: center; }
     .lab:not(.menu-layout) .hud {
@@ -456,12 +471,12 @@
       </div>
     </section>
     <div id="play-controls" aria-label="Capsule controls" hidden>
-        <button id="soft-drop" type="button" data-drop><span aria-hidden="true">↓</span> Soft Drop</button>
+        <button id="soft-drop" type="button" data-drop aria-label="Soft Drop">Soft Drop</button>
         <div id="arrow-controls" hidden>
-          <button type="button" data-move="left" aria-label="Move left">←</button>
-          <button type="button" data-move="cw" aria-label="Rotate clockwise">↻</button>
-          <button type="button" data-drop aria-label="Soft drop">↓</button>
-          <button type="button" data-move="right" aria-label="Move right">→</button>
+          <button type="button" data-move="left" aria-label="Move left"></button>
+          <button type="button" data-move="cw" aria-label="Rotate clockwise"></button>
+          <button type="button" data-drop aria-label="Soft drop"></button>
+          <button type="button" data-move="right" aria-label="Move right"></button>
         </div>
     </div>
     <section class="panel hud" id="hud" aria-label="Mission data" hidden>
