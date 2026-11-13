@@ -18,6 +18,13 @@
   #hLives { color: var(--bad); letter-spacing: -1px; }
   .spacer { flex: 1; }
   .hudBtn { background: rgba(14,26,48,0.9); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-weight: 900; font-size: 15px; padding: 0 10px; }
+  #menuBtn { flex:none; min-height:44px; }
+  @media (max-width:380px) {
+    #hud { flex-wrap:wrap; }
+    #hud .chip { padding-inline:4px; font-size:13px; }
+    #hud .spacer { min-width:0; }
+    #hud .hudBtn { padding-inline:7px; }
+  }
   #stage { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
   #cv { display: block; border-radius: 14px; touch-action: none; }
   /* Menu styles travel with this HTML when it is published on its own. */
@@ -121,7 +128,6 @@
     <div class="chip"><small>Gravity</small><span id="hGrav">0.6g</span></div>
     <div class="spacer"></div>
     <button class="hudBtn" id="fsBtn" aria-label="Full screen" aria-pressed="false" hidden></button>
-    <button class="hudBtn" id="helpBtn" aria-label="How to play">?</button>
     <button class="hudBtn" id="menuBtn">Pause</button>
   </div>
   <div id="stage"><canvas id="cv"></canvas></div>
@@ -692,7 +698,7 @@ function setupMenu(w, l) {
 function charMenu(w, l) {
   openMenu(`<p class="kicker">Choose your alien</p><h2>Who's lobbing?</h2>
     <p>The First Contact crew from Alien Defense.</p>
-    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${w}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <div class="chars">${["blip", "jelly", "runner"].map(id => CHARS.list.find(ch => ch.id === id)).filter(Boolean).concat(CHARS.list.filter(ch => !["blip", "jelly", "runner"].includes(ch.id))).map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${w}|${l}|${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
     <button class="big main" data-act="setup" data-arg="${w}|${l}">Done</button>`,
     tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
       CHARS.draw(c, cvs.dataset.char, w / 2, h * 0.55, w * 0.24, tt + w, on ? Math.abs(Math.sin(tt * 5)) * 6 : 0); } });
@@ -730,6 +736,7 @@ function pauseMenu() {
   openMenu(`<p class="kicker">Paused</p><h2>${S.short} · Level ${li + 1}</h2>
     <p>Throws <b>${throws}</b> (par ${L.par}) · shields <b>${me.hp}</b></p>
     <button class="big main" data-act="resume">Resume</button>
+    <button class="big" data-act="help" data-arg="game|0">How to Play</button>
     <button class="big" data-act="play" data-arg="${si}|${li}">Restart level</button>
     <button class="big" data-act="stage" data-arg="${si}">All levels</button>
     ${soundBtn()}
@@ -811,7 +818,6 @@ const ACT = {
   document.addEventListener("fullscreenchange", sync); document.addEventListener("webkitfullscreenchange", sync); sync();
 })();
 $("menuBtn").onclick = () => { audio(); if (me && (state === "aim" || state === "fly" || state === "boom" || state === "foe") && !paused) pauseMenu(); else titleMenu(); };
-$("helpBtn").onclick = () => { audio(); helpMenu(me && !paused ? "game" : "title", 0); };
 
 // ============================================================
 //  MAIN LOOP: fixed 1/60 s steps
