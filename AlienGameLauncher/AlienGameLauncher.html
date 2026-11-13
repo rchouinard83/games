@@ -53,6 +53,7 @@
   #sheet li .n svg { width: 20px; height: 20px; }
   #sheet button { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-weight: 800; font-size: 16px; }
   footer { color: var(--dim); font-size: 13px; text-align: center; margin-top: 22px; line-height: 1.5; }
+  .tag.new-game { color: #8ff7c5; border-color: #448c70; }
 </style>
 </head>
 <body>
@@ -82,6 +83,10 @@ const ROOT = (() => {
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien Tunnel Run", tag: "Tunnel runner", isNew: true, color: "#88f7dc", href: "AlienTunnelRun/Alien-Tunnel-Run.html", art: artTunnelRun,
+    desc: "Steer around a neon tunnel, dodge barriers, and collect coins as each section gets faster." },
+  { name: "Alien Pipeworks", tag: "Pipe puzzle", isNew: true, color: "#76f4da", href: "AlienPipeworks/Alien-Pipeworks.html", art: artPipeworks,
+    desc: "Build a pipeline around obstacles and send an alien from the pump to the coolant tank." },
   { name: "Alien Launch", tag: "Flight", color: "#ffb84d", href: "AlienLaunch/Alien-Launch.html", art: artLaunch,
     desc: "Blast off, weave through obstacles and tunnels, grab fuel, then land softly. Every planet pulls harder." },
   { name: "Alien Landing", tag: "Traffic control", color: "#4fd1ff", href: "AlienLanding/Alien-Landing.html", art: artLanding,
@@ -120,8 +125,6 @@ const GAMES = [
     desc: "Gobbler eggs are buried in the field. Read the numbers, flag the eggs, and dig every safe tile. Every board can be solved without guessing." },
   { name: "Alien Muncher", tag: "Maze chase", color: "#ffd25d", href: "AlienMuncher/Alien-Muncher.html?balance=1", art: artMuncher,
     desc: "Swipe round a new space-station maze every level, munch every snack, grab power cores and floating bonuses, and outsmart four patrol drones." },
-  { name: "Alien Pipeworks", tag: "Pipe puzzle", color: "#76f4da", href: "AlienPipeworks/Alien-Pipeworks.html", art: artPipeworks,
-    desc: "Build a pipeline around obstacles and send an alien from the pump to the coolant tank." },
   { name: "Alien Ball", tag: "Party arcade", color: "#68e8ca", href: "AlienBall/Alien-Ball.html?glide=2", art: artBall,
     desc: "Knock rivals out in Sumo or launch, glide and land on scoring targets across four worlds." },
 ];
@@ -224,6 +227,20 @@ function artBall(c, w, h, t) {
   c.fillStyle = "#bcecff38"; c.strokeStyle = "#c5f5ff"; c.lineWidth = 2;
   c.beginPath(); c.arc(flyX, flyY, r, 0, TAU); c.fill(); c.stroke();
 }
+function artTunnelRun(c, w, h, t) {
+  c.fillStyle = "#111534";
+  c.fillRect(0, 0, w, h);
+  for (let ring = 1; ring <= 6; ring++) {
+    const radius = Math.min(w, h) * (ring + t % 1) / 13;
+    c.beginPath();
+    c.arc(w / 2, h / 2, radius, 0, Math.PI * 2);
+    c.strokeStyle = ring % 2 ? "#587dc1" : "#ed6899";
+    c.lineWidth = 2;
+    c.stroke();
+  }
+  eyeAlien(c, w / 2 + Math.sin(t * 2) * 20, h * .78, 9, "#88f7dc", t);
+}
+
 function artPipeworks(c, w, h, t) {
   c.fillStyle = "#101a30";
   c.fillRect(0, 0, w, h);
@@ -882,7 +899,7 @@ function artOrbitGuard(c,w,h,t) {
 const grid = document.getElementById("grid");
 grid.innerHTML = GAMES.map((g, i) => `<a class="card" href="${ROOT + g.href}" style="--c:${g.color}">
   <canvas data-i="${i}" role="img" aria-label="${g.name} gameplay"></canvas>
-  <div class="info"><h2>${g.name} <span class="tag">${g.tag}</span></h2><p>${g.desc}</p><span class="play">Play ▶</span></div></a>`).join("");
+  <div class="info"><h2>${g.name} <span class="tag">${g.tag}</span>${g.isNew ? ' <span class="tag new-game">New</span>' : ""}</h2><p>${g.desc}</p><span class="play">Play ▶</span></div></a>`).join("");
 document.getElementById("gameCount").textContent = `${GAMES.length} games from the same galaxy. Pick one and play.`;
 const canvases = [...grid.querySelectorAll("canvas[data-i]")];
 
