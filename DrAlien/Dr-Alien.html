@@ -548,6 +548,7 @@
           </div>
           <p class="muted" id="overlay-copy">Match four or more of one color in a row or column. Clear every spore.</p>
           <button id="action" type="button">Start mission</button>
+          <button id="overlay-menu" type="button" hidden>Main Menu</button>
           <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
         </div>
       </div>
@@ -1001,6 +1002,8 @@ function setOverlay(title, copy, action, milestone = false) {
   byId("overlay-title").textContent = title;
   byId("overlay-copy").textContent = copy;
   byId("action").textContent = action;
+  // offer a way back to the menu whenever the overlay interrupts a game (paused, won, or lost)
+  byId("overlay-menu").hidden = !(paused || phase === "won" || phase === "lost");
   byId("overlay").hidden = false;
 }
 
@@ -1252,6 +1255,7 @@ byId("resume-game").addEventListener("click", () => {
   if (paused) togglePause();
 });
 byId("main-menu").addEventListener("click", () => showMenu(true));
+byId("overlay-menu").addEventListener("click", () => showMenu(true));
 byId("action").addEventListener("click", () => {
   if (paused) togglePause();
   else if (phase === "won" && level < 20) {
