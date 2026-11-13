@@ -264,6 +264,7 @@ body { margin:0; background:#090f20; color:#ecf5ff; font-family:system-ui,sans-s
 <body>
 <main id="alien-pipeworks">
   <h2>Alien Pipeworks</h2>
+  <p>Level <strong id="current-level">1</strong> · Highest level <strong id="highest-level">—</strong></p>
   <p id="pipe-status" aria-live="polite"></p>
   <div class="pipe-board" aria-label="Pipe grid"></div>
   <div class="pipe-tools">
@@ -305,6 +306,13 @@ const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const status = byId("pipe-status");
 const menu = byId("menu");
 const flow = byId("pipe-flow");
+const highestLevelKey = "alien-pipeworks-highest-level";
+let highestLevel = 0;
+try {
+  const saved = Number(localStorage.getItem(highestLevelKey));
+  if (Number.isInteger(saved) && saved > 0 && saved <= levels.length) highestLevel = saved;
+} catch { /* Keep the record for this session when storage is unavailable. */ }
+byId("highest-level").textContent = highestLevel || "—";
 let level = 0;
 let started = false;
 let completed = false;
@@ -334,6 +342,7 @@ function moveAlien(index) {
 function start(index) {
   attempt++;
   level = index;
+  byId("current-level").textContent = level + 1;
   started = true;
   completed = false;
   placed = 0;
@@ -426,6 +435,11 @@ flow.onclick = async () => {
     cells[cell].classList.add("wet");
   }
   completed = true;
+  if (level + 1 > highestLevel) {
+    highestLevel = level + 1;
+    byId("highest-level").textContent = highestLevel;
+    try { localStorage.setItem(highestLevelKey, String(highestLevel)); } catch { /* Keep the session record. */ }
+  }
   flow.disabled = false;
   flow.textContent = level + 1 < levels.length ? "Next level" : "Finish";
   status.textContent = "Alien safely inside the tank!";
