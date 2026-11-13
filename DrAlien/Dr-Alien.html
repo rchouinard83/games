@@ -177,6 +177,10 @@
   .menu button.primary { color: #071a17; background: var(--mint); border-color: var(--mint); }
   .menu-actions, .menu-row { display: grid; gap: 9px; }
   .menu-actions { margin-top: 16px; }
+  .start-level-row {
+    grid-column: 1 / -1; display: flex; align-items: center;
+    justify-content: space-between; gap: 8px;
+  }
   .menu-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .menu .settings { margin: 16px 0; gap: 6px; text-align: left; }
   .menu .settings label { min-height: 48px; font-size: 16px; }
@@ -310,6 +314,7 @@
     .lab:not(.menu-layout) .hud > .tag { display: none; }
     .lab:not(.menu-layout) .hud #next {
       grid-area: 1 / 1; align-self: center; justify-self: end; margin: 0; padding: 0;
+      transform: translateX(12px);
     }
     .lab:not(.menu-layout) .hud dl {
       grid-area: 1 / 2; align-self: center;
@@ -467,6 +472,7 @@
     <section class="panel menu" id="menu" aria-label="Main menu">
       <p>Drop capsules with Dr. Hive Queen and clear the spores before the feed jams.</p>
       <div class="menu-actions">
+        <label class="start-level-row">Start level <select id="start-level"></select></label>
         <button class="primary" id="resume-game" type="button" hidden>Resume mission</button>
         <button class="primary" id="play" type="button">Start mission</button>
         <div class="menu-row">
@@ -479,7 +485,6 @@
     <section class="panel menu" id="settings-menu" aria-labelledby="settings-title" hidden>
       <h2 id="settings-title" tabindex="-1">Settings</h2>
       <div class="settings">
-        <label>Start level <select id="start-level"></select></label>
         <label>Speed <select id="speed">
           <option value="0">Low</option><option value="1" selected>Medium</option><option value="2">High</option>
         </select></label>
@@ -641,8 +646,9 @@ const cells = Array.from({ length: COLS * ROWS }, () => {
   return cell;
 });
 for (let i = 0; i <= 20; i++) byId("start-level").add(new Option(i, i));
-// picking a start level in Settings starts a fresh campaign from there
-byId("start-level").addEventListener("change", () => { clearProgress(); if (phase === "ready") byId("play").textContent = "Start mission"; });
+byId("start-level").addEventListener("change", () => {
+  byId("play").textContent = "Start mission";
+});
 
 let board = emptyBoard();
 let level = 0;
@@ -727,6 +733,7 @@ function showMenu(open) {
   if (!open) syncPlayViewport();
   byId("resume-game").hidden = phase === "ready";
   const saved = loadProgress();
+  byId("start-level").value = Math.max(0, Math.min(20, phase === "ready" ? saved?.level ?? 0 : level));
   byId("play").textContent = phase === "ready" ? (saved && saved.level > 0 ? `Continue · Level ${saved.level}` : "Start mission") : `Restart level ${level}`;
   const focusTarget = phase === "ready" ? "play" : "resume-game";
   byId(open ? focusTarget : "board").focus({ preventScroll: true });
@@ -884,9 +891,11 @@ function clearProgress() { try { localStorage.removeItem(PROGRESS_KEY); } catch 
 function start(newRun) {
   clearQueenReaction();
   if (newRun) {
-    const saved = loadProgress();
+    const selectedLevel = Number(byId("start-level").value);
+    const progress = loadProgress();
+    const saved = progress?.level === selectedLevel ? progress : null;
     if (saved) { level = Math.max(0, Math.min(20, saved.level)); speed = saved.speed ?? Number(byId("speed").value); score = saved.score || 0; }
-    else { level = Number(byId("start-level").value); speed = Number(byId("speed").value); score = 0; }
+    else { level = selectedLevel; speed = Number(byId("speed").value); score = 0; }
   }
   saveProgress();
   board = emptyBoard();
@@ -1110,7 +1119,11 @@ byId("action").addEventListener("click", () => {
     level++;
     start(false);
   } else if (phase === "lost") start(false); // retry at the level you were knocked back to
-  else { clearProgress(); start(true); }  // cleared level 20: start a fresh campaign
+  else {
+    clearProgress();
+    byId("start-level").value = 0;
+    start(true);
+  }
 });
 byId("pause").addEventListener("click", togglePause);
 byId("restart").addEventListener("click", () => start(false)); // restart the level you're on
@@ -1331,6 +1344,7 @@ function frame(now) {
   if (phase === "toss" || !capsuleToss.hidden) drawCapsuleToss();
   requestAnimationFrame(frame);
 }
+showMenu(true);
 render();
 requestAnimationFrame(frame);
 </script>
