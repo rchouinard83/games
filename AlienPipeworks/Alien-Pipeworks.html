@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090f20">
+<title>Alien Pipeworks</title>
+<style>
+.arcade-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(5, 5, 16, .78);
+}
+#panel.arcade-panel {
+  box-sizing: border-box;
+  width: min(100%, 430px);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 16px;
+  border: 1px solid #33336e;
+  border-radius: 18px;
+  background: #141436;
+  color: #eef0ff;
+  text-align: center;
+  box-shadow: 0 0 40px #7070ca26;
+}
+#panel.arcade-panel h1 {
+  margin: 8px 0 5px;
+  font-size: clamp(32px, 9vw, 46px);
+  letter-spacing: -.04em;
+  line-height: 1.04;
+  background: linear-gradient(90deg, #ff8bd0, #ffd25d 40%, #5dff9b 70%, #4fd1ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+#panel.arcade-panel h2 { margin: 4px 0 6px; font-size: 26px; line-height: 1.14; }
+#panel.arcade-panel p { margin: 6px 0 10px; color: #dcdff7; font-size: 15px; line-height: 1.4; }
+#panel.arcade-panel .kicker,
+#panel.arcade-panel .eyebrow,
+#panel.arcade-panel .step {
+  margin: 6px 0 4px;
+  color: var(--menu-accent, #8fe9dc);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+#panel.arcade-panel :is(button, a.arcade, a.button) {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #33336e;
+  border-radius: 12px;
+  background: #22225a;
+  color: #eef0ff;
+  font: 800 16px/1.2 system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+}
+#panel.arcade-panel :is(button, a):focus-visible { outline: 2px solid #a7f5e5; outline-offset: 2px; }
+#panel.arcade-panel button.primary { background: #1d4a3a; border-color: #2f7a5c; color: #82f7b2; }
+#panel.arcade-panel button:disabled { opacity: .44; }
+#panel.arcade-panel button small {
+  display: block;
+  margin: 3px 0 0;
+  color: #aeb4dd;
+  font: 700 12px/1.25 system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#panel.arcade-panel > :is(button, a) { margin: 8px 0 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds, .balls) { gap: 8px; margin: 8px 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#panel.arcade-panel :is(.choices, .stage-list) button:not(.arcade-stage) { display: block; }
+#panel.arcade-panel :is(.choices, .stage-list, .worlds).arcade-stages { grid-template-columns: 1fr; }
+#panel.arcade-panel button.arcade-stage {
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+.arcade-stage > span:last-child { min-width: 0; }
+.arcade-planet {
+  --planet: #90e4ff;
+  --shade: #23436e;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 15% 16%, #acb6dc 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 72%, #acb6dc 0 1px, transparent 2px), #0d1331;
+}
+.arcade-planet::after {
+  content: "";
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 29% 27%, #ffffffaa, transparent 42%),
+    repeating-linear-gradient(-22deg, transparent 0 4px, #15264a35 5px 7px),
+    radial-gradient(circle at 32% 34%, var(--planet), var(--shade) 76%);
+  box-shadow: 0 0 8px var(--shade);
+}
+.arcade-planet[data-world="1"] { --planet: #f6cc9d; --shade: #874265; }
+.arcade-planet[data-world="2"] { --planet: #ff9276; --shade: #70283d; }
+.arcade-planet[data-world="3"] { --planet: #92efb3; --shade: #2552a0; }
+.arcade-hero {
+  display: block;
+  width: 100%;
+  height: clamp(75px, 22dvh, 145px);
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 80%, #272759, #0b1231 70%);
+}
+#panel.arcade-panel button.arcade-choice { justify-content: space-between; text-align: left; }
+#panel.arcade-panel button.arcade-choice > span:last-child { color: #94f0c4; font-size: 13px; }
+#panel.arcade-panel .balls button { justify-content: flex-start; text-align: left; }
+#panel.arcade-panel .balls button.on { background: #193d37; border-color: #589d80; }
+#panel.arcade-panel .stars { color: #ffd25d; }
+
+#panel.arcade-panel .arcade-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#panel.arcade-panel .arcade-footer > * {
+  width: auto;
+  flex: 1 1 135px;
+  margin: 0;
+}
+
+/* The phone menu has its own backdrop and keeps its actions outside scrolling lists. */
+@media (max-width: 520px), (max-height: 500px) and (pointer: coarse) {
+  .arcade-menu {
+    box-sizing: border-box;
+    bottom: auto;
+    height: 100vh;
+    height: 100dvh;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    background: radial-gradient(ellipse at 50% 18%, #20214a, #090c24 74%);
+    -webkit-text-size-adjust: 100%;
+  }
+  #panel.arcade-panel { padding: clamp(12px, 4vw, 16px); }
+  #panel.arcade-panel .arcade-hero { height: clamp(72px, 19dvh, 122px); }
+  #panel.arcade-panel h1 { font-size: clamp(29px, 8vw, 39px); }
+  #panel.arcade-panel h2 { font-size: clamp(23px, 6vw, 26px); }
+  #panel.arcade-panel p { font-size: 14px; }
+  #panel.arcade-panel :is(button, a.arcade, a.button) { font-size: 15px; }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) > :not(.balls, .arcade-stages) {
+    flex: 0 0 auto;
+  }
+  #panel.arcade-panel > :is(.balls, .arcade-stages) {
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #panel.arcade-panel .balls i { width: 32px; height: 32px; }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  #panel.arcade-panel { width: min(100%, 580px); padding: 12px; }
+  #panel.arcade-panel:has(> .arcade-hero) {
+    display: grid;
+    grid-template-columns: minmax(105px, .42fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+  }
+  #panel.arcade-panel > .arcade-hero {
+    grid-row: 1 / 7;
+    height: clamp(92px, 37dvh, 155px);
+  }
+  #panel.arcade-panel:has(> .arcade-hero) > :not(.arcade-hero) { grid-column: 2; }
+  #panel.arcade-panel h1 { font-size: clamp(26px, 6dvh + 12px, 36px); }
+  #panel.arcade-panel p { margin: 4px 0 7px; }
+  #panel.arcade-panel > :is(button, a) { margin-top: 6px; }
+  #panel.arcade-panel :is(.actions, .choices, .menu-actions) { margin: 6px 0; }
+  #panel.arcade-panel :is(.balls, .arcade-stages) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #panel.arcade-panel button.arcade-stage { gap: 9px; padding: 7px 10px; }
+  #panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex-basis: 40px; }
+  #panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
+  #panel.arcade-panel :is(.guide svg, #howCv) { height: min(85px, 25dvh); }
+}
+
+html { color-scheme: dark; }
+body { margin:0; background:#090f20; color:#ecf5ff; font-family:system-ui,sans-serif; }
+[hidden] { display:none !important; }
+
+  #alien-pipeworks { box-sizing:border-box; max-width:460px; background:#090f20; color:#ecf5ff; padding:20px; border-radius:16px; font:500 15px system-ui; }
+  #alien-pipeworks h2 { color:#76f4da; margin:0 0 6px; }
+  #pipe-status { margin:0 0 12px; }
+  #alien-pipeworks .pipe-board { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; }
+  #alien-pipeworks button { background:#192842; color:inherit; border:1px solid #395170; border-radius:7px; min-height:44px; }
+  #alien-pipeworks .pipe-board button { aspect-ratio:1; padding:0; font:500 clamp(18px,6vw,36px)/1 monospace; color:#b5c9e4; }
+  #alien-pipeworks .pipe-board .wet { color:#08291f; background:#67efbe; }
+  #alien-pipeworks .pipe-board .terminal { font:600 11px system-ui; color:#08291f; background:#67efbe; opacity:1; }
+  #alien-pipeworks .pipe-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  #alien-pipeworks .pipe-board button { position:relative; }
+  #alien-pipeworks .arm { position:absolute; display:block; background:linear-gradient(180deg,#435875,#b9c9d7 42%,#6e829c 70%,#354760); }
+  #alien-pipeworks .arm.e, #alien-pipeworks .arm.w { top:36%; width:50%; height:28%; }
+  #alien-pipeworks .arm.e { left:50%; border-right:4px solid #9cb0c7; }
+  #alien-pipeworks .arm.w { right:50%; border-left:4px solid #9cb0c7; }
+  #alien-pipeworks .arm.n, #alien-pipeworks .arm.s { left:36%; width:28%; height:50%; background:linear-gradient(90deg,#435875,#b9c9d7 42%,#6e829c 70%,#354760); }
+  #alien-pipeworks .arm.n { bottom:50%; border-top:4px solid #9cb0c7; }
+  #alien-pipeworks .arm.s { top:50%; border-bottom:4px solid #9cb0c7; }
+  #alien-pipeworks .joint { position:absolute; inset:36%; border-radius:25%; background:radial-gradient(circle at 35% 30%,#c0d0df,#60758d); }
+  #alien-pipeworks .wet .arm, #alien-pipeworks .wet .joint { background:#31ba93; border-color:#91f8d7; }
+  #alien-pipeworks .pipe-board .terminal { background:#192842; color:#ecf5ff; }
+  #alien-pipeworks .machine { position:absolute; inset:9% 15% 23%; display:grid; place-items:center; z-index:1; box-shadow:0 3px 5px #090f20; }
+  #alien-pipeworks .pump { border:3px solid #9aaec6; border-radius:48%; background:radial-gradient(circle,#77f5cf 0 12%,#192842 14% 28%,#59738f 30% 60%,#2c405a 62%); }
+  #alien-pipeworks .tank { border:2px solid #9aaec6; border-radius:28% / 16%; background:linear-gradient(90deg,#465c76,#a4b5c9 44%,#40536c); }
+  #alien-pipeworks .gauge { position:absolute; inset:16% 34%; border:1px solid #c0d0df; border-radius:6px; background:linear-gradient(to top,#67efbe 20%,#15283b 20%); }
+  #alien-pipeworks .wet .gauge { background:#67efbe; }
+  #alien-pipeworks .machine-label { position:absolute; bottom:4%; left:0; right:0; font-size:9px; }
+  #alien-pipeworks .pipe-board { position:relative; }
+  #alien-pipeworks .alien-face {
+    position:absolute; z-index:2; width:7%; aspect-ratio:1; transform:translate(-50%,-50%); transition:left .2s linear, top .2s linear; border-radius:50% 50% 42% 42%;
+    background:#b78cee; border:2px solid #e3caff; pointer-events:none;
+  }
+  #alien-pipeworks .alien-face::before {
+    content:""; position:absolute; inset:22% 21% 35%; border-radius:50%;
+    background:radial-gradient(circle,#241630 0 28%,#f5eaff 31%);
+  }
+  #alien-pipeworks .alien-face::after {
+    content:""; position:absolute; inset:70% 37% 12%; border-radius:50%; background:#241630;
+  }
+  #alien-pipeworks .wet .alien-face { background:#67efbe; border-color:#c3ffe8; }
+  @media (prefers-reduced-motion: reduce) { #alien-pipeworks .alien-face { transition:none; } }
+
+#alien-pipeworks { margin:auto; padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); }
+#alien-pipeworks .pipe-board { width:min(100%, 58vh, 420px); width:min(100%, 58dvh, 420px); margin:auto; }
+#alien-pipeworks .pipe-board button { min-height:0; min-width:0; }
+#alien-pipeworks .pipe-board .blocked { background:repeating-linear-gradient(-45deg,#25304a 0 5px,#111a2b 5px 10px); }
+#alien-pipeworks button:focus-visible { outline:2px solid #76f4da; outline-offset:2px; }
+#alien-pipeworks .pipe-tools button { padding:0 10px; }
+.pipe-preview { display:inline-block; position:relative; width:28px; height:28px; vertical-align:middle; }
+</style>
+</head>
+<body>
+<main id="alien-pipeworks">
+  <h2>Alien Pipeworks</h2>
+  <p id="pipe-status" aria-live="polite"></p>
+  <div class="pipe-board" aria-label="Pipe grid"></div>
+  <div class="pipe-tools">
+    <span>Next <span class="pipe-preview"></span> <span class="pipe-preview"></span></span>
+    <button type="button" id="pipe-flow">Run coolant</button>
+    <button type="button" id="pipe-reset">Retry</button>
+    <button type="button" id="pipe-menu">Menu</button>
+  </div>
+</main>
+<div class="arcade-menu" id="menu">
+  <section id="panel" class="arcade-panel" aria-labelledby="menu-title">
+    <h1 id="menu-title">Alien Pipeworks</h1>
+    <p id="menu-copy">Build a pipeline and guide the alien from the pump to the tank.</p>
+    <button class="primary" type="button" id="play">Play</button>
+    <div class="actions">
+      <button type="button" id="instructions">How to Play</button>
+      <button type="button" id="levels">Levels</button>
+    </div>
+    <div class="stage-list arcade-stages" id="stage-list" hidden></div>
+    <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
+  </section>
+</div>
+<script>
+"use strict";
+
+const levels = [
+  { name: "Pump Test", route: [5, 6, 7, 12, 17, 18, 19], blocked: [] },
+  { name: "Blocked Bay", route: [5, 6, 11, 16, 17, 12, 13, 18, 19], blocked: [7, 8, 14, 22] },
+  { name: "Cargo Detour", route: [10, 11, 6, 7, 2, 3, 8, 13, 18, 19], blocked: [12, 16, 17, 23] }
+];
+const offsets = [-5, 1, 5, -1];
+const directions = "nesw";
+const pipeNames = { "13": "Horizontal", "02": "Vertical", "01": "Up-right elbow",
+  "03": "Up-left elbow", "12": "Down-right elbow", "23": "Down-left elbow" };
+const byId = id => document.getElementById(id);
+const board = document.querySelector(".pipe-board");
+const previews = document.querySelectorAll(".pipe-preview");
+const motion = matchMedia("(prefers-reduced-motion: reduce)");
+const status = byId("pipe-status");
+const menu = byId("menu");
+const flow = byId("pipe-flow");
+let level = 0;
+let started = false;
+let completed = false;
+let attempt = 0;
+let tiles, cells, passenger, queue, pump, tank, placed;
+
+function pipeArt(ports) {
+  return [...ports].map(port => `<span class="arm ${directions[port]}"></span>`).join("")
+    + '<span class="joint"></span>';
+}
+
+function updatePreview() {
+  previews.forEach((preview, index) => {
+    const ports = queue[placed + index];
+    preview.innerHTML = ports ? pipeArt(ports) : "—";
+    preview.setAttribute("role", "img");
+    preview.setAttribute("aria-label", ports ? pipeNames[ports] : "No pipe");
+  });
+}
+
+function moveAlien(index) {
+  const cell = cells[index];
+  passenger.style.left = `${cell.offsetLeft + cell.offsetWidth / 2}px`;
+  passenger.style.top = `${cell.offsetTop + cell.offsetHeight / 2}px`;
+}
+
+function start(index) {
+  attempt++;
+  level = index;
+  started = true;
+  completed = false;
+  placed = 0;
+  const stage = levels[level];
+  pump = stage.route[0];
+  tank = stage.route.at(-1);
+  queue = stage.route.slice(1, -1).map((cell, i) => [
+    offsets.indexOf(stage.route[i] - cell),
+    offsets.indexOf(stage.route[i + 2] - cell)
+  ].sort().join(""));
+  // The tray alternates route pieces from the two ends.
+  queue = queue.filter((_, i) => i % 2 === 0).concat(queue.filter((_, i) => i % 2 !== 0).reverse());
+  tiles = Array(25).fill("");
+  board.replaceChildren();
+  cells = tiles.map((_, cell) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("aria-label", `Row ${Math.floor(cell / 5) + 1}, column ${cell % 5 + 1}, empty`);
+    if (cell === pump || cell === tank) {
+      button.className = "terminal";
+      button.disabled = true;
+      button.setAttribute("aria-label", cell === pump ? "Pump" : "Tank");
+      button.innerHTML = cell === pump
+        ? '<span class="arm e"></span><span class="machine pump"></span><span class="machine-label">PUMP</span>'
+        : '<span class="arm w"></span><span class="machine tank"><span class="gauge"></span></span><span class="machine-label">TANK</span>';
+    } else if (stage.blocked.includes(cell)) {
+      button.className = "blocked";
+      button.disabled = true;
+      button.setAttribute("aria-label", "Blocked tile");
+    } else {
+      button.onclick = () => {
+        if (!queue[placed] || tiles[cell] || flow.disabled || completed) return;
+        const ports = queue[placed++];
+        tiles[cell] = ports;
+        button.innerHTML = pipeArt(ports);
+        button.setAttribute("aria-label", `${pipeNames[ports]} pipe, tile ${cell + 1}`);
+        updatePreview();
+      };
+    }
+    board.append(button);
+    return button;
+  });
+  passenger = document.createElement("span");
+  passenger.className = "alien-face";
+  passenger.setAttribute("aria-hidden", "true");
+  board.append(passenger);
+  moveAlien(pump);
+  updatePreview();
+  status.textContent = stage.name;
+  flow.textContent = "Run coolant";
+  flow.disabled = false;
+  menu.hidden = true;
+  flow.focus({ preventScroll: true });
+}
+
+function trace() {
+  const route = [];
+  let index = pump;
+  let direction = 1;
+  while (true) {
+    if ((direction === 1 && index % 5 === 4) || (direction === 3 && index % 5 === 0)) return null;
+    index += offsets[direction];
+    if (index === tank && direction === 1) return [...route, tank];
+    const entry = String((direction + 2) % 4);
+    const ports = tiles[index];
+    if (!ports?.includes(entry) || route.includes(index)) return null;
+    route.push(index);
+    direction = Number(ports.replace(entry, ""));
+  }
+}
+
+flow.onclick = async () => {
+  if (completed) {
+    if (level + 1 < levels.length) start(level + 1);
+    else showMenu();
+    return;
+  }
+  const route = trace();
+  if (!route) {
+    status.textContent = "Route incomplete. Fill the gaps or retry.";
+    return;
+  }
+  flow.disabled = true;
+  const current = ++attempt;
+  status.textContent = "Alien in transit…";
+  for (const cell of route) {
+    moveAlien(cell);
+    if (!motion.matches) await new Promise(resolve => setTimeout(resolve, 220));
+    if (current !== attempt) return;
+    cells[cell].classList.add("wet");
+  }
+  completed = true;
+  flow.disabled = false;
+  flow.textContent = level + 1 < levels.length ? "Next level" : "Finish";
+  status.textContent = "Alien safely inside the tank!";
+};
+
+function showMenu() {
+  byId("play").textContent = started ? "Resume" : "Play";
+  menu.hidden = false;
+  byId("play").focus({ preventScroll: true });
+}
+
+byId("play").onclick = () => {
+  if (!started) start(0);
+  else {
+    menu.hidden = true;
+    byId("pipe-menu").focus({ preventScroll: true });
+  }
+};
+byId("pipe-menu").onclick = showMenu;
+byId("pipe-reset").onclick = () => start(level);
+byId("instructions").onclick = () => {
+  byId("menu-copy").textContent = "Tap empty squares to place the next pipe. Join the pump’s right outlet to the tank’s left inlet, then run coolant. Retry if you run out of pieces.";
+};
+byId("levels").onclick = () => {
+  byId("stage-list").hidden = !byId("stage-list").hidden;
+};
+levels.forEach((stage, index) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = stage.name;
+  button.onclick = () => start(index);
+  byId("stage-list").append(button);
+});
+addEventListener("resize", () => {
+  if (started && !flow.disabled) moveAlien(completed ? tank : pump);
+});
+</script>
+</body>
+</html>
