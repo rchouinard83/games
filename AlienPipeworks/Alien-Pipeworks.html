@@ -208,10 +208,10 @@
 }
 
 html { color-scheme: dark; }
-body { margin:0; background:#090f20; color:#ecf5ff; font-family:system-ui,sans-serif; }
+body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 50% 0%,#251b49,transparent 66%),#080b18; color:#eef4ff; font-family:system-ui,sans-serif; }
 [hidden] { display:none !important; }
 
-  #alien-pipeworks { box-sizing:border-box; max-width:460px; background:#090f20; color:#ecf5ff; padding:20px; border-radius:16px; font:500 15px system-ui; }
+  #alien-pipeworks { box-sizing:border-box; max-width:664px; color:#ecf5ff; padding:20px; border-radius:16px; font:500 15px system-ui; }
   #alien-pipeworks h2 { color:#76f4da; margin:0 0 6px; }
   #pipe-status { margin:0 0 12px; }
   #alien-pipeworks .pipe-board { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:3px; }
@@ -219,7 +219,7 @@ body { margin:0; background:#090f20; color:#ecf5ff; font-family:system-ui,sans-s
   #alien-pipeworks .pipe-board button { aspect-ratio:1; padding:0; font:500 clamp(18px,6vw,36px)/1 monospace; color:#b5c9e4; }
   #alien-pipeworks .pipe-board .wet { color:#08291f; background:#67efbe; }
   #alien-pipeworks .pipe-board .terminal { font:600 11px system-ui; color:#08291f; background:#67efbe; opacity:1; }
-  #alien-pipeworks .pipe-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  #alien-pipeworks .pipe-tools { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); align-items:stretch; gap:8px; margin-top:12px; }
   #alien-pipeworks .pipe-board button { position:relative; }
   #alien-pipeworks .arm { position:absolute; display:block; background:linear-gradient(180deg,#435875,#b9c9d7 42%,#6e829c 70%,#354760); }
   #alien-pipeworks .arm.e, #alien-pipeworks .arm.w { top:36%; width:50%; height:28%; }
@@ -253,47 +253,253 @@ body { margin:0; background:#090f20; color:#ecf5ff; font-family:system-ui,sans-s
   @media (prefers-reduced-motion: reduce) { #alien-pipeworks .alien-face { transition:none; } }
 
 #alien-pipeworks { margin:auto; padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom)); }
-#alien-pipeworks .pipe-board { width:min(100%, 58vh, 420px); width:min(100%, 58dvh, 420px); margin:auto; }
+#alien-pipeworks .pipe-board { width:min(100%, 47vh, 420px); width:min(100%, var(--board-height-share, 47dvh), 420px); margin:auto; }
 #alien-pipeworks .pipe-board button { min-height:0; min-width:0; }
 #alien-pipeworks .pipe-board .blocked { background:repeating-linear-gradient(-45deg,#25304a 0 5px,#111a2b 5px 10px); }
 #alien-pipeworks button:focus-visible { outline:2px solid #76f4da; outline-offset:2px; }
 #alien-pipeworks .pipe-tools button { padding:0 10px; }
 .pipe-preview { display:inline-block; position:relative; width:28px; height:28px; vertical-align:middle; }
+#panel #menu-main > a.arcade { margin-top:8px; }
+#panel #menu-main > button + button { margin-top:8px; }
+#guide svg { display:block; width:100%; height:100px; border-radius:12px; background:#101a34; }
+.pipe-tray { display:grid; background:#161c35; border:1px solid #2c3758; border-radius:10px; }
+.pipe-slot + .pipe-slot { border-top:1px solid #2c3758; }
+.pipe-actions { display:grid; grid-template-rows:1fr 1fr; gap:6px; }
+.pipe-slot { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px clamp(5px,2vw,12px); }
+.pipe-slot small { color:#a7b3d5; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.pipe-slot:first-child small { color:#87efd9; }
+.primary-preview { width:44px; height:44px; background:#314a72; border:2px solid #67efbe; border-radius:7px; flex-shrink:0; }
+
+#alien-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+#panel #alien-choices button { flex-direction:column; padding:6px 2px; font-size:14px; }
+#panel #alien-choices button[aria-pressed="true"] { background:#1d4a3a; border-color:#5cb797; }
+#alien-choices canvas { width:42px; height:42px; }
+#alien-choices { margin:8px 0; }
+#alien-pipeworks canvas.alien-face { background:transparent; border:0; width:9%; }
+#panel #level-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+#panel #level-grid button { flex-direction:column; padding:5px 0; }
+#panel #level-grid small { color:#ffd25d; }
+.pipe-header .eyebrow, .pipe-hud small { color:#a7b3d5; font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; font-weight:800; }
+.pipe-header h1 { font-size:clamp(2rem,8vw,3.35rem); line-height:1; margin:6px 0; letter-spacing:-.05em; }
+.pipe-header h1 span { color:#c8a4ff; }
+.pipe-header p { margin:8px 0 16px; color:#bdc7e5; }
+.pipe-hud { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) auto; gap:6px; margin-bottom:7px; }
+.pipe-hud div, #alien-pipeworks #pipe-menu { background:#161c35; border:1px solid #2c3758; border-radius:10px; }
+.pipe-hud div { padding:6px clamp(4px,1.3vw,10px); }
+.pipe-hud small { display:block; letter-spacing:.04em; }
+.pipe-hud strong { font-size:clamp(.85rem,4vw,1.3rem); font-variant-numeric:tabular-nums; }
+#alien-pipeworks #pipe-menu { min-width:44px; padding:0 10px; font:inherit; }
+.pipe-arena { border:1px solid #4d4371; border-radius:14px; background:radial-gradient(ellipse at top,#192745,#0d1228 72%); padding:10px; box-shadow:0 14px 46px #0008; }
+#alien-pipeworks #pipe-status { margin:0 0 8px; color:#87efd9; font-size:.8rem; font-weight:800; }
+#alien-pipeworks #pipe-flow { background:#1d4a3a; border-color:#2f7a5c; color:#82f7b2; font-weight:800; }
+#alien-pipeworks #pipe-reset { font-weight:800; }
+#panel #result-stars { font-size:32px; letter-spacing:.12em; color:#ffd25d; }
+#alien-pipeworks .pipe-preview { display:grid; place-items:center; width:44px; height:44px; flex:none; box-sizing:border-box; border:1px solid #395170; border-radius:7px; background:#192842; overflow:hidden; }
+#alien-pipeworks .primary-preview { border-color:#67efbe; }
+#alien-pipeworks .arm { box-sizing:border-box; }
 </style>
 </head>
 <body>
 <main id="alien-pipeworks">
-  <h2>Alien Pipeworks</h2>
-  <p>Level <strong id="current-level">1</strong> · Highest level <strong id="highest-level">—</strong></p>
-  <p id="pipe-status" aria-live="polite"></p>
-  <div class="pipe-board" aria-label="Pipe grid"></div>
+  <header class="pipe-header">
+    <div class="eyebrow">Alien Arcade · Engineering Wing</div>
+    <h1>Alien <span>Pipeworks</span></h1>
+    <p>Build the route. Get the alien to safety.</p>
+  </header>
+  <div class="pipe-hud">
+    <div><small>Stage</small><strong id="current-stage">1</strong></div>
+    <div><small>Level</small><strong id="current-level">1</strong></div>
+    <div><small>Star time</small><strong id="star-time">—</strong></div>
+    <div><small>Best</small><strong id="highest-level">—</strong></div>
+    <button type="button" id="pipe-menu" >Pause</button>
+  </div>
+  <div class="pipe-arena">
+    <p id="pipe-status" aria-live="polite"></p>
+    <div class="pipe-board" aria-label="Pipe grid"></div>
+  </div>
   <div class="pipe-tools">
-    <span>Next <span class="pipe-preview"></span> <span class="pipe-preview"></span></span>
-    <button type="button" id="pipe-flow">Run coolant</button>
-    <button type="button" id="pipe-reset">Retry</button>
-    <button type="button" id="pipe-menu">Menu</button>
+    <div class="pipe-tray">
+      <div class="pipe-slot"><small>Next piece</small><span class="pipe-preview primary-preview"></span></div>
+      <div class="pipe-slot"><small>On deck</small><span class="pipe-preview"></span></div>
+    </div>
+    <div class="pipe-actions">
+      <button type="button" id="pipe-flow">Run coolant</button>
+      <button type="button" id="pipe-reset">Retry</button>
+    </div>
   </div>
 </main>
 <div class="arcade-menu" id="menu">
   <section id="panel" class="arcade-panel" aria-labelledby="menu-title">
+    <div id="menu-main">
     <h1 id="menu-title">Alien Pipeworks</h1>
     <p id="menu-copy">Build a pipeline and guide the alien from the pump to the tank.</p>
-    <button class="primary" type="button" id="play">Play</button>
+    <div id="stage-list" class="stage-list arcade-stages"></div>
+    <div id="alien-choices" role="group" aria-label="Choose your alien"></div>
+    <button class="primary" type="button" id="play" hidden>Resume</button>
     <div class="actions">
       <button type="button" id="instructions">How to Play</button>
-      <button type="button" id="levels">Levels</button>
+
     </div>
-    <div class="stage-list arcade-stages" id="stage-list" hidden></div>
+    
     <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
+    </div>
+    <div id="result" hidden>
+      <p id="result-level" class="kicker"></p>
+      <h2 id="result-title" tabindex="-1">Alien rescued!</h2>
+      <p id="result-stars" class="stars"></p>
+      <p id="result-time"></p>
+      <button class="primary" id="result-next" type="button">Next level</button>
+      <div class="actions">
+        <button id="result-retry" type="button">Play again</button>
+        <button id="result-levels" type="button">All levels</button>
+      </div>
+    </div>
+    <div id="campaign" hidden>
+      <h2 id="campaign-title" tabindex="-1">Stages</h2>
+      <p id="campaign-copy"></p>
+      <div id="level-grid" class="actions" hidden></div>
+      <button id="campaign-back" type="button">Back</button>
+    </div>
+    <div id="guide" class="guide" hidden>
+      <h2 id="guide-title" tabindex="-1">How to Play</h2>
+      <div class="guide-step">
+        <p class="step">Step 1 of 3</p>
+        <h2>Place pipes</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><rect x="86" y="17" width="68" height="64" rx="8" fill="#222e53"/><path d="M86 49h34v32" fill="none" stroke="#b9c9d7" stroke-width="14"/></svg>
+        <p>Tap an empty tile to place the next pipe.</p>
+      </div>
+      <div class="guide-step" hidden>
+        <p class="step">Step 2 of 3</p>
+        <h2>Connect</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><path d="M41 58h57V33h50v25h51" fill="none" stroke="#b9c9d7" stroke-width="10" stroke-linejoin="round"/><circle cx="41" cy="58" r="15" fill="#5795bf"/><rect x="187" y="36" width="25" height="43" rx="8" fill="#7894ae"/></svg>
+        <p>Join the pump to the tank around blocked tiles.</p>
+      </div>
+      <div class="guide-step" hidden>
+        <p class="step">Step 3 of 3</p>
+        <h2>Run coolant</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><path d="M35 49h170" stroke="#67efbe" stroke-width="12"/><circle cx="120" cy="49" r="14" fill="#ba94f0"/><circle cx="120" cy="47" r="5" fill="#211639"/></svg>
+        <p>Reach the tank before the star timer expires. Tap Retry for a fresh timer.</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="guide-back">Back</button>
+        <button class="primary" type="button" id="guide-next">Next</button>
+      </div>
+    </div>
   </section>
 </div>
 <script>
 "use strict";
 
+const TAU = 2 * Math.PI;
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", B = "#7ab8ff";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+const modes = {
+  blip: { label: "Easy", rows: 4 },
+  jelly: { label: "Medium", rows: 6 },
+  runner: { label: "Hard", rows: 8 }
+};
+let selectedAlien = "jelly";
+let activeAlien = selectedAlien;
 const levels = [
-  { name: "Pump Test", route: [5, 6, 7, 12, 17, 18, 19], blocked: [] },
-  { name: "Blocked Bay", route: [5, 6, 11, 16, 17, 12, 13, 18, 19], blocked: [7, 8, 14, 22] },
-  { name: "Cargo Detour", route: [10, 11, 6, 7, 2, 3, 8, 13, 18, 19], blocked: [12, 16, 17, 23] }
+  {"blip": {"route": [5, 6, 11, 12, 7, 8, 3, 4], "blocked": [2]}, "jelly": {"route": [5, 6, 1, 2, 3, 8, 7, 12, 13, 18, 23, 28, 29], "blocked": [0, 27]}, "runner": {"route": [35, 36, 37, 32, 33, 28, 27, 26, 21, 16, 11, 6, 1, 2, 3, 4], "blocked": [0, 18]}},
+  {"blip": {"route": [10, 11, 6, 1, 2, 3, 4], "blocked": [8]}, "jelly": {"route": [15, 16, 17, 22, 21, 26, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [2, 24]}, "runner": {"route": [35, 36, 37, 32, 27, 26, 21, 16, 11, 12, 13, 8, 7, 6, 1, 2, 3, 4], "blocked": [22, 39]}},
+  {"blip": {"route": [0, 1, 2, 3, 8, 9], "blocked": [11]}, "jelly": {"route": [25, 26, 27, 22, 17, 16, 11, 6, 7, 2, 3, 4], "blocked": [0, 14]}, "runner": {"route": [15, 16, 11, 6, 7, 2, 3, 8, 13, 12, 17, 22, 27, 26, 31, 36, 37, 38, 39], "blocked": [25, 33]}},
+  {"blip": {"route": [15, 16, 17, 18, 19], "blocked": [5]}, "jelly": {"route": [10, 11, 6, 1, 2, 3, 8, 7, 12, 17, 18, 23, 28, 29], "blocked": [4, 20]}, "runner": {"route": [0, 1, 2, 3, 8, 13, 18, 23, 22, 17, 16, 21, 26, 31, 32, 27, 28, 33, 38, 39], "blocked": [24, 36]}},
+  {"blip": {"route": [10, 11, 16, 17, 18, 13, 14], "blocked": [3]}, "jelly": {"route": [0, 1, 2, 7, 6, 11, 16, 17, 22, 21, 26, 27, 28, 29], "blocked": [3, 20]}, "runner": {"route": [35, 36, 37, 32, 31, 26, 21, 22, 23, 18, 13, 12, 11, 6, 1, 2, 3, 4], "blocked": [5, 9]}},
+  {"blip": {"route": [10, 11, 12, 17, 18, 13, 8, 9], "blocked": [2]}, "jelly": {"route": [0, 1, 2, 7, 6, 11, 16, 21, 26, 27, 22, 17, 12, 13, 14], "blocked": [18, 20]}, "runner": {"route": [25, 26, 31, 32, 37, 38, 33, 28, 27, 22, 21, 16, 11, 6, 1, 2, 7, 8, 9], "blocked": [34, 35]}},
+  {"blip": {"route": [5, 6, 1, 2, 3, 8, 9], "blocked": [0, 18]}, "jelly": {"route": [5, 6, 1, 2, 3, 8, 13, 12, 17, 18, 23, 28, 29], "blocked": [9, 20, 24]}, "runner": {"route": [30, 31, 26, 21, 16, 11, 6, 1, 2, 7, 8, 13, 18, 17, 22, 27, 32, 33, 38, 39], "blocked": [0, 3, 36]}},
+  {"blip": {"route": [5, 6, 7, 8, 13, 18, 19], "blocked": [2, 10]}, "jelly": {"route": [15, 16, 21, 26, 27, 22, 23, 18, 13, 8, 7, 2, 3, 4], "blocked": [11, 20, 28]}, "runner": {"route": [35, 36, 31, 32, 37, 38, 33, 28, 27, 26, 21, 16, 17, 18, 13, 8, 7, 2, 3, 4], "blocked": [1, 12, 23]}},
+  {"blip": {"route": [10, 11, 6, 1, 2, 3, 8, 9], "blocked": [0, 18]}, "jelly": {"route": [0, 1, 6, 11, 16, 21, 26, 27, 28, 29], "blocked": [8, 17, 19]}, "runner": {"route": [25, 26, 21, 22, 27, 32, 37, 38, 33, 28, 23, 18, 13, 8, 3, 4], "blocked": [10, 31, 36]}},
+  {"blip": {"route": [5, 6, 7, 12, 17, 18, 19], "blocked": [2, 3]}, "jelly": {"route": [25, 26, 27, 28, 23, 18, 13, 12, 7, 8, 3, 4], "blocked": [5, 16, 22]}, "runner": {"route": [25, 26, 27, 32, 37, 38, 33, 28, 23, 22, 21, 16, 17, 12, 7, 2, 3, 4], "blocked": [9, 15, 20]}},
+  {"blip": {"route": [0, 1, 2, 7, 8, 3, 4], "blocked": [16, 18]}, "jelly": {"route": [25, 26, 27, 28, 23, 18, 13, 12, 11, 6, 7, 2, 3, 4], "blocked": [14, 15, 17]}, "runner": {"route": [0, 1, 6, 11, 12, 17, 16, 21, 22, 27, 26, 31, 36, 37, 38, 39], "blocked": [10, 25, 33]}},
+  {"blip": {"route": [5, 6, 7, 8, 13, 14], "blocked": [9, 16]}, "jelly": {"route": [25, 26, 21, 22, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [0, 16, 29]}, "runner": {"route": [35, 36, 31, 32, 27, 28, 23, 22, 17, 12, 11, 6, 1, 2, 7, 8, 9], "blocked": [16, 20, 24]}},
+  {"blip": {"route": [10, 11, 12, 17, 18, 13, 14], "blocked": [2, 7, 19]}, "jelly": {"route": [0, 1, 6, 11, 16, 21, 26, 27, 28, 23, 24], "blocked": [3, 7, 9, 19]}, "runner": {"route": [35, 36, 31, 32, 33, 28, 27, 26, 21, 22, 17, 16, 11, 6, 7, 8, 3, 4], "blocked": [0, 10, 12, 23]}},
+  {"blip": {"route": [0, 1, 6, 7, 8, 9], "blocked": [2, 14, 17]}, "jelly": {"route": [25, 26, 27, 22, 17, 16, 11, 6, 1, 2, 3, 4], "blocked": [12, 13, 19, 21]}, "runner": {"route": [0, 1, 6, 11, 16, 17, 12, 13, 18, 23, 22, 27, 26, 31, 32, 37, 38, 39], "blocked": [3, 5, 20, 34]}},
+  {"blip": {"route": [15, 16, 17, 18, 13, 8, 9], "blocked": [1, 14, 19]}, "jelly": {"route": [0, 1, 6, 7, 12, 11, 16, 21, 22, 23, 28, 29], "blocked": [9, 17, 18, 25]}, "runner": {"route": [5, 6, 1, 2, 7, 12, 11, 16, 21, 26, 27, 22, 17, 18, 23, 28, 33, 38, 39], "blocked": [15, 30, 35, 37]}},
+  {"blip": {"route": [15, 16, 11, 6, 1, 2, 3, 8, 13, 14], "blocked": [17, 18, 19]}, "jelly": {"route": [25, 26, 27, 28, 23, 22, 21, 16, 17, 12, 7, 8, 3, 4], "blocked": [5, 10, 20, 29]}, "runner": {"route": [20, 21, 16, 17, 12, 7, 6, 1, 2, 3, 8, 13, 18, 23, 28, 33, 38, 39], "blocked": [14, 24, 25, 30]}},
+  {"blip": {"route": [0, 1, 6, 7, 8, 13, 14], "blocked": [9, 10, 19]}, "jelly": {"route": [10, 11, 6, 1, 2, 7, 8, 13, 18, 23, 28, 29], "blocked": [4, 16, 22, 27]}, "runner": {"route": [0, 1, 6, 11, 16, 21, 26, 31, 32, 37, 38, 33, 28, 29], "blocked": [2, 10, 14, 27]}},
+  {"blip": {"route": [10, 11, 6, 1, 2, 7, 8, 13, 14], "blocked": [5, 17, 18]}, "jelly": {"route": [20, 21, 16, 11, 6, 1, 2, 7, 8, 13, 18, 23, 28, 29], "blocked": [4, 10, 24, 26]}, "runner": {"route": [35, 36, 37, 32, 31, 26, 21, 16, 11, 6, 1, 2, 3, 8, 13, 14], "blocked": [4, 15, 30, 34]}},
+  {"blip": {"route": [5, 6, 1, 2, 7, 8, 9], "blocked": [3, 4, 12, 18]}, "jelly": {"route": [25, 26, 27, 22, 21, 16, 11, 12, 7, 6, 1, 2, 3, 4], "blocked": [8, 14, 17, 28, 29]}, "runner": {"route": [10, 11, 6, 1, 2, 7, 8, 13, 18, 17, 22, 27, 26, 31, 36, 37, 32, 33, 34], "blocked": [0, 12, 16, 20, 30]}},
+  {"blip": {"route": [5, 6, 7, 2, 3, 8, 13, 18, 19], "blocked": [0, 12, 16, 17]}, "jelly": {"route": [20, 21, 26, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [2, 5, 15, 17, 19]}, "runner": {"route": [0, 1, 6, 11, 16, 17, 22, 21, 26, 31, 32, 27, 28, 33, 38, 39], "blocked": [7, 8, 25, 29, 34]}},
+  {"blip": {"route": [5, 6, 1, 2, 7, 12, 11, 16, 17, 18, 13, 14], "blocked": [0, 10, 15, 19]}, "jelly": {"route": [25, 26, 27, 28, 23, 18, 17, 12, 11, 6, 7, 8, 3, 4], "blocked": [1, 9, 20, 21, 29]}, "runner": {"route": [35, 36, 31, 32, 27, 22, 21, 16, 11, 12, 17, 18, 13, 8, 3, 4], "blocked": [0, 5, 6, 23, 37]}},
+  {"blip": {"route": [10, 11, 6, 1, 2, 7, 8, 13, 12, 17, 18, 19], "blocked": [0, 4, 14, 16]}, "jelly": {"route": [25, 26, 27, 28, 23, 22, 21, 16, 17, 12, 13, 8, 7, 6, 1, 2, 3, 4], "blocked": [0, 9, 15, 20, 24]}, "runner": {"route": [15, 16, 11, 6, 7, 2, 3, 8, 13, 12, 17, 18, 23, 22, 21, 26, 31, 36, 37, 32, 33, 34], "blocked": [0, 10, 19, 20, 24]}},
+  {"blip": {"route": [0, 1, 2, 3, 8, 13, 14], "blocked": [6, 12, 17, 18]}, "jelly": {"route": [5, 6, 1, 2, 3, 8, 13, 18, 23, 28, 29], "blocked": [16, 17, 19, 24, 25]}, "runner": {"route": [0, 1, 6, 11, 16, 21, 26, 31, 36, 37, 38, 33, 34], "blocked": [2, 9, 15, 35, 39]}},
+  {"blip": {"route": [10, 11, 12, 7, 8, 13, 14], "blocked": [1, 4, 6, 9]}, "jelly": {"route": [15, 16, 21, 26, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [5, 9, 10, 14, 17]}, "runner": {"route": [5, 6, 1, 2, 7, 8, 13, 12, 11, 16, 21, 22, 27, 26, 31, 36, 37, 38, 39], "blocked": [0, 24, 25, 30, 34]}},
+  {"blip": {"route": [0, 1, 6, 11, 16, 17, 12, 7, 8, 9], "blocked": [5, 10, 13, 15]}, "jelly": {"route": [25, 26, 21, 16, 11, 6, 1, 2, 3, 8, 7, 12, 17, 22, 23, 24], "blocked": [0, 13, 18, 20, 27, 29]}, "runner": {"route": [0, 1, 2, 3, 8, 13, 18, 17, 22, 27, 26, 31, 36, 37, 38, 33, 28, 29], "blocked": [6, 7, 20, 21, 30, 39]}},
+  {"blip": {"route": [5, 6, 11, 12, 7, 2, 3, 4], "blocked": [1, 16, 17, 19]}, "jelly": {"route": [20, 21, 22, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [5, 9, 10, 11, 16, 24]}, "runner": {"route": [0, 1, 2, 3, 8, 13, 12, 11, 16, 17, 18, 23, 28, 33, 38, 39], "blocked": [7, 29, 31, 32, 34, 36]}},
+  {"blip": {"route": [15, 16, 11, 6, 1, 2, 7, 12, 13, 8, 9], "blocked": [4, 10, 14, 19]}, "jelly": {"route": [25, 26, 21, 22, 23, 18, 13, 12, 7, 6, 1, 2, 3, 4], "blocked": [0, 10, 14, 16, 17, 24]}, "runner": {"route": [35, 36, 31, 26, 21, 22, 23, 18, 13, 12, 11, 6, 1, 2, 3, 4], "blocked": [0, 20, 24, 27, 38, 39]}},
+  {"blip": {"route": [15, 16, 11, 6, 1, 2, 3, 8, 9], "blocked": [5, 14, 18, 19]}, "jelly": {"route": [20, 21, 26, 27, 28, 23, 18, 17, 12, 13, 8, 7, 2, 3, 4], "blocked": [1, 5, 6, 9, 11, 15]}, "runner": {"route": [30, 31, 26, 27, 22, 17, 12, 11, 6, 1, 2, 7, 8, 13, 18, 23, 28, 33, 32, 37, 38, 39], "blocked": [3, 10, 14, 15, 16, 19]}},
+  {"blip": {"route": [10, 11, 6, 7, 12, 13, 8, 3, 4], "blocked": [5, 9, 17, 18]}, "jelly": {"route": [0, 1, 6, 7, 12, 11, 16, 21, 22, 17, 18, 23, 28, 29], "blocked": [4, 5, 8, 14, 20, 25]}, "runner": {"route": [25, 26, 31, 36, 37, 32, 33, 28, 27, 22, 21, 16, 11, 6, 1, 2, 7, 12, 13, 14], "blocked": [3, 4, 5, 8, 15, 35]}},
+  {"blip": {"route": [0, 1, 2, 3, 8, 13, 18, 19], "blocked": [4, 6, 7, 15]}, "jelly": {"route": [5, 6, 7, 12, 17, 22, 27, 28, 23, 18, 13, 8, 3, 4], "blocked": [2, 11, 19, 20, 24, 26]}, "runner": {"route": [10, 11, 12, 7, 2, 3, 8, 13, 18, 23, 28, 27, 22, 21, 26, 31, 36, 37, 38, 39], "blocked": [14, 15, 24, 25, 29, 35]}},
+  {"blip": {"route": [10, 11, 12, 13, 8, 7, 2, 3, 4], "blocked": [16, 17, 18, 19]}, "jelly": {"route": [0, 1, 6, 11, 16, 21, 26, 27, 22, 17, 18, 19], "blocked": [4, 9, 10, 25, 28, 29]}, "runner": {"route": [0, 1, 6, 7, 12, 13, 18, 23, 22, 21, 26, 31, 36, 37, 38, 39], "blocked": [10, 15, 16, 24, 29, 30, 35]}},
+  {"blip": {"route": [10, 11, 16, 17, 12, 13, 8, 9], "blocked": [4, 7, 14, 18]}, "jelly": {"route": [25, 26, 27, 28, 23, 22, 21, 16, 17, 18, 13, 8, 3, 4], "blocked": [1, 2, 6, 7, 15, 19]}, "runner": {"route": [0, 1, 6, 11, 12, 7, 2, 3, 8, 13, 18, 17, 16, 21, 26, 27, 28, 33, 38, 39], "blocked": [5, 10, 15, 23, 24, 25, 31]}},
+  {"blip": {"route": [10, 11, 6, 7, 2, 3, 8, 13, 14], "blocked": [1, 4, 9, 18]}, "jelly": {"route": [0, 1, 6, 11, 16, 21, 26, 27, 28, 23, 18, 19], "blocked": [3, 5, 7, 9, 15, 17]}, "runner": {"route": [10, 11, 6, 1, 2, 3, 8, 7, 12, 17, 16, 21, 22, 27, 32, 33, 38, 39], "blocked": [9, 14, 20, 24, 34, 35, 36]}},
+  {"blip": {"route": [5, 6, 1, 2, 7, 12, 17, 18, 13, 8, 3, 4], "blocked": [0, 15, 16, 19]}, "jelly": {"route": [25, 26, 27, 28, 23, 18, 17, 16, 11, 12, 7, 6, 1, 2, 3, 4], "blocked": [8, 9, 14, 19, 20, 29]}, "runner": {"route": [25, 26, 21, 22, 17, 12, 7, 6, 1, 2, 3, 8, 13, 18, 23, 28, 27, 32, 31, 36, 37, 38, 39], "blocked": [11, 14, 15, 19, 24, 33, 34]}},
+  {"blip": {"route": [5, 6, 7, 12, 11, 16, 17, 18, 13, 8, 3, 4], "blocked": [2, 9, 10, 14]}, "jelly": {"route": [25, 26, 21, 22, 27, 28, 23, 18, 17, 16, 11, 6, 1, 2, 7, 8, 9], "blocked": [0, 3, 10, 12, 20, 29]}, "runner": {"route": [15, 16, 17, 22, 21, 26, 31, 36, 37, 32, 27, 28, 23, 18, 13, 12, 11, 6, 1, 2, 7, 8, 9], "blocked": [5, 10, 20, 24, 25, 33, 35]}},
+  {"blip": {"route": [15, 16, 11, 6, 7, 12, 17, 18, 13, 8, 9], "blocked": [4, 10, 14, 19]}, "jelly": {"route": [20, 21, 26, 27, 28, 23, 18, 13, 12, 7, 2, 3, 4], "blocked": [1, 5, 6, 10, 22, 29]}, "runner": {"route": [25, 26, 31, 32, 37, 38, 33, 28, 23, 22, 21, 16, 11, 12, 17, 18, 13, 8, 3, 4], "blocked": [2, 5, 10, 14, 19, 24, 27]}},
+  {"blip": {"route": [5, 6, 11, 16, 17, 12, 7, 8, 13, 14], "blocked": [3, 4, 9, 19]}, "jelly": {"route": [25, 26, 21, 16, 17, 12, 11, 6, 1, 2, 3, 4], "blocked": [7, 14, 23, 27, 28, 29]}, "runner": {"route": [30, 31, 32, 37, 38, 33, 28, 27, 22, 23, 18, 17, 16, 11, 6, 1, 2, 3, 4], "blocked": [7, 12, 13, 14, 25, 26, 36, 39]}},
+  {"blip": {"route": [0, 1, 6, 11, 12, 17, 18, 13, 14], "blocked": [5, 8, 9, 16]}, "jelly": {"route": [25, 26, 27, 28, 23, 18, 17, 16, 11, 6, 1, 2, 3, 4], "blocked": [5, 7, 9, 12, 14, 22]}, "runner": {"route": [15, 16, 11, 6, 7, 2, 3, 8, 13, 18, 17, 22, 21, 26, 27, 32, 31, 36, 37, 38, 39], "blocked": [0, 1, 5, 10, 12, 25, 28, 30]}},
+  {"blip": {"route": [0, 1, 2, 3, 8, 7, 6, 11, 12, 13, 14], "blocked": [10, 16, 18, 19]}, "jelly": {"route": [10, 11, 6, 1, 2, 7, 12, 17, 16, 21, 26, 27, 28, 29], "blocked": [3, 4, 5, 14, 15, 19]}, "runner": {"route": [35, 36, 37, 32, 33, 28, 27, 22, 23, 18, 13, 12, 7, 6, 1, 2, 3, 4], "blocked": [8, 9, 15, 19, 20, 24, 34, 39]}},
+  {"blip": {"route": [10, 11, 6, 7, 2, 3, 8, 13, 18, 19], "blocked": [4, 5, 9, 16]}, "jelly": {"route": [20, 21, 26, 27, 22, 23, 18, 13, 12, 17, 16, 11, 6, 7, 2, 3, 4], "blocked": [8, 10, 15, 24, 25, 29]}, "runner": {"route": [15, 16, 17, 22, 27, 26, 31, 36, 37, 38, 33, 28, 23, 18, 13, 8, 7, 2, 3, 4], "blocked": [0, 1, 5, 12, 19, 29, 30, 39]}}
 ];
 const offsets = [-5, 1, 5, -1];
 const directions = "nesw";
@@ -313,7 +519,35 @@ try {
   if (Number.isInteger(saved) && saved > 0 && saved <= levels.length) highestLevel = saved;
 } catch { /* Keep the record for this session when storage is unavailable. */ }
 byId("highest-level").textContent = highestLevel || "—";
+const stages = ["Pump Station", "Cargo Bay", "Cooling Plant", "Reactor Core"];
+const levelsPerStage = 10;
+const starsKey = "alien-pipeworks-stars";
+let savedStars;
+try { savedStars = JSON.parse(localStorage.getItem(starsKey)); } catch { /* Start with empty records. */ }
+const stars = Object.fromEntries(Object.keys(modes).map(id => [id, levels.map((_, index) =>
+  [1, 2, 3].includes(savedStars?.[id]?.[index]) ? savedStars[id][index] : 0)]));
 let level = 0;
+let elapsed = 0;
+let clockStarted = null;
+let starLimit = 0;
+
+function elapsedSeconds() {
+  return elapsed + (clockStarted === null ? 0 : (performance.now() - clockStarted) / 1000);
+}
+
+function pauseClock() {
+  elapsed = elapsedSeconds();
+  clockStarted = null;
+}
+
+function updateClock() {
+  if (started && !completed) {
+    const remaining = Math.ceil(starLimit - elapsedSeconds());
+    byId("star-time").textContent = remaining > 0 ? remaining + "s" : "Expired";
+  }
+}
+
+setInterval(updateClock, 250);
 let started = false;
 let completed = false;
 let attempt = 0;
@@ -341,12 +575,20 @@ function moveAlien(index) {
 
 function start(index) {
   attempt++;
+  closeResult();
   level = index;
-  byId("current-level").textContent = level + 1;
+  byId("current-stage").textContent = Math.floor(level / levelsPerStage) + 1;
+  byId("current-level").textContent = level % levelsPerStage + 1;
+  elapsed = 0;
+  clockStarted = null;
   started = true;
   completed = false;
   placed = 0;
-  const stage = levels[level];
+  const stage = levels[level][activeAlien];
+  const rows = modes[activeAlien].rows;
+  starLimit = 45 + (stage.route.length - 2) * 7;
+  updateClock();
+  board.style.setProperty("--board-height-share", `${330 / rows}dvh`);
   pump = stage.route[0];
   tank = stage.route.at(-1);
   queue = stage.route.slice(1, -1).map((cell, i) => [
@@ -355,7 +597,7 @@ function start(index) {
   ].sort().join(""));
   // The tray alternates route pieces from the two ends.
   queue = queue.filter((_, i) => i % 2 === 0).concat(queue.filter((_, i) => i % 2 !== 0).reverse());
-  tiles = Array(25).fill("");
+  tiles = Array(rows * 5).fill("");
   board.replaceChildren();
   cells = tiles.map((_, cell) => {
     const button = document.createElement("button");
@@ -375,6 +617,7 @@ function start(index) {
     } else {
       button.onclick = () => {
         if (!queue[placed] || tiles[cell] || flow.disabled || completed) return;
+        if (clockStarted === null) clockStarted = performance.now();
         const ports = queue[placed++];
         tiles[cell] = ports;
         button.innerHTML = pipeArt(ports);
@@ -385,13 +628,15 @@ function start(index) {
     board.append(button);
     return button;
   });
-  passenger = document.createElement("span");
+  passenger = document.createElement("canvas");
+  passenger.width = passenger.height = 64;
+  CHARS.draw(passenger.getContext("2d"), activeAlien, 32, 34, 24, 0);
   passenger.className = "alien-face";
   passenger.setAttribute("aria-hidden", "true");
   board.append(passenger);
   moveAlien(pump);
   updatePreview();
-  status.textContent = stage.name;
+  status.textContent = CHARS.byId(activeAlien).name + " · " + modes[activeAlien].label;
   flow.textContent = "Run coolant";
   flow.disabled = false;
   menu.hidden = true;
@@ -415,16 +660,14 @@ function trace() {
 }
 
 flow.onclick = async () => {
-  if (completed) {
-    if (level + 1 < levels.length) start(level + 1);
-    else showMenu();
-    return;
-  }
+  if (completed) return;
   const route = trace();
   if (!route) {
     status.textContent = "Route incomplete. Fill the gaps or retry.";
     return;
   }
+  pauseClock();
+  const earned = elapsed <= starLimit * .45 ? 3 : elapsed <= starLimit * .72 ? 2 : elapsed <= starLimit ? 1 : 0;
   flow.disabled = true;
   const current = ++attempt;
   status.textContent = "Alien in transit…";
@@ -435,44 +678,199 @@ flow.onclick = async () => {
     cells[cell].classList.add("wet");
   }
   completed = true;
-  if (level + 1 > highestLevel) {
+  if (earned > stars[activeAlien][level]) {
+    stars[activeAlien][level] = earned;
+    try { localStorage.setItem(starsKey, JSON.stringify(stars)); } catch { /* Keep session progress. */ }
+  }
+  if (earned && level + 1 > highestLevel) {
     highestLevel = level + 1;
     byId("highest-level").textContent = highestLevel;
     try { localStorage.setItem(highestLevelKey, String(highestLevel)); } catch { /* Keep the session record. */ }
   }
-  flow.disabled = false;
-  flow.textContent = level + 1 < levels.length ? "Next level" : "Finish";
+  flow.disabled = true;
   status.textContent = "Alien safely inside the tank!";
+  showResult(earned);
 };
 
+function showResult(earned) {
+  const stage = Math.floor(level / levelsPerStage);
+  byId("result-level").textContent = `${stages[stage]} · Level ${level % levelsPerStage + 1} · ${modes[activeAlien].label}`;
+  const rating = byId("result-stars");
+  rating.textContent = "★".repeat(earned) + "☆".repeat(3 - earned);
+  rating.setAttribute("aria-label", `${earned} out of 3 stars`);
+  byId("result-time").textContent = earned
+    ? `Completed in ${Math.ceil(elapsed)}s.`
+    : `Completed in ${Math.ceil(elapsed)}s. Finish within ${starLimit}s to earn a star.`;
+  const next = byId("result-next");
+  next.hidden = !stars[activeAlien][level] || level + 1 === levels.length;
+  next.textContent = (level + 1) % levelsPerStage === 0 ? "Next stage" : "Next level";
+  byId("menu-main").hidden = true;
+  byId("result").hidden = false;
+  byId("panel").setAttribute("aria-labelledby", "result-title");
+  menu.hidden = false;
+  byId("result-title").focus();
+}
+
+function closeResult() {
+  byId("result").hidden = true;
+  byId("menu-main").hidden = false;
+  byId("panel").setAttribute("aria-labelledby", "menu-title");
+}
+
+byId("result-next").onclick = () => start(level + 1);
+byId("result-retry").onclick = () => start(level);
+byId("result-levels").onclick = () => {
+  selectedAlien = activeAlien;
+  closeResult();
+  openCampaign(Math.floor(level / levelsPerStage));
+};
+
+
 function showMenu() {
+  pauseClock();
+  renderCampaign(null, false);
+  byId("play").hidden = !started || completed || selectedAlien !== activeAlien;
   byId("play").textContent = started ? "Resume" : "Play";
   menu.hidden = false;
-  byId("play").focus({ preventScroll: true });
+  (byId("play").hidden ? stageList.firstElementChild : byId("play"))?.focus({ preventScroll: true });
 }
 
 byId("play").onclick = () => {
-  if (!started) start(0);
+  if (!started || selectedAlien !== activeAlien) {
+    activeAlien = selectedAlien;
+    const next = stars[activeAlien].indexOf(0);
+    start(next === -1 ? 0 : next);
+  }
   else {
     menu.hidden = true;
+    if (placed && !completed && !flow.disabled) clockStarted = performance.now();
     byId("pipe-menu").focus({ preventScroll: true });
   }
 };
 byId("pipe-menu").onclick = showMenu;
+addEventListener("keydown", event => {
+  if (event.key === "Escape" && menu.hidden) showMenu();
+});
 byId("pipe-reset").onclick = () => start(level);
-byId("instructions").onclick = () => {
-  byId("menu-copy").textContent = "Tap empty squares to place the next pipe. Join the pump’s right outlet to the tank’s left inlet, then run coolant. Retry if you run out of pieces.";
+const guideSteps = [...document.querySelectorAll(".guide-step")];
+let guideStep = 0;
+
+function renderGuide() {
+  guideSteps.forEach((step, index) => { step.hidden = index !== guideStep; });
+  byId("guide-next").textContent = guideStep === guideSteps.length - 1 ? "Done" : "Next";
+}
+
+function showGuide(open) {
+  if (open) {
+    guideStep = 0;
+    renderGuide();
+  }
+  byId("menu-main").hidden = open;
+  byId("guide").hidden = !open;
+  byId("panel").setAttribute("aria-labelledby", open ? "guide-title" : "menu-title");
+  byId(open ? "guide-title" : "instructions").focus();
+}
+
+byId("instructions").onclick = () => showGuide(true);
+byId("guide-back").onclick = () => {
+  if (guideStep === 0) showGuide(false);
+  else {
+    guideStep--;
+    renderGuide();
+  }
 };
-byId("levels").onclick = () => {
-  byId("stage-list").hidden = !byId("stage-list").hidden;
+byId("guide-next").onclick = () => {
+  if (guideStep === guideSteps.length - 1) showGuide(false);
+  else {
+    guideStep++;
+    renderGuide();
+  }
 };
-levels.forEach((stage, index) => {
+let viewedStage = null;
+const stageList = byId("stage-list");
+const levelGrid = byId("level-grid");
+
+function renderCampaign(stage, focus = true) {
+  viewedStage = stage;
+  const records = stars[selectedAlien];
+  stageList.hidden = stage !== null;
+  levelGrid.hidden = stage === null;
+  byId("campaign-title").textContent = stage === null ? "Stages" : stages[stage];
+  byId("campaign-copy").textContent = stage === null
+    ? "Earn a star to unlock the next level."
+    : "Stage " + (stage + 1) + " of " + stages.length + " · " +
+      records.slice(stage * levelsPerStage, (stage + 1) * levelsPerStage).reduce((sum, score) => sum + score, 0) + "/30 ★";
+
+  if (stage === null) {
+    stageList.replaceChildren();
+    stages.forEach((name, index) => {
+      const first = index * levelsPerStage;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "arcade-stage";
+      button.disabled = first > 0 && !records[first - 1];
+      const total = records.slice(first, first + levelsPerStage).reduce((sum, score) => sum + score, 0);
+      button.innerHTML = `<span class="arcade-planet" data-world="${index}" aria-hidden="true"></span><span>${index + 1} · ${name}<small>${button.disabled ? "Clear the previous stage to unlock" : "10 levels · " + total + "/30 ★"}</small></span>`;
+      button.onclick = () => openCampaign(index);
+      stageList.append(button);
+    });
+  } else {
+    levelGrid.replaceChildren();
+    for (let i = 0; i < levelsPerStage; i++) {
+      const index = stage * levelsPerStage + i;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.disabled = index > 0 && !records[index - 1];
+      button.classList.toggle("primary", !button.disabled && !records[index]);
+      button.innerHTML = `<span>${button.disabled ? "🔒" : i + 1}</span><small>${"★".repeat(records[index]) || "—"}</small>`;
+      button.setAttribute("aria-label", `Level ${i + 1}, ${button.disabled ? "locked" : records[index] + " stars"}`);
+      button.onclick = () => {
+        closeCampaign();
+        activeAlien = selectedAlien;
+        start(index);
+      };
+      levelGrid.append(button);
+    }
+  }
+  if (stage !== null && focus) byId("campaign-title").focus();
+}
+
+function openCampaign(stage) {
+  byId("menu-main").hidden = true;
+  byId("campaign").hidden = false;
+  byId("panel").setAttribute("aria-labelledby", "campaign-title");
+  renderCampaign(stage);
+}
+
+function closeCampaign() {
+  byId("campaign").hidden = true;
+  byId("menu-main").hidden = false;
+  byId("panel").setAttribute("aria-labelledby", "menu-title");
+}
+
+byId("campaign-back").onclick = () => {
+  const previousStage = viewedStage;
+  closeCampaign();
+  renderCampaign(null, false);
+  stageList.children[previousStage]?.focus();
+};
+const alienChoices = byId("alien-choices");
+for (const [id, mode] of Object.entries(modes)) {
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = stage.name;
-  button.onclick = () => start(index);
-  byId("stage-list").append(button);
-});
+  button.setAttribute("aria-pressed", String(id === selectedAlien));
+  button.innerHTML = `<canvas width="84" height="84" aria-hidden="true"></canvas>${CHARS.byId(id).name}<small>${mode.label} · ${mode.rows} rows</small>`;
+  CHARS.draw(button.querySelector("canvas").getContext("2d"), id, 42, 44, 27, 0);
+  button.onclick = () => {
+    selectedAlien = id;
+    for (const choice of alienChoices.children) choice.setAttribute("aria-pressed", String(choice === button));
+    byId("play").hidden = !started || completed || selectedAlien !== activeAlien;
+    renderCampaign(null, false);
+  };
+  alienChoices.append(button);
+}
+
+renderCampaign(null, false);
 addEventListener("resize", () => {
   if (started && !flow.disabled) moveAlien(completed ? tank : pump);
 });
