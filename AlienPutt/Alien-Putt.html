@@ -297,8 +297,8 @@ const WORLDS = [
         ".........", "...ggg...", "..ggCgg..", ".gxgggxg.", ".gggxggg.", ".xggggxg.", ".ggggggg.", ".ggxgxgg.",
         ".ggggggg.", ".gxgggxg.", ".ggggggg.", ".gggxggg.", "..ggggg..", "...gTg...", "...ggg...", "........."] },
       { name: "First Jump", par: 2, tip: "Hit the <b>launch pad</b> hard enough to clear the gap!", map: [
-        ".........", "..ggggg..", "..gggCg..", "..ggggg..", "..gxggg..", ".........", ".........", "..ggggg..",
-        "..ggJgg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggTgg..", "..ggggg..", "........."] },
+        ".........", "..ggggg..", "..Cgggg..", "..ggggg..", "..gxggg..", ".........", ".........", "..ggggg..",
+        "..ggJgg..", "..ggggg..", "..ggggg..", "..ggggg..", "..ggggg..", "..gTggg..", "..ggggg..", "........."] },
       { name: "Moon Lane", par: 2, tip: "Zig, zag, and mind the <b>moons</b>.", map: [
         ".........", ".ggg.....", ".gCg.....", ".ggg.....", ".gaggggg.", ".ggggggg.", ".....ggg.", ".....gag.",
         ".....ggg.", ".ggggggg.", ".ggggagg.", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
@@ -335,7 +335,7 @@ const WORLDS = [
     intro: "Storm winds push the ball, and <b>gravity wells</b> bend it off course.",
     holes: [
       { name: "Gravity Well", par: 3, tip: "A <b>gravity well</b> pulls the ball. Let it swing you round the corner.", map: [
-        ".........", ".gggggg..", ".gCggggg.", ".ggggggg.", ".gg...gg.", ".gg...gg.", ".gg...gg.", ".gg...@g.",
+        ".........", ".gggggg..", ".Cgggggg.", ".ggggggg.", ".gg...gg.", ".gg...gg.", ".gg...gg.", ".gg...@g.",
         ".gg...gg.", ".gg...gg.", ".ggggggg.", ".ggggggg.", "......gg.", ".....gTg.", ".....ggg.", "........."] },
       { name: "Tailwind", par: 3, tip: "<b>Wind streams</b> push the ball the way they blow. Ride them!", map: [
         ".........", ".ggggggg.", ".gC<<<<g.", ".ggggggg.", ".....g^g.", ".....g^g.", ".....g^g.", ".....ggg.",
@@ -356,8 +356,8 @@ const WORLDS = [
         ".........", ".....ggg.", ".....gCg.", ".....ggg.", ".....ggg.", ".ggggggg.", ".gg@gggg.", ".ggggggg.",
         ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
       { name: "Jet Stream", par: 2, map: [
-        ".........", ".....ggg.", ".....gCg.", ".....g^g.", ".....g^g.", ".....g^g.", ".g>>>>^g.", ".g>>>>^g.",
-        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".gTg.....", ".ggg.....", "........."] },
+        ".........", ".....ggg.", ".....gCg.", ".....g^g.", ".....gxg.", ".....g^g.", ".g>>>>^g.", ".g>>>>^g.",
+        ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".ggg.....", ".Tgg.....", ".ggg.....", "........."] },
       { name: "Eye of the Storm", par: 2, map: [
         ".........", ".ggggggg.", ".ggggggg.", ".ggg@Cgg.", ".ggggggg.", ".ggggggg.", ".~~ggg~~.", ".~~ggg~~.",
         ".ggg.ggg.", ".ggg.ggg.", ".ggagagg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
@@ -371,23 +371,23 @@ const WORLDS = [
         ".........", ".ggggggg.", ".ggggggg.", ".gggCggg.", ".vgvvvvv.", ".vvvvvgv.", ".ggggggg.", ".ggggggg.",
         ".gxgggxg.", ".ggggggg.", ".gggxggg.", ".ggggggg.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
       { name: "Belt Hopper", par: 4, map: [
-        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".g~~~~~~.", ".ggggggg.", ".ggggggg.", ".~~~~~gg.",
-        ".ggggggg.", ".ggggggg.", ".gg~~~~~.", ".ggggggg.", ".ggggggg.", ".gggggTg.", ".ggggggg.", "........."] },
+        ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".gg~~~gg.", ".ggggggg.", ".ggggggg.", ".g~~~ggg.",
+        ".ggggggg.", ".ggggggg.", ".ggg~~~g.", ".ggggggg.", ".ggggggg.", ".gggggTg.", ".ggggggg.", "........."] },
       { name: "Gravity Jump", par: 2, map: [
         ".........", ".ggggggg.", ".gCggggg.", ".ggggggg.", ".~~~~~~~.", ".~~~~~~~.", ".ggggggg.", ".ggggJgg.",
         ".gggggg@.", ".ggggggg.", ".ggxgggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
       { name: "Hurricane", par: 3, map: [
         ".........", ".ggggggg.", ".gggggCg.", ".ggggggg.", ".<<<<<<<.", ".gggggxg.", ".ggggggg.", ".>>>>>>>.",
-        ".gggzggg.", ".gggxggg.", ".<<<<<<<.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
+        ".gggzggg.", ".gggxxgg.", ".<<<<<<<.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
       { name: "Moon Orbit", par: 2, map: [
         ".........", ".ggggggg.", ".ggggggg.", ".ggaggag.", ".ggggggg.", ".ggg@ggg.", ".ggggggg.", ".ggCgggg.",
         ".ggagggg.", ".gg...gg.", ".gg...gg.", ".ggggggg.", ".ggggggg.", ".ggggggT.", ".ggggggg.", "........."] },
       { name: "Storm Gates", par: 3, map: [
         ".........", ".ggggggg.", ".gggCggg.", ".ggggggg.", ".~~ggg~~.", ".gggoggg.", ".ggggggg.", ".ggggggg.",
         ".ggg~ggg.", ".ggg~ggg.", ".ggggggg.", ".@ggggg@.", ".ggggggg.", ".gggTggg.", ".ggggggg.", "........."] },
-      { name: "Great Red Spot", par: 4, tip: "Jupiter's biggest storm. <b>Plan every shot.</b>", map: [
-        ".........", ".ggggggg.", ".gCgg@gg.", ".ggggggg.", ".~~~~~gg.", ".ggggg^g.", ".ggggg^g.", ".gg~~~~~.",
-        ".gggzggg.", ".g@ggggg.", ".>>>>ggg.", ".ggggggg.", ".ggg~~~g.", ".gTggggg.", ".ggggggg.", "........."] },
+      { name: "Great Red Spot", par: 4, tip: "Stay <b>left</b> past the saucer, then line up with the <b>wide middle gap</b> before the cup.", map: [
+        ".........", ".ggggggg.", ".gggCgg@.", ".ggggggg.", ".~~ggg~~.", ".ggggg^g.", ".ggggg^g.", ".ggg~~gg.",
+        ".gggggzg.", ".gg~~gg@.", ".ggg>>>>.", ".ggggggg.", ".ggg~~~g.", ".gTggggg.", ".ggggggg.", "........."] },
     ] },
   { name: "Mars, the Red Wall", short: "Mars", hazard: "crystal field", roll: { drag: 0.55, rolling: 55 },
     look: { sky: ["#4a1c14", "#1a0806"], green: ["#a04a32", "#6a2a1a"], wall: "#ff8f5d", hz: "crystal" },
@@ -415,8 +415,8 @@ const WORLDS = [
         ".........", ".sssssss.", ".sssCsss.", ".sssgsss.", ".ssgggss.", ".sgggggs.", ".ggsssgg.", ".ggsssgg.",
         ".ggsssgg.", ".sggxggs.", ".ssgggss.", ".sssgsss.", ".sssgsss.", ".sssTsss.", ".sssssss.", "........."] },
       { name: "Canyon Jump", par: 2, tip: "A wide canyon. <b>Big putt</b> onto the launch pad!", map: [
-        ".........", ".ggggggg.", ".ggggCgg.", ".ggxgggg.", ".ggggggg.", ".........", ".........", ".........",
-        ".gggJggg.", ".ggggggg.", ".ggssggg.", ".ggggggg.", ".gxgggxg.", ".gggTggg.", ".ggggggg.", "........."] },
+        ".........", ".ggggggg.", ".ggCgggg.", ".ggxgggg.", ".ggggggg.", ".........", ".........", ".........",
+        ".gggJggg.", ".ggggggg.", ".ggssggg.", ".ggggggg.", ".gxgggxg.", ".ggggTgg.", ".ggggggg.", "........."] },
       { name: "Mesa Top", par: 3, map: [
         ".........", ".uuuuuuu.", ".uuuKuuu.", ".uuuuuuu.", ".uuxuxuu.", ".uuuuuuu.", ".uruuuuu.", ".ggggggg.",
         ".g>>>>>g.", ".ggggggg.", ".ggggggg.", ".gsssggg.", ".ggggggg.", ".ggggggT.", ".ggggggg.", "........."] },
@@ -486,8 +486,8 @@ const WORLDS = [
         ".........", ".ggggggg.", ".gg..gCg.", ".gg..ggg.", ".gBggggg.", ".~~~~~~~.", ".~~~~~~~.", ".~~~~~~~.",
         ".~~~~~~~.", ".ggggggg.", ".ggggAgg.", ".ggggggg.", ".ggggggg.", ".gTggggg.", ".ggggggg.", "........."] },
       { name: "Main Street", par: 4, map: [
-        ".........", ".ggggggC.", ".ggggggg.", ".gg......", ".ggggggg.", ".ggggWgg.", "......gg.", ".ggggggg.",
-        ".gggWggg.", ".gg......", ".ggggggg.", ".ggggggg.", "......gg.", ".gTggggg.", ".ggggggg.", "........."] },
+        ".........", ".ggggggC.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggWgg.", ".....ggg.", ".ggggggg.",
+        ".gggWggg.", ".ggg.....", ".ggggggg.", ".ggggggg.", ".....ggg.", ".gTggggg.", ".ggggggg.", "........."] },
       { name: "Bridges", par: 3, map: [
         ".........", ".ggggggg.", ".ggCgggg.", ".ggggggg.", ".~g~~~g~.", ".~g~~~g~.", ".ggggggg.", ".gggzggg.",
         ".~~~g~~~.", ".~~~g~~~.", ".ggggggg.", ".ggggggg.", ".ggggggg.", ".ggggTgg.", ".ggggggg.", "........."] },
@@ -994,7 +994,7 @@ function setupMenu(w, l) {
 function charMenu(w, l) {
   openMenu(`<p class="kicker">Choose your alien</p><h2>Who's putting?</h2>
     <p>The First Contact crew from Alien Defense.</p>
-    <div class="chars">${CHARS.list.map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
+    <div class="chars">${["blip", "jelly", "runner"].map(id => CHARS.list.find(ch => ch.id === id)).filter(Boolean).concat(CHARS.list.filter(ch => !["blip", "jelly", "runner"].includes(ch.id))).map(ch => `<button class="charBtn ${ch.id === SAVE.char ? "on" : ""}" aria-pressed="${ch.id === SAVE.char}" data-act="pick" data-arg="${ch.id}"><canvas data-char="${ch.id}"></canvas>${ch.name}</button>`).join("")}</div>
     <p class="charDesc" id="charDesc">${CHARS.byId(SAVE.char).desc}</p>
     <button class="big main" data-act="setup" data-arg="${w}|${l}">Done</button>`,
     tt => { for (const cvs of $("box").querySelectorAll("canvas[data-char]")) { const [c, w, h] = fitCanvas(cvs); c.clearRect(0, 0, w, h); const on = cvs.dataset.char === SAVE.char;
