@@ -212,15 +212,21 @@ header, footer { display:flex; align-items:center; gap:12px; }
 header { justify-content:space-between; flex-wrap:wrap; }
 header strong { color:#88f7dc; }
 canvas { display:block; width:100%; height:100%; min-height:0; border-radius:16px; background:#0e1430; }
-  .pad { position: relative; margin-top: 10px; height: 68px; border-radius: 14px; background: #11172e; border: 1px dashed #3d4a72; touch-action: none; user-select: none; -webkit-user-select: none; cursor: ew-resize; }
-  .pad.on { border-style: solid; border-color: #4fd1ff; background: #142040; }
-  .padTrack { position: absolute; left: 10px; right: 10px; top: 26px; height: 4px; background: #2c3758; border-radius: 2px; }
-  .padKnob { position: absolute; top: 20px; height: 16px; transform: translateX(-50%); border-radius: 8px; background: linear-gradient(#d6f7ff, #477ba3); box-shadow: 0 0 12px #4fd1ff88; pointer-events: none; }
-  .padHint { position: absolute; left: 0; right: 0; bottom: 7px; text-align: center; font-size: .68rem; color: #8f9cc4; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; pointer-events: none; }
-footer { display:grid; grid-template-columns:minmax(0,1fr); gap:6px; }
-footer .pad { margin-top:0; }
-footer .padKnob { width:42px; left:50%; }
-#pause { justify-self:end; }
+footer { display:grid; grid-template-columns:1fr auto 1fr; }
+#pause { grid-column:3; justify-self:end; }
+.joystick {
+  grid-column:2; position:relative; width:clamp(84px,18dvh,116px); aspect-ratio:1;
+  border:2px solid #52699d; border-radius:50%; touch-action:none; user-select:none;
+  background:radial-gradient(circle,#101a35 0 38%,#334771 39% 41%,#172645 42% 68%,#3c527e 69%);
+  box-shadow:inset 0 4px 12px #080e24,0 4px 12px #05081c; cursor:grab;
+}
+.joystick.on { border-color:#78edff; cursor:grabbing; }
+.joystick-knob {
+  position:absolute; width:34%; aspect-ratio:1; border-radius:50%; pointer-events:none;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 25%,#dcfbff,#68b0d4 46%,#253e69 78%);
+  box-shadow:0 3px 7px #0009,0 0 9px #76dcff80;
+}
 #pause { min-height:44px; padding:0 14px; color:inherit; background:#202c55; border:1px solid #465583; border-radius:10px; font:inherit; }
 #alien-choices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
 #panel #alien-choices button { flex-direction:column; gap:2px; padding:6px 2px; font-size:14px; }
@@ -245,10 +251,9 @@ footer .padKnob { width:42px; left:50%; }
   <header><strong>Alien Tunnel Run</strong><span>Section <b id="section">1</b></span><span>Rings <b id="rings">0</b></span><span>Coins <b id="coins">0</b></span><span>Best coins <b id="best">0</b></span></header>
   <canvas id="tunnel" aria-label="Tunnel, alien pod, coins, and barriers"></canvas>
   <footer>
-    <div id="steering" class="pad" role="slider" tabindex="0" aria-label="Tunnel steering"
-      aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
-      <div class="padTrack"></div><div id="padKnob" class="padKnob"></div>
-      <span class="padHint">◀ slide here to steer ▶</span>
+    <div id="steering" class="joystick" role="group" tabindex="0"
+      aria-label="Circular steering joystick. Drag around the circle or hold the left and right arrow keys.">
+      <div id="padKnob" class="joystick-knob" aria-hidden="true"></div>
     </div>
     <button id="pause" type="button">Menu</button>
   </footer>
@@ -279,8 +284,8 @@ footer .padKnob { width:42px; left:50%; }
       <div class="guide-step">
         <p class="step">Step 1 of 3</p>
         <h2>Steer</h2>
-        <svg viewBox="0 0 240 100" aria-hidden="true"><path d="M25 50H215" stroke="#526b96" stroke-width="8" stroke-linecap="round"/><rect x="93" y="38" width="54" height="24" rx="12" fill="#88f7dc"/></svg>
-        <p>Drag the pad or hold ← / →.</p>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><circle cx="120" cy="50" r="36" fill="#172645" stroke="#526b96" stroke-width="4"/><circle cx="120" cy="50" r="24" fill="none" stroke="#526b96" stroke-width="2"/><circle cx="137" cy="67" r="11" fill="#88f7dc"/></svg>
+        <p>Circle the joystick or hold ← / →.</p>
       </div>
       <div class="guide-step" hidden>
         <p class="step">Step 2 of 3</p>
@@ -308,13 +313,9 @@ const canvas = byId("tunnel");
 const ctx = canvas.getContext("2d");
 const steering = byId("steering");
 const padKnob = byId("padKnob");
-let steeringValue = 500;
-
-function setSteering(value) {
-  steeringValue = Math.max(0, Math.min(1000, value));
-  const percent = steeringValue / 10;
-  padKnob.style.left = `clamp(21px, ${percent}%, calc(100% - 21px))`;
-  steering.setAttribute("aria-valuenow", String(Math.round(percent)));
+function pointJoystick() {
+  padKnob.style.left = `${50 + 28 * Math.cos(angle)}%`;
+  padKnob.style.top = `${50 + 28 * Math.sin(angle)}%`;
 }
 const menu = byId("menu");
 const fullTurn = 2 * Math.PI;
@@ -381,7 +382,8 @@ const CHARS = (() => {
 })();
 
 // what each alien is like on a board
-const spacing = 121;
+const firstGateDepth = 280;
+const spacing = 131;
 const maxSpeed = 420;
 const keyboardRate = 860;
 const maxGapStep = spacing / maxSpeed * (keyboardRate / 1000) * fullTurn * .8;
@@ -480,14 +482,11 @@ let coins = 0;
 let passed = 0;
 let gates = [];
 let trail = [];
-let nextDepth = 150;
+let nextDepth = firstGateDepth;
+let lastBlockerDepth = -Infinity;
 let nextGap = angle;
 let lastOpening = -1;
 let previous = 0;
-
-function steeringAngle() {
-  return Math.PI / 2 - (steeringValue / 1000 - .5) * fullTurn;
-}
 
 function difference(a, b) {
   return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
@@ -504,13 +503,23 @@ function gapSize(gate) {
 function addGates() {
   while (nextDepth < distance + 690) {
     const gap = nextGap;
-    gates.push({ depth: nextDepth, gap, openingScale: .88 + Math.random() * .24, blockers: Math.round((nextDepth - 150) / spacing) % 3 === 2, coin: gap + (Math.random() - .5) * .55 });
-    // Keep the intended route away from the point where the slider ends meet.
-    const step = nextDepth === 150 ? .12 + Math.random() * .12 : (.55 + Math.random() * .45) * maxGapStep;
-    const limit = nextDepth < 150 + spacing * 3 ? .65 : Math.PI - .35;
+    const blockers = nextDepth >= firstGateDepth + 4 * spacing
+      && nextDepth - lastBlockerDepth >= 3 * spacing && Math.random() < .2;
+    if (blockers) lastBlockerDepth = nextDepth;
+    const rocks = blockers ? [1.25, 2.45, 3.7, 5].map(offset => ({
+      angle: gap + offset + (Math.random() - .5) * .4,
+      size: .12 + Math.random() * .09,
+      rotation: Math.random() * fullTurn
+    })) : null;
+    gates.push({ depth: nextDepth, gap, openingScale: .88 + Math.random() * .24, rocks, coin: gap + (Math.random() - .5) * .55 });
+    // Keep the opening near the bottom for the first few gates.
+    const step = nextDepth === firstGateDepth ? .12 + Math.random() * .12 : (.55 + Math.random() * .45) * maxGapStep;
+    const limit = nextDepth < firstGateDepth + spacing * 3 ? .65 : Math.PI - .35;
     const candidate = nextGap + (Math.random() < .5 ? -step : step);
     const center = Math.PI / 2;
-    nextGap = Math.max(center - limit, Math.min(center + limit, candidate));
+    nextGap = nextDepth < firstGateDepth + spacing * 3
+      ? Math.max(center - limit, Math.min(center + limit, candidate))
+      : candidate % fullTurn;
     nextDepth += spacing;
   }
 }
@@ -518,12 +527,13 @@ function addGates() {
 function start() {
   activeAlien = selectedAlien;
   difficulty = difficulties[activeAlien];
-  setSteering(500);
-  angle = steeringAngle();
+  angle = Math.PI / 2;
+  pointJoystick();
   distance = coins = passed = 0;
   gates = [];
   trail = [];
-  nextDepth = 150;
+  nextDepth = firstGateDepth;
+  lastBlockerDepth = -Infinity;
   const openingCount = 20;
   const draw = Math.floor(Math.random() * (openingCount - Number(lastOpening >= 0)));
   lastOpening = draw >= lastOpening && lastOpening >= 0 ? draw + 1 : draw;
@@ -557,15 +567,17 @@ function showMenu(crashed) {
 
 function update(dt) {
   const turn = Number(keys.has("ArrowRight")) - Number(keys.has("ArrowLeft"));
-  if (turn) setSteering(steeringValue + turn * keyboardRate * dt);
-  angle = steeringAngle();
+  if (turn && dragPointer === null) {
+    angle = (angle - turn * keyboardRate / 1000 * fullTurn * dt) % fullTurn;
+    pointJoystick();
+  }
   distance += Math.min(maxSpeed, difficulty.speed + passed * 9) * dt;
   trail.push({ angle, distance });
   while (trail.length && trail[0].distance < distance - 55) trail.shift();
   addGates();
   while (gates.length && gates[0].depth - distance <= arrival) {
     const gate = gates.shift();
-    if (gate.blockers ? [1.25, 2.45, 3.7, 5].some(offset => difference(angle, gate.gap + offset) < .32) : difference(angle, gate.gap) > gapSize(gate) - .10) {
+    if (gate.rocks ? gate.rocks.some(rock => difference(angle, rock.angle) < Math.asin(rock.size) + .05) : difference(angle, gate.gap) > gapSize(gate) - .10) {
       playTone(34, "sawtooth", .32, .075);
       playTone(25, "triangle", .44, .1, .04);
       showMenu(true);
@@ -630,13 +642,13 @@ function render() {
     const first = gate.gap + opening;
     const last = gate.gap + fullTurn - opening;
     const width = Math.max(3, r * .17);
-    if (gate.blockers) {
-      for (const offset of [1.25, 2.45, 3.7, 5]) {
-        const direction = gate.gap + offset;
-        const rockSize = Math.max(2, r * .29);
+    if (gate.rocks) {
+      for (const rock of gate.rocks) {
+        const direction = rock.angle;
+        const rockSize = Math.max(2, r * rock.size);
         ctx.save();
         ctx.translate(cx + Math.cos(direction) * r, cy + Math.sin(direction) * r);
-        ctx.rotate(direction + offset);
+        ctx.rotate(rock.rotation);
         ctx.scale(rockSize, rockSize);
         const outline = [[-1,-.3],[-.62,-.84],[.16,-.94],[.8,-.61],[1,.19],[.55,.81],[-.34,.9],[-.86,.49]];
         ctx.beginPath();
@@ -799,7 +811,11 @@ document.addEventListener("visibilitychange", () => {
 let dragPointer = null;
 function steer(event) {
   const bounds = steering.getBoundingClientRect();
-  setSteering(1000 * (event.clientX - bounds.left) / bounds.width);
+  const x = event.clientX - bounds.left - bounds.width / 2;
+  const y = event.clientY - bounds.top - bounds.height / 2;
+  if (Math.hypot(x, y) < bounds.width * .11) return;
+  angle = Math.atan2(y, x);
+  pointJoystick();
 }
 steering.addEventListener("pointerdown", event => {
   if (phase !== "playing" || event.button !== 0 || dragPointer !== null) return;
@@ -816,6 +832,7 @@ steering.addEventListener("lostpointercapture", () => {
   dragPointer = null;
   steering.classList.remove("on");
 });
+pointJoystick();
 requestAnimationFrame(frame);
 </script>
 </html>
