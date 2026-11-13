@@ -94,10 +94,10 @@ let W = 0, H = 0, S = 0, DPR = 1;
 const STAGES = [
   { name: "The Oort Gate", short: "Oort Gate", g: 0.55, theme: "ice",     sky: ["#14284a", "#060c1c"], ground: ["#bcd8f0", "#5a7a9c"], glow: "#4fd1ff",
     feel: "Very light gravity. Floaty and forgiving.", obstacle: "ice spires" },
-  { name: "Mars, the Red Wall", short: "Mars", g: 0.8, theme: "mars", sky: ["#4a1c14", "#1a0806"], ground: ["#c8744e", "#6a2a1a"], glow: "#ff7a5d",
-    feel: "Light gravity. You'll fall a bit faster.", obstacle: "red rock towers" },
   { name: "Jupiter Storm", short: "Jupiter", g: 1.45, theme: "jupiter", sky: ["#5a3420", "#1e0e08"], ground: ["#e0a070", "#7a3a20"], glow: "#ffb84d", wind: true,
     feel: "Crushing gravity, plus wind gusts.", obstacle: "storm walls" },
+  { name: "Mars, the Red Wall", short: "Mars", g: 0.8, theme: "mars", sky: ["#4a1c14", "#1a0806"], ground: ["#c8744e", "#6a2a1a"], glow: "#ff7a5d",
+    feel: "Light gravity. You'll fall a bit faster.", obstacle: "red rock towers" },
   { name: "Earth, Final Stand", short: "Earth", g: 1.05, theme: "earth", sky: ["#123a5a", "#08142a"], ground: ["#4a8a52", "#24402a"], glow: "#5dff9b", rain: true,
     feel: "Rain squalls bring updrafts and downdrafts.", obstacle: "skyscrapers and antennas" },
 ];
@@ -180,14 +180,16 @@ const KEY = "alienLaunch.v1";
 let SAVE = { stars: {}, sound: true, seenHelp: false };
 try {
   Object.assign(SAVE, JSON.parse(localStorage.getItem(KEY)) || {});
-  if (SAVE.worldOrder !== 2) {
-    SAVE.stars = Object.fromEntries(Object.entries(SAVE.stars || {}).map(([key, value]) => [
-      key.replace(/^[23](?=-)/, world => world === "2" ? "3" : "2"), value
-    ]));
-    SAVE.worldOrder = 2;
-  }
 } catch (e) {}
-SAVE.pilotStars ??= { blip: SAVE.stars || {}, jelly: {}, runner: {} };
+const worldIndexMap = SAVE.worldOrder === 3 ? [0, 1, 2, 3]
+  : SAVE.worldOrder === 2 ? [0, 2, 1, 3] : [0, 2, 3, 1];
+const priorStars = SAVE.pilotStars ?? { blip: SAVE.stars };
+SAVE.pilotStars = Object.fromEntries(Object.keys(PILOTS).map(pilot => [
+  pilot, Object.fromEntries(Object.entries(priorStars[pilot] || {}).map(([key, value]) => [
+    key.replace(/^[0-3](?=-)/, world => String(worldIndexMap[world])), value
+  ]))
+]));
+SAVE.worldOrder = 3;
 delete SAVE.stars;
 const selectedPilot = () => Object.hasOwn(PILOTS, SAVE.pilot) ? SAVE.pilot : "blip";
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
