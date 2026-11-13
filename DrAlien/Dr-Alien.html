@@ -806,9 +806,15 @@ for (const name of ["effects"]) {
 
 function unlockAudio() {
   if (!byId("effects").checked && music.value === "off") return;
-  if (!window.AudioContext) return;
-  audioContext ??= new window.AudioContext();
-  if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return;
+  try {
+    if (!audioContext || audioContext.state === "closed") {
+      audioContext = new Audio();
+      nextNote = 0;
+    }
+    if (audioContext.state !== "running") audioContext.resume().catch(() => {});
+  } catch { /* Audio may be unavailable. */ }
 }
 
 function tone(note, delay, duration, volume, type) {
@@ -825,6 +831,10 @@ function tone(note, delay, duration, volume, type) {
   envelope.connect(audioContext.destination);
   oscillator.start(time);
   oscillator.stop(time + duration);
+  oscillator.onended = () => {
+    oscillator.disconnect();
+    envelope.disconnect();
+  };
 }
 
 function effect(notes) {
@@ -1007,7 +1017,7 @@ function setOverlay(title, copy, action, milestone = false) {
   byId("overlay").hidden = false;
 }
 
-// Progress is saved on this device: the level you're on, your speed and score. Losing knocks you back one level.
+// Progress is saved on this device: the level you're on, your speed and score. Losing through level 7 knocks you back one level.
 const PROGRESS_KEY = "dralien-progress";
 const HIGH_SCORE_KEY = "dralien-high-score";
 let highScore = Number(loadProgress()?.score) || 0;
@@ -1060,7 +1070,7 @@ function finish(won) {
       level < 20 ? "Next level" : "New mission", milestone);
   } else {
     const was = level;
-    level = Math.max(0, level - 1); // a failed containment knocks you back one level
+    if (level <= 7) level = Math.max(0, level - 1);
     saveProgress();
     setOverlay("Containment failed",
       was > level ? `Capsules reached the feed port. Back to level ${level}.` : "Capsules reached the feed port.",
@@ -1127,8 +1137,8 @@ function clearMatches() {
     if (piece.spore) clearedSpores++;
     if (piece.link !== undefined) {
       const [dx, dy] = directions[piece.link];
-      const partner = board[y + dy][x + dx];
-      delete partner.link;
+      const partner = board[y + dy]?.[x + dx];
+      if (partner?.link === (piece.link + 2) % 4) delete partner.link;
     }
     board[y][x] = null;
   }
@@ -1261,7 +1271,7 @@ byId("action").addEventListener("click", () => {
   else if (phase === "won" && level < 20) {
     level++;
     start(false);
-  } else if (phase === "lost") start(false); // retry at the level you were knocked back to
+  } else if (phase === "lost") start(false);
   else {
     clearProgress();
     byId("start-level").value = 0;
@@ -1398,10 +1408,15 @@ document.addEventListener("visibilitychange", () => {
     resetTouch();
     if (!menuOpen && !paused) togglePause();
   } else {
+    if (audioContext) unlockAudio();
     renderControlMode();
     syncPlayViewport();
   }
 });
+
+// A fresh gesture can resume audio after the browser interrupts it.
+document.addEventListener("pointerdown", unlockAudio);
+document.addEventListener("keydown", unlockAudio);
 
 const queenCanvas = byId("queen");
 const queenContext = queenCanvas.getContext("2d");
@@ -1455,6 +1470,7 @@ const virusCanvas = document.createElement("canvas");
 virusCanvas.width = virusCanvas.height = 64;
 const virusContext = virusCanvas.getContext("2d");
 const virusIds = ["mother", "runner", "jelly"];
+const virusFrames = colors.map(() => []);
 let lastVirusFrame = -Infinity;
 let lastFrame = performance.now();
 function frame(now) {
@@ -1463,10 +1479,15 @@ function frame(now) {
   if (lastVirusFrame === -Infinity || (!stillPortrait.matches && !paused && now - lastVirusFrame >= 125)) {
     lastVirusFrame = now;
     colors.forEach((color, index) => {
-      virusContext.clearRect(0, 0, 64, 64);
-      virusCharacters.draw(virusContext, virusIds[index], 32, 32, 23,
-        stillPortrait.matches ? 0 : now / 1000 + index);
-      document.documentElement.style.setProperty(`--virus-${color}`, `url("${virusCanvas.toDataURL()}")`);
+      // Reuse a short animation loop instead of encoding new PNGs throughout a run.
+      const frameIndex = stillPortrait.matches ? 0 : Math.floor(now / 125) % 48;
+      const frames = virusFrames[index];
+      if (!frames[frameIndex]) {
+        virusContext.clearRect(0, 0, 64, 64);
+        virusCharacters.draw(virusContext, virusIds[index], 32, 32, 23, frameIndex / 8 + index);
+        frames[frameIndex] = `url("${virusCanvas.toDataURL()}")`;
+      }
+      document.documentElement.style.setProperty(`--virus-${color}`, frames[frameIndex]);
     });
   }
   if (reactionTime > 0 && !menuOpen && !paused) {
