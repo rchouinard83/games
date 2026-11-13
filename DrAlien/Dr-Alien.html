@@ -316,9 +316,12 @@
       grid-area: 4 / 1 / 5 / 3;
       align-self: start; justify-self: center;
       width: min(86vw, 100%);
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
     }
     .lab:not(.menu-layout) #control-mode { grid-column: span 2; }
+    .lab:not(.menu-layout) .hud .settings:not(:has(#fullscreen:not([hidden]))) {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
   }
   #fullscreen { line-height: 1.05; }
   #fullscreen[aria-pressed="true"] { border-color: var(--cyan); }
