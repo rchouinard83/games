@@ -104,6 +104,33 @@
     box-shadow: inset 0 0 7px #0009;
   }
   .clearing { filter: brightness(2); opacity: .55; }
+  .chamber .tank {
+    margin-top: 8px;
+    border-radius: 24px 24px 16px 16px;
+  }
+  .chamber .tank::before {
+    content: ""; position: absolute; bottom: 100%; left: 34%; width: 32%; height: 9px;
+    border: 1px solid #52648e; border-bottom: 0; border-radius: 5px 5px 0 0;
+    background: linear-gradient(90deg, #263d60, #48678d, #263d60);
+    pointer-events: none;
+  }
+  .spore {
+    font-size: 0;
+    border: 1px solid var(--color);
+    border-radius: 999px;
+    background: var(--virus-art) center / 86% 100% no-repeat,
+      linear-gradient(145deg, color-mix(in srgb, var(--color) 32%, #fff), var(--color) 48%, #12182c 155%);
+    box-shadow: inset 0 -2px 3px #0005;
+  }
+  .spore.red { --virus-art: var(--virus-red); }
+  .spore.yellow { --virus-art: var(--virus-yellow); }
+  .spore.blue { --virus-art: var(--virus-blue); }
+  #milestone-scene { display: flex; justify-content: center; gap: 8px; }
+  #milestone-scene .spore { width: 22px; height: 22px; animation: spore-retreat .65s ease-in-out 2 alternate; }
+  @keyframes spore-retreat { to { transform: translateY(-8px) rotate(12deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #milestone-scene .spore { animation: none; }
+  }
   .overlay {
     position: absolute; inset: 7px; display: grid; place-content: center; text-align: center;
     border-radius: 10px; background: #080f20d9; padding: 12px; gap: 12px;
@@ -318,7 +345,7 @@
     }
     .lab:not(.menu-layout) .hud dl {
       grid-area: 1 / 2; align-self: center;
-      display: flex; justify-content: flex-end; gap: clamp(6px, 3vw, 16px);
+      display: flex; justify-content: flex-end; gap: clamp(4px, 1.5vw, 12px);
       margin: 0; text-align: center;
     }
     .lab:not(.menu-layout) .hud dl div { display: grid; padding: 0 2px; }
@@ -390,7 +417,7 @@
     #play-controls button { min-height: clamp(46px, 13dvh, 82px); font-size: clamp(19px, 4dvh, 26px); }
   }
   @media (orientation: landscape) and (max-height: 500px) {
-    .hud dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); text-align: center; }
+    .hud dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); text-align: center; }
     .hud dl div { display: grid; gap: 2px; }
     .hud dt { font-size: 11px; }
     .hud dd { font-size: 13px; }
@@ -510,6 +537,9 @@
         <div class="overlay" id="overlay">
           <p class="tag">Hive bio lab</p>
           <h2 id="overlay-title">Contain the breach</h2>
+          <div id="milestone-scene" aria-hidden="true" hidden>
+            <span class="piece spore red"></span><span class="piece spore yellow"></span><span class="piece spore blue"></span>
+          </div>
           <p class="muted" id="overlay-copy">Match four or more of one color in a row or column. Clear every spore.</p>
           <button id="action" type="button">Start mission</button>
           <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
@@ -531,6 +561,7 @@
         <div><dt>Level</dt><dd id="level">00</dd></div>
         <div><dt>Spores</dt><dd id="spores">—</dd></div>
         <div><dt>Score</dt><dd id="score">0</dd></div>
+        <div><dt>High Score</dt><dd id="high-score">0</dd></div>
       </dl>
       <div class="settings">
         <button id="pause" type="button" disabled>Pause</button>
@@ -546,6 +577,68 @@
 "use strict";
 // Hive Queen portrait and drawing primitives from Alien Defense.
 const TAU = Math.PI * 2;
+
+// Character art from Alien Ball.
+const virusCharacters = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const Y = "#ffe35d", B = "#7ab8ff", R = "#ff5d7a";
+  const list = [
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
 const R = "#ff5d7a";
 function shade(hex, f) {
   const n = parseInt(hex.slice(1), 16);
@@ -808,6 +901,8 @@ function pieceHTML(piece, flashing = false) {
   return `<span class="piece ${colors[piece.color]} ${shape}${flashing ? " clearing" : ""}">${marks[piece.color]}</span>`;
 }
 
+const renderedCells = [];
+
 function render() {
   const falling = new Map();
   if (capsule && phase !== "toss") {
@@ -818,13 +913,18 @@ function render() {
 
   cells.forEach((cell, index) => {
     const piece = falling.get(index) || board[Math.floor(index / COLS)][index % COLS];
-    cell.innerHTML = piece ? pieceHTML(piece, matches.has(index)) : "";
+    const markup = piece ? pieceHTML(piece, matches.has(index)) : "";
+    if (renderedCells[index] !== markup) {
+      cell.innerHTML = markup;
+      renderedCells[index] = markup;
+    }
   });
   byId("next").innerHTML = next ? next.map((color, i) => pieceHTML({ color, link: i * 2 })).join("") : "—";
   byId("next").setAttribute("aria-label", next ? `Next capsule: ${next.map(color => colorNames[color]).join(" and ")}` : "Next capsule");
   byId("level").textContent = String(level).padStart(2, "0");
   byId("spores").textContent = phase === "ready" ? "—" : spores;
   byId("score").textContent = score.toLocaleString();
+  byId("high-score").textContent = highScore.toLocaleString();
 }
 
 function shuffle(items) {
@@ -871,7 +971,8 @@ function fits(candidate) {
   ));
 }
 
-function setOverlay(title, copy, action) {
+function setOverlay(title, copy, action, milestone = false) {
+  byId("milestone-scene").hidden = !milestone;
   byId("overlay-title").textContent = title;
   byId("overlay-copy").textContent = copy;
   byId("action").textContent = action;
@@ -880,6 +981,9 @@ function setOverlay(title, copy, action) {
 
 // Progress is saved on this device: the level you're on, your speed and score. Losing knocks you back one level.
 const PROGRESS_KEY = "dralien-progress";
+const HIGH_SCORE_KEY = "dralien-high-score";
+let highScore = Number(loadProgress()?.score) || 0;
+try { highScore = Math.max(highScore, Number(localStorage.getItem(HIGH_SCORE_KEY)) || 0); } catch { /* storage can be unavailable */ }
 function loadProgress() {
   try { const p = JSON.parse(localStorage.getItem(PROGRESS_KEY)); return p && Number.isFinite(p.level) ? p : null; } catch { return null; }
 }
@@ -922,7 +1026,10 @@ function finish(won) {
     : "“The feed is jammed. Vent the chamber.”";
   if (won) {
     saveProgress(Math.min(20, level + 1)); // the next level is waiting if you close the game now
-    setOverlay("Chamber secured", "Every spore cleared.", level < 20 ? "Next level" : "New mission");
+    const milestone = speed > 0 && level > 0 && level % 5 === 0;
+    setOverlay(milestone ? `Level ${level} cleared` : "Chamber secured",
+      milestone ? "The spore colony retreats." : "Every spore cleared.",
+      level < 20 ? "Next level" : "New mission", milestone);
   } else {
     const was = level;
     level = Math.max(0, level - 1); // a failed containment knocks you back one level
@@ -1000,6 +1107,10 @@ function clearMatches() {
   reactToClear();
   spores -= clearedSpores;
   score += clearedSpores * 100 * (speed + 1) * chain;
+  if (score > highScore) {
+    highScore = score;
+    try { localStorage.setItem(HIGH_SCORE_KEY, String(highScore)); } catch { /* keep the session high score */ }
+  }
   matches.clear();
   phase = "settle";
   remaining = 75;
@@ -1308,10 +1419,24 @@ function drawCapsuleToss() {
   capsuleToss.style.transform = `translate(${x}px, ${y}px)`;
 }
 
+const virusCanvas = document.createElement("canvas");
+virusCanvas.width = virusCanvas.height = 64;
+const virusContext = virusCanvas.getContext("2d");
+const virusIds = ["mother", "runner", "jelly"];
+let lastVirusFrame = -Infinity;
 let lastFrame = performance.now();
 function frame(now) {
   const elapsed = Math.min(now - lastFrame, 50);
   lastFrame = now;
+  if (lastVirusFrame === -Infinity || (!stillPortrait.matches && !paused && now - lastVirusFrame >= 125)) {
+    lastVirusFrame = now;
+    colors.forEach((color, index) => {
+      virusContext.clearRect(0, 0, 64, 64);
+      virusCharacters.draw(virusContext, virusIds[index], 32, 32, 23,
+        stillPortrait.matches ? 0 : now / 1000 + index);
+      document.documentElement.style.setProperty(`--virus-${color}`, `url("${virusCanvas.toDataURL()}")`);
+    });
+  }
   if (reactionTime > 0 && !menuOpen && !paused) {
     reactionTime -= elapsed;
     if (reactionTime <= 0) clearQueenReaction();
