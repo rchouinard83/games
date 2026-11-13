@@ -708,7 +708,7 @@ function moveHecklers(){
 }
 function aim(){
   const swing=Math.sin(time*world().beat);
-  const edge=Math.sign(swing)*1.28;
+  const edge=Math.sign(swing)*(lane().kind==="rails"?2.65:1.28);
   return position+(edge-position)*Math.abs(swing)**(1/myBall().wobble);
 }
 function laneEvents(){
@@ -1236,11 +1236,26 @@ function draw(){
   if(state==="aim"){
     const target=aim(), curve=(gesture?.preview??hook)*myBall().hook;
     const line=y=>position+(target-position)*(y-.52)/13.6+curve*hookProgress(y)**2;
+    let guideX=position, guideY=.52, lateral=(target-position)/13.6;
+    function guideAt(y){
+      if(lane().kind!=="rails")return line(y);
+      while(guideY<y){
+        const nextY=Math.min(y,guideY+.04);
+        guideX+=lateral*(nextY-guideY)+curve*(hookProgress(nextY)**2-hookProgress(guideY)**2);
+        if(Math.abs(guideX)>HALF_LANE){
+          const side=Math.sign(guideX);
+          guideX=side*Math.max(0,2*HALF_LANE-Math.abs(guideX));
+          lateral=-side*Math.abs(lateral)*1.7;
+        }
+        guideY=nextY;
+      }
+      return guideX;
+    }
     for(let i=1;i<=13;i++){
-      const y=.52+i*.94,p=project(line(y),y);
+      const y=.52+i*.94,p=project(guideAt(y),y);
       circle(p.x,p.y,3.5*p.scale,y>HOOK_START&&curve?"#ffd196":"#efff9ee5");
     }
-    const p=project(line(13.67),13.67),r=5;
+    const p=project(guideAt(13.67),13.67),r=5;
     ctx.strokeStyle="#f0ff98";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,r,0,TAU);ctx.stroke();
   }
   const objects=pins.map(p=>({y:p.y,draw:()=>paintAlien(p)}));
