@@ -301,7 +301,11 @@
     }
     .lab:not(.menu-layout) #board .cell { aspect-ratio: auto; min-height: 0; }
     .lab:not(.menu-layout) #play-controls { grid-area: 3 / 1 / 4 / 3; }
-    .lab:not(.menu-layout) .queen { display: none; }
+    .lab:not(.menu-layout) .queen {
+      grid-area: 1 / 1; align-self: center; padding: 0; border: 0; background: none;
+    }
+    .lab:not(.menu-layout) .queen-art { max-width: 44px; margin: 0; }
+    .lab:not(.menu-layout) .queen > :not(canvas) { display: none; }
     .lab:not(.menu-layout) .hud { display: contents; }
     .lab:not(.menu-layout) .hud > .tag { display: none; }
     .lab:not(.menu-layout) .hud #next {
@@ -309,7 +313,8 @@
     }
     .lab:not(.menu-layout) .hud dl {
       grid-area: 1 / 2; align-self: center;
-      display: flex; justify-content: space-around; margin: 0; text-align: center;
+      display: flex; justify-content: flex-end; gap: clamp(6px, 3vw, 16px);
+      margin: 0; text-align: center;
     }
     .lab:not(.menu-layout) .hud dl div { display: grid; padding: 0 2px; }
     .lab:not(.menu-layout) .hud dt { font-size: 10px; }
@@ -325,6 +330,11 @@
     }
   }
   #fullscreen { line-height: 1.05; }
+  #capsule-toss {
+    position: fixed; top: 0; left: 0; z-index: 5; display: flex;
+    pointer-events: none;
+  }
+  #capsule-toss .piece { width: 50%; height: 100%; margin: 0; }
   #fullscreen[aria-pressed="true"] { border-color: var(--cyan); }
   @media (orientation: landscape) {
     main:has(.lab:not(.menu-layout)) {
@@ -793,7 +803,7 @@ function pieceHTML(piece, flashing = false) {
 
 function render() {
   const falling = new Map();
-  if (capsule) {
+  if (capsule && phase !== "toss") {
     positions(capsule).forEach(([x, y], i) => {
       falling.set(y * COLS + x, { color: capsule.colors[i], link: (capsule.rotation + i * 2) % 4 });
     });
@@ -923,8 +933,12 @@ function spawn() {
     finish(false);
     return;
   }
-  phase = "fall";
-  remaining = speeds[speed];
+  phase = stillPortrait.matches ? "fall" : "toss";
+  remaining = phase === "toss" ? tossDuration : speeds[speed];
+  if (phase === "toss") {
+    capsuleToss.innerHTML = capsule.colors.map((color, i) => pieceHTML({ color, link: i * 2 })).join("");
+    drawCapsuleToss();
+  }
   byId("signal").textContent = "Live";
 }
 
@@ -1258,6 +1272,29 @@ function reactToClear() {
 }
 
 const stillPortrait = matchMedia("(prefers-reduced-motion: reduce)");
+const tossDuration = 320;
+const capsuleToss = document.createElement("div");
+capsuleToss.id = "capsule-toss";
+capsuleToss.hidden = true;
+capsuleToss.setAttribute("aria-hidden", "true");
+document.body.append(capsuleToss);
+
+function drawCapsuleToss() {
+  capsuleToss.hidden = phase !== "toss" || menuOpen || paused;
+  if (capsuleToss.hidden) return;
+
+  const queen = queenCanvas.getBoundingClientRect();
+  const target = cells[capsule.x].getBoundingClientRect();
+  const progress = Math.min(1, 1 - remaining / tossDuration);
+  const startX = queen.right - target.width;
+  const startY = queen.top + queen.height / 2;
+  const x = startX + (target.left - startX) * progress;
+  const y = startY + (target.top - startY) * progress - 24 * Math.sin(Math.PI * progress);
+  capsuleToss.style.width = `${2 * target.width}px`;
+  capsuleToss.style.height = `${target.height}px`;
+  capsuleToss.style.transform = `translate(${x}px, ${y}px)`;
+}
+
 let lastFrame = performance.now();
 function frame(now) {
   const elapsed = Math.min(now - lastFrame, 50);
@@ -1278,16 +1315,20 @@ function frame(now) {
 
   if (!document.hidden && (menuOpen || !paused)) updateMusic();
 
-  if (!menuOpen && !paused && ["fall", "flash", "settle"].includes(phase)) {
+  if (!menuOpen && !paused && ["toss", "fall", "flash", "settle"].includes(phase)) {
     remaining -= elapsed;
     if (remaining <= 0) {
-      if (phase === "fall") drop();
+      if (phase === "toss") {
+        phase = "fall";
+        remaining = speeds[speed];
+      } else if (phase === "fall") drop();
       else if (phase === "flash") clearMatches();
       else if (gravityStep()) remaining = 75;
       else resolve();
       render();
     }
   }
+  if (phase === "toss" || !capsuleToss.hidden) drawCapsuleToss();
   requestAnimationFrame(frame);
 }
 render();
