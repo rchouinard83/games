@@ -237,6 +237,9 @@ footer .padKnob { width:42px; left:50%; }
   border:0; border-radius:8px; background:#22225a;
 }
 #panel .menu-select select:focus-visible { outline:2px solid #a7f5e5; outline-offset:-2px; }
+#panel #menu-main > a.arcade { margin-top:8px; }
+#panel #menu-main > button + button { margin-top:8px; }
+#guide svg { display:block; width:100%; height:100px; border-radius:12px; background:#101a34; }
 </style>
 <main>
   <header><strong>Alien Tunnel Run</strong><span>Section <b id="section">1</b></span><span>Rings <b id="rings">0</b></span><span>Coins <b id="coins">0</b></span><span>Best coins <b id="best">0</b></span></header>
@@ -252,6 +255,7 @@ footer .padKnob { width:42px; left:50%; }
 </main>
 <div class="arcade-menu" id="menu">
   <section id="panel" class="arcade-panel" aria-labelledby="title">
+    <div id="menu-main">
     <h1 id="title">Alien Tunnel Run</h1>
     <p id="summary">Collect coins and fly through the gaps in the tunnel barriers.</p>
     <button id="play" class="primary" type="button">Play</button>
@@ -269,6 +273,32 @@ footer .padKnob { width:42px; left:50%; }
     </label>
     <button id="help" type="button">How to Play</button>
     <a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
+    </div>
+    <div id="guide" class="guide" hidden>
+      <h2 id="guide-title" tabindex="-1">How to Play</h2>
+      <div class="guide-step">
+        <p class="step">Step 1 of 3</p>
+        <h2>Steer</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><path d="M25 50H215" stroke="#526b96" stroke-width="8" stroke-linecap="round"/><rect x="93" y="38" width="54" height="24" rx="12" fill="#88f7dc"/></svg>
+        <p>Drag the pad or hold ← / →.</p>
+      </div>
+      <div class="guide-step" hidden>
+        <p class="step">Step 2 of 3</p>
+        <h2>Dodge</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><path d="M94 70a35 35 0 1 1 52 0" fill="none" stroke="#ed6899" stroke-width="9"/><path d="m168 52 12-15 17 6 5 17-15 11-17-5z" fill="#8393b2"/><circle cx="120" cy="76" r="6" fill="#88f7dc"/></svg>
+        <p>Fly through gaps and around boulders.</p>
+      </div>
+      <div class="guide-step" hidden>
+        <p class="step">Step 3 of 3</p>
+        <h2>Collect</h2>
+        <svg viewBox="0 0 240 100" aria-hidden="true"><circle cx="120" cy="49" r="20" fill="#ffda69"/><path d="M120 37v24" stroke="#966525" stroke-width="4"/></svg>
+        <p>Grab gold coins. Each clear speeds you up.</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="guide-back">Back</button>
+        <button class="primary" type="button" id="guide-next">Next</button>
+      </div>
+    </div>
   </section>
 </div>
 <script>
@@ -720,8 +750,39 @@ byId("retry").onclick = () => {
   phase = "ready";
 };
 byId("pause").onclick = () => showMenu(false);
-byId("help").onclick = () => {
-  byId("summary").textContent = "Drag the bottom bar or hold ← / → to steer around the tunnel. Fly through the gaps and grab coins. Every barrier makes the run faster and narrows the gaps. Sections advance every six passes.";
+const guideSteps = [...document.querySelectorAll(".guide-step")];
+let guideStep = 0;
+
+function renderGuide() {
+  guideSteps.forEach((step, index) => { step.hidden = index !== guideStep; });
+  byId("guide-next").textContent = guideStep === guideSteps.length - 1 ? "Done" : "Next";
+}
+
+function showGuide(open) {
+  if (open) {
+    guideStep = 0;
+    renderGuide();
+  }
+  byId("menu-main").hidden = open;
+  byId("guide").hidden = !open;
+  byId("panel").setAttribute("aria-labelledby", open ? "guide-title" : "title");
+  byId(open ? "guide-title" : "help").focus();
+}
+
+byId("help").onclick = () => showGuide(true);
+byId("guide-back").onclick = () => {
+  if (guideStep === 0) showGuide(false);
+  else {
+    guideStep--;
+    renderGuide();
+  }
+};
+byId("guide-next").onclick = () => {
+  if (guideStep === guideSteps.length - 1) showGuide(false);
+  else {
+    guideStep++;
+    renderGuide();
+  }
 };
 addEventListener("keydown", event => {
   if (phase !== "playing") return;
