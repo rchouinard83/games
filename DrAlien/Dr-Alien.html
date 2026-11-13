@@ -302,6 +302,7 @@
     main:has(.lab:not(.menu-layout)) {
       height: var(--visible-height, 100vh);
       min-height: 0;
+      padding-top: calc(max(10px, env(safe-area-inset-top)) + 24px);
       padding-bottom: calc(max(10px, env(safe-area-inset-bottom)) + 12px);
       overflow-y: auto;
       touch-action: auto;
