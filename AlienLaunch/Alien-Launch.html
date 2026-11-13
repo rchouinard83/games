@@ -36,7 +36,7 @@
   #box p { color: #c9d3f0; font-size: 15px; line-height: 1.45; margin: 6px 0 12px; }
   #box .kicker { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0; }
   .big { display: block; width: 100%; margin: 8px 0; padding: 13px 12px; border-radius: 12px; border: 1px solid var(--line); background: #17224a; color: var(--ink); font: inherit; font-size: 17px; font-weight: 800; }
-  #arcadeLink { flex: none; max-width: 400px; margin: 8px 0 0; text-align: center; text-decoration: none; }
+  #arcadeLink { flex: none; max-width: none; margin: 8px 0 0; text-align: center; text-decoration: none; }
   .big.main { background: #1d4a3a; border-color: #2f7a5c; color: var(--good); }
   .big:disabled { opacity: 0.4; }
   .big small { display: block; font-size: 12px; font-weight: 650; color: var(--dim); margin-top: 2px; }
@@ -59,6 +59,8 @@
   .stats small { display: block; font-size: 11px; color: var(--dim); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .bigStars { font-size: 44px; letter-spacing: 0.1em; color: var(--gold); margin: 2px 0; }
   .bigStars i { color: #2a3560; font-style: normal; }
+  .pilot-picker { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .pilot-picker canvas { display:block; width:40px; height:40px; margin:auto; background:none; }
 </style>
 </head>
 <body>
@@ -73,7 +75,6 @@
 <div id="bubble"><canvas id="zibFace" width="80" height="80"></canvas><span id="bubbleText"></span></div>
 <div id="overlay">
   <div id="box"></div>
-  <a class="big" id="arcadeLink" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>
 </div>
 <script>
 "use strict";
@@ -100,6 +101,68 @@ const STAGES = [
   { name: "Earth, Final Stand", short: "Earth", g: 1.05, theme: "earth", sky: ["#123a5a", "#08142a"], ground: ["#4a8a52", "#24402a"], glow: "#5dff9b", rain: true,
     feel: "Rain squalls bring updrafts and downdrafts.", obstacle: "skyscrapers and antennas" },
 ];
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", B = "#7ab8ff";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+const PILOTS = { blip: 1, jelly: 1.25, runner: 1.50 };
 const MISSIONS = 3;
 // mission settings: number of obstacle gates, gap size, flight speed
 const INTRO_GAPS = [0.55, 0.44, 0.52, 0.46];
@@ -124,10 +187,13 @@ try {
     SAVE.worldOrder = 2;
   }
 } catch (e) {}
+SAVE.pilotStars ??= { blip: SAVE.stars || {}, jelly: {}, runner: {} };
+delete SAVE.stars;
+const selectedPilot = () => Object.hasOwn(PILOTS, SAVE.pilot) ? SAVE.pilot : "blip";
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
-const starsOf = (st, m) => SAVE.stars[st + "-" + m] || 0;
+const starsOf = (st, m) => SAVE.pilotStars[selectedPilot()][st + "-" + m] || 0;
 const unlocked = (st, m) => (st === 0 && m === 0) || (m > 0 ? starsOf(st, m - 1) > 0 : starsOf(st - 1, MISSIONS - 1) > 0);
-const totalStars = () => Object.values(SAVE.stars).reduce((a, b) => a + b, 0);
+const totalStars = () => Object.values(SAVE.pilotStars[selectedPilot()]).reduce((a, b) => a + b, 0);
 
 // ---------- sound ----------
 let AC = null, thrustNode = null;
@@ -170,8 +236,10 @@ const REST = () => GROUND() - SHIP_R() * 0.95; // centre height when the legs to
 function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = false) {
   const random = rand(seed);
   const ST = STAGES[st], spec = missionSpec(st, m);
+  const pilot = selectedPilot();
+  spec.speed *= PILOTS[pilot];
   const intro = st === 0 && m === 0, ready = retry || intro;
-  G = { st, m, ST, spec, seed, intro, phase: ready ? "launch" : "count", t: 0, flightTime: 0, count: ready ? 0 : 3, tapAt: null, boostFlash: 0, touchControl: false,
+  G = { st, m, ST, spec, pilot, seed, intro, phase: ready ? "launch" : "count", t: 0, flightTime: 0, count: ready ? 0 : 3, tapAt: null, boostFlash: 0, touchControl: false,
         x: 0, y: REST(), vy: 0, vx: 0, ang: 0,   // x = distance flown along the course
         gates: [], tunnels: [], cans: [], debris: [], fuel: intro ? 100 : FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, raining: false, windRandom: rand(seed ^ 0x9e3779b9), landStart: 0, padX: 0, touch: null, stars: 0 };
   // the course: launch pad at 0, then gates and tunnels, then the landing pad
@@ -205,7 +273,9 @@ function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = f
   };
   for (let i = 0; i < spec.gates; i++) {
     if (tunnelAt.has(i)) { // a winding tunnel through solid rock
-      const len = S * (1.5 + st * 0.25 + random() * 0.4), amp = 0.07 + st * 0.012 + random() * 0.035;
+      const len = S * (1.5 + st * 0.25 + random() * 0.4);
+      const bendScale = ST.theme === "mars" && m === 2 ? 0.8 : 1;
+      const amp = (0.07 + st * 0.012 + random() * 0.035) * bendScale;
       const T = { x0: gx, x1: gx + len, base: clamp(cy, 0.32, 0.58), amp, k: 0.7 + random() * 0.35 + st * 0.08, ph: random() * TAU, h: spec.gap * 0.42, seed: random() * 9 };
       G.tunnels.push(T); items.push({ kind: "tunnel", x0: T.x0, x1: T.x1, inY: tunnelCy(T, T.x0), outY: tunnelCy(T, T.x1), T });
       G.cans.push({ x: lerp(T.x0, T.x1, 0.55), y: tunnelCy(T, lerp(T.x0, T.x1, 0.55)), got: false, seed: random() * 9 }); // a cell inside every tunnel
@@ -401,7 +471,10 @@ function touchdown() {
   G.landing = { soft, centre, speed: G.vy / S };
   G.stars = 1 + (soft > 0.45 ? 1 : 0) + (soft > 0.45 && centre > 0.8 ? 1 : 0);
   G.score += 50 + Math.round(soft * 100) + Math.round(centre * 50) + Math.round(G.fuel);
-  const key = G.st + "-" + G.m; SAVE.stars[key] = Math.max(SAVE.stars[key] || 0, G.stars); save();
+  const key = G.st + "-" + G.m;
+  const pilotStars = SAVE.pilotStars[G.pilot];
+  pilotStars[key] = Math.max(pilotStars[key] || 0, G.stars);
+  save();
   SFX.land(); hud();
   say(G.stars === 3 ? "Perfect landing! Textbook, controller." : G.stars === 2 ? "Nice and soft. Well done!" : "Down in one piece. Try for a softer touch!", 3);
 }
@@ -479,7 +552,7 @@ function rand(seed) { return () => { seed = (Math.imul(seed, 1664525) + 10139042
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
 
 // the lander: a little pod with Commander Zib's crew inside, landing legs and a thruster
-function lander(c, x, y, r, ang, t, thrusting, crewTalk = false) {
+function lander(c, x, y, r, ang, t, thrusting, pilot = selectedPilot()) {
   c.save(); c.translate(x, y); c.rotate(ang);
   if (thrusting) { const fl = 0.7 + 0.3 * Math.sin(t * 40); // flame
     const g = c.createLinearGradient(0, r * 0.6, 0, r * 2); g.addColorStop(0, "#fff6c0"); g.addColorStop(0.4, "#ffb84d"); g.addColorStop(1, "rgba(255,90,40,0)");
@@ -492,11 +565,13 @@ function lander(c, x, y, r, ang, t, thrusting, crewTalk = false) {
   for (let k = -2; k <= 2; k++) { c.fillStyle = (Math.floor(t * 6) + k) % 2 ? "#ffd25d" : "#4fd1ff"; c.beginPath(); c.arc(k * r * 0.38, r * 0.32, r * 0.07, 0, TAU); c.fill(); }
   c.fillStyle = "rgba(190,235,255,0.35)"; c.beginPath(); c.arc(0, -r * 0.05, r * 0.6, PI, 0); c.fill(); // glass dome
   c.strokeStyle = "rgba(220,245,255,0.7)"; c.lineWidth = r * 0.05; c.stroke();
-  c.fillStyle = "#5dff9b"; c.beginPath(); c.arc(0, r * 0.1, r * 0.4, PI, 0); c.fill(); // Zib
-  c.fillStyle = "#fff"; c.beginPath(); c.arc(0, -r * 0.12, r * 0.2, 0, TAU); c.fill();
-  c.fillStyle = "#10162c"; c.beginPath(); c.arc(r * 0.05, -r * 0.1 + (thrusting ? -r * 0.04 : r * 0.03), r * 0.09, 0, TAU); c.fill();
-  c.strokeStyle = "#5dff9b"; c.lineWidth = r * 0.06; c.beginPath(); c.moveTo(0, -r * 0.3); c.lineTo(0, -r * 0.5); c.stroke();
-  c.fillStyle = "#ffd25d"; c.beginPath(); c.arc(0, -r * 0.52, r * 0.06, 0, TAU); c.fill();
+  c.save();
+  c.beginPath();
+  c.arc(0, -r * 0.05, r * 0.6, PI, 0);
+  c.closePath();
+  c.clip();
+  CHARS.draw(c, pilot, 0, -r * 0.24, r * 0.32, t);
+  c.restore();
   c.restore();
 }
 
@@ -689,7 +764,7 @@ function draw(t) {
   if (G.ST.wind && Math.abs(G.wind) > 1) { ctx.strokeStyle = `rgba(255,230,200,${Math.min(0.35, Math.abs(G.wind) / (S * 2))})`; ctx.lineWidth = 2; // wind streaks
     for (let k = 0; k < 14; k++) { const x = (k * 97 + t * 300) % W, y = (k * 53 + (G.wind > 0 ? t : -t) * 200) % H; ctx.beginPath(); ctx.moveTo(x, (y + H) % H); ctx.lineTo(x - 6, ((y + H) % H) + Math.sign(G.wind) * 26); ctx.stroke(); } }
   for (const p of G.fx) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); } ctx.globalAlpha = 1;
-  if (!G.over) lander(ctx, sx, G.y, SHIP_R(), G.ang, t, !G.done && ((holding && G.fuel > 0 && G.phase !== "count") || G.boostFlash > 0));
+  if (!G.over) lander(ctx, sx, G.y, SHIP_R(), G.ang, t, !G.done && ((holding && G.fuel > 0 && G.phase !== "count") || G.boostFlash > 0), G.pilot);
   if (!G.over && !G.done && G.fuel <= 0 && G.t % 0.6 < 0.4) { ctx.fillStyle = "#ff5d7a"; ctx.font = "900 16px system-ui"; ctx.textAlign = "center"; ctx.fillText("NO FUEL", sx, G.y - SHIP_R() - 12); }
   const fb = $("hFuel"), fk = Math.round(G.fuel); if (fb.dataset.k != fk) { fb.dataset.k = fk; fb.style.width = fk + "%"; fb.style.background = fk > 50 ? "#5dff9b" : fk > 25 ? "#ffd25d" : "#ff5d7a"; $("hFuelPct").textContent = fk + "%"; }
   drawSpeedMeter();
@@ -720,7 +795,7 @@ function say(html, secs = 3) { $("bubbleText").innerHTML = html; $("bubble").cla
 // ============================================================
 //  MENUS
 // ============================================================
-function openMenu(html, anim = null) { paused = true; cancelThrust(); menuAnim = anim; if (G) G.boostFlash = 0; $("box").innerHTML = html; $("box").scrollTop = 0; $("overlay").classList.remove("hidden"); $("hud").style.visibility = "hidden"; wire(); }
+function openMenu(html, anim = null) { paused = true; cancelThrust(); menuAnim = anim; if (G) G.boostFlash = 0; $("box").innerHTML = html + `<a class="big" id="arcadeLink" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>`; $("box").scrollTop = 0; $("overlay").classList.remove("hidden"); $("hud").style.visibility = "hidden"; wire(); }
 function closeMenu() { paused = false; menuAnim = null; $("overlay").classList.add("hidden"); $("hud").style.visibility = ""; last = performance.now(); }
 function wire() {
   for (const b of $("box").querySelectorAll("[data-act]")) b.onclick = () => { audio(); ACT[b.dataset.act](b.dataset.arg); };
@@ -736,11 +811,20 @@ function planetIcon(cvs, st) {
 
 function titleMenu() {
   openMenu(`<canvas id="titleArt"></canvas><h1>Alien Launch</h1>
-    <p>Blast off, weave through the obstacles, and land softly. Every planet pulls a little harder.</p>
+    <p>Blast off, weave through the obstacles, and land softly. Pick a pilot to set your flight speed.</p>
+    <div class="row pilot-picker" aria-label="Choose your pilot">
+      ${Object.keys(PILOTS).map(id => `<button class="big ${(SAVE.pilot || "blip") === id ? "main" : ""}" aria-pressed="${(SAVE.pilot || "blip") === id}" data-act="pilot" data-arg="${id}"><canvas data-pilot="${id}" width="64" height="64" aria-hidden="true"></canvas>${CHARS.byId(id).name}<small>${id === "blip" ? "Standard" : id === "jelly" ? "Fast" : "Fastest"}</small></button>`).join("")}
+    </div>
     <button class="big main" data-act="missions">Play<small>${totalStars()} of ${STAGES.length * MISSIONS * 3} stars</small></button>
     <div class="row"><button class="big" data-act="help" data-arg="title">How to play</button><button class="big" data-act="sound">Sound: ${SAVE.sound ? "On" : "Off"}</button></div>`, titleAnim);
 }
-function titleAnim(t) { // the lander bobbing over a pad
+function titleAnim(t) {
+  for (const portrait of document.querySelectorAll("[data-pilot]")) {
+    const context = portrait.getContext("2d");
+    context.clearRect(0, 0, 64, 64);
+    CHARS.draw(context, portrait.dataset.pilot, 32, 33, 22, t);
+  }
+  // the lander bobbing over a pad
   const cvs = $("titleArt"); if (!cvs) return;
   const w = cvs.clientWidth, h = cvs.clientHeight, d = Math.min(2, window.devicePixelRatio || 1);
   if (cvs.width !== Math.round(w * d)) { cvs.width = Math.round(w * d); cvs.height = Math.round(h * d); }
@@ -853,8 +937,9 @@ function demoGravity(c, t, w, h) {
 let pending = [0, 0];
 const ACT = {
   title: () => titleMenu(),
+  pilot: id => { if (Object.hasOwn(PILOTS, id)) { SAVE.pilot = id; save(); titleMenu(); } },
   missions: () => missionsMenu(),
-  go: arg => { pending = String(arg).split("|").map(Number); if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("first", 0); } else ACT.start(); },
+  go: arg => { pending = String(arg).split("|").map(Number); if (!unlocked(...pending)) return; if (!SAVE.seenHelp) { SAVE.seenHelp = true; save(); helpMenu("first", 0); } else ACT.start(); },
   start: () => { newMission(pending[0], pending[1]); closeMenu(); },
   retry: () => { newMission(G.st, G.m, G.seed, true); closeMenu(); },
   help: arg => { const [back, page] = String(arg).split("|"); helpMenu(back, +(page || 0)); },
