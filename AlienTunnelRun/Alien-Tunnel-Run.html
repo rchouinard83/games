@@ -212,7 +212,7 @@ header, footer { display:flex; align-items:center; gap:12px; }
 header { justify-content:space-between; flex-wrap:wrap; }
 header strong { color:#88f7dc; }
 canvas { display:block; width:100%; height:100%; min-height:0; border-radius:16px; background:#0e1430; }
-footer { display:grid; grid-template-columns:1fr auto 1fr; }
+footer { display:grid; grid-template-columns:1fr auto 1fr; padding-bottom:clamp(12px, 3dvh, 24px); }
 #pause { grid-column:3; justify-self:end; }
 .joystick {
   grid-column:2; position:relative; width:clamp(84px,18dvh,116px); aspect-ratio:1;
@@ -264,7 +264,7 @@ footer { display:grid; grid-template-columns:1fr auto 1fr; }
     <h1 id="title">Alien Tunnel Run</h1>
     <p id="summary">Collect coins and fly through the gaps in the tunnel barriers.</p>
     <button id="play" class="primary" type="button">Play</button>
-    <button id="retry" type="button" hidden>Restart</button>
+    <button id="main-menu" type="button" hidden>Back</button>
     <div id="run-options">
       <p class="kicker">Choose your alien</p>
       <div id="alien-choices" aria-label="Choose your alien" role="group"></div>
@@ -557,7 +557,7 @@ function showMenu(crashed) {
   keys.clear();
   byId("run-options").hidden = !crashed;
   byId("play").textContent = crashed ? "Try again" : "Resume";
-  byId("retry").hidden = crashed;
+  byId("main-menu").hidden = false;
   byId("summary").textContent = crashed
     ? `Section ${section()} · ${coins} ${coins === 1 ? "coin" : "coins"} collected.`
     : "Run paused.";
@@ -754,12 +754,13 @@ function frame(now) {
 }
 
 byId("play").onclick = () => phase === "paused" ? resume() : start();
-byId("retry").onclick = () => {
-  byId("run-options").hidden = false;
-  byId("play").textContent = "Start new run";
-  byId("retry").hidden = true;
-  byId("summary").textContent = "Choose an alien for the next run.";
+byId("main-menu").onclick = () => {
   phase = "ready";
+  byId("run-options").hidden = false;
+  byId("main-menu").hidden = true;
+  byId("summary").textContent = "Collect coins and fly through the gaps in the tunnel barriers.";
+  byId("play").textContent = "Play";
+  byId("play").focus({ preventScroll: true });
 };
 byId("pause").onclick = () => showMenu(false);
 const guideSteps = [...document.querySelectorAll(".guide-step")];
@@ -813,7 +814,8 @@ function steer(event) {
   const bounds = steering.getBoundingClientRect();
   const x = event.clientX - bounds.left - bounds.width / 2;
   const y = event.clientY - bounds.top - bounds.height / 2;
-  if (Math.hypot(x, y) < bounds.width * .11) return;
+  // Small circles close to the center still steer through the full turn.
+  if (Math.hypot(x, y) < 6) return;
   angle = Math.atan2(y, x);
   pointJoystick();
 }
