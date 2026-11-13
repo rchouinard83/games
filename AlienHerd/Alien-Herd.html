@@ -122,6 +122,12 @@
     #stage { grid-area: 1 / 2 / 4 / 3; height: 100%; }
   }
   @media (max-width: 380px) { #hud { gap: 3px; } .chip { padding: 4px 5px; } .hudBtn { padding: 0 7px; } }
+  #box .stage-list { grid-template-columns:1fr; }
+  #box .worldCard i { display:grid; place-items:center; }
+  #box .worldCard:disabled i { filter:grayscale(1); }
+  #box .levelList { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  #box .levelList button { padding:5px 0; min-height:50px; }
+  #box .levelList small { font-size:10px; }
 </style>
 </head>
 <body>
@@ -170,7 +176,7 @@ const wall = (x, y, width = 10) => [x, y - 24, x + width, y - 1];
 const pool = (left, right, y) => [left, right, y];
 const WORLDS = [
   {
-    name: "Moon Training Base", color: "#8fe9ff", rock: [113, 138, 178], sky: ["#0b1837", "#253d63"],
+    name: "Oort Gate Training", color: "#8fe9ff", rock: [113, 138, 178], sky: ["#0b1837", "#253d63"],
     intro: "Six short rescues that start with one job and build up to trickier placements.",
     levels: [
       { name: "Open the Route", hatch: [58, 134], exit: [124, 159], crew: 5, need: 4, jobs: { bash: 3 },
@@ -182,15 +188,15 @@ const WORLDS = [
       { name: "Dig Down", hatch: [43, 98], exit: [137, 164], crew: 6, need: 4, jobs: { dig: 2 }, ground: [floor(124), floor(165)],
         hint: "Select Digger and tap an alien on the upper shelf. The rest can follow through the hole." },
       { name: "Build a Bridge", hatch: [43, 133], exit: [137, 159], crew: 6, need: 4, jobs: { build: 3 }, ground: [floor(160, 8, 83), floor(160, 100)], lava: [pool(84, 99, 202)],
-        hint: "Start a Builder just before the gap. The stairs give the rest of the herd a way across." },
+        hint: "Assign Builder as an alien reaches the gold marker. The herd can follow the stairs." },
       { name: "Turn Them Around", hatch: [64, 133], exit: [29, 159], crew: 7, need: 4, jobs: { block: 2 }, ground: [floor(160, 8, 125)], lava: [pool(126, 174, 202)],
-        hint: "Place a Blocker to the right of the hatch. Everyone behind it turns back toward the saucer." },
+        hint: "Place a Blocker right of the hatch to turn the herd back. The Blocker stays behind. Rescue 4 of 7 to clear." },
       { name: "Soft Landing", hatch: [53, 103], exit: [139, 204], crew: 4, need: 3, jobs: { jet: 4 }, ground: [floor(130, 8, 98), floor(205)],
-        hint: "Give each alien a Jetpack before it reaches the cliff. You can equip one while it is falling too." },
+        hint: "Give each alien a Jetpack before or during the fall. A blue badge shows who is equipped." },
     ],
   },
   {
-    name: "Comet Iceworks", color: "#8cecff", rock: [103, 171, 201], sky: ["#081f36", "#255a73"],
+    name: "Jupiter Storm", color: "#8cecff", rock: [103, 171, 201], sky: ["#081f36", "#255a73"],
     intro: "Use two jobs in sequence. The frozen shelves give you time to plan your next move.",
     levels: [
       { name: "Tunnel to the Drop", hatch: [38, 103], exit: [143, 169], crew: 8, need: 6, jobs: { bash: 2, dig: 2 }, ground: [floor(130), wall(82, 130), floor(170)],
@@ -204,7 +210,7 @@ const WORLDS = [
     ],
   },
   {
-    name: "Mars Foundry", color: "#ffb08a", rock: [191, 97, 61], sky: ["#230c21", "#663129"],
+    name: "Mars, the Red Wall", color: "#ffb08a", rock: [191, 97, 61], sky: ["#230c21", "#663129"],
     intro: "Lava and steel make placement matter. Inspect each route before the herd reaches the edge.",
     levels: [
       { name: "Twin Furnaces", hatch: [34, 135], exit: [158, 166], crew: 9, need: 7, jobs: { build: 3 }, ground: [floor(167, 8, 62), floor(167, 80, 113), floor(167, 134)], lava: [pool(63, 79, 204), pool(114, 133, 204)],
@@ -218,7 +224,7 @@ const WORLDS = [
     ],
   },
   {
-    name: "Earth Relay", color: "#a1ffb1", rock: [91, 154, 109], sky: ["#092637", "#285d51"],
+    name: "Earth, Final Stand", color: "#a1ffb1", rock: [91, 154, 109], sky: ["#092637", "#285d51"],
     intro: "The last rescues mix longer routes with tighter job supplies.",
     levels: [
       { name: "Canopy Crossing", hatch: [36, 128], exit: [157, 156], crew: 11, need: 9, jobs: { bash: 2, build: 2 }, ground: [floor(157, 8, 92), wall(61, 157), floor(157, 115)], lava: [pool(93, 114, 198)],
@@ -463,6 +469,15 @@ function draw(t) {
   }
   if (dirty) paintTerrain();
   ctx.imageSmoothingEnabled = false; ctx.drawImage(terrainCv, 0, 0, W, LH * K); ctx.imageSmoothingEnabled = true;
+  if (wi === 0 && li === 3 && counts.build === L.jobs.build) {
+    ctx.fillStyle = "#ffd25d";
+    ctx.beginPath();
+    ctx.moveTo(73 * K, 157 * K);
+    ctx.lineTo(69 * K, 149 * K);
+    ctx.lineTo(77 * K, 149 * K);
+    ctx.closePath();
+    ctx.fill();
+  }
   hatchArt(ctx, K, t); saucerArt(ctx, ...L.exit, K, t);
   for (const a of aliens) {
     if (a.state === "dead") continue;
@@ -472,6 +487,12 @@ function draw(t) {
       ctx.beginPath(); ctx.ellipse(a.x * K, (a.y - 5) * K, 5 * K, 7 * K, 0, 0, TAU); ctx.stroke();
     }
     alienArt(ctx, a.x, a.y, K, a.dir, a.state, a.t, a.jet);
+    if (a.jet) {
+      ctx.fillStyle = "#0d1931";
+      ctx.fillRect((a.x - 3) * K, (a.y - 15) * K, 6 * K, 5 * K);
+      ctx.fillStyle = "#7be5ff";
+      ctx.fillRect((a.x - 2) * K, (a.y - 14) * K, 4 * K, 3 * K);
+    }
   }
   for (const p of fx) { ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.col; ctx.fillRect(p.x * K, p.y * K, K, K); } ctx.globalAlpha = 1;
 }
@@ -529,24 +550,21 @@ function pauseMenu() {
 function titleMenu() {
   openMenu(`<canvas id="titleArt"></canvas><p class="kicker">Alien Arcade</p><h1>Alien Herd</h1>
     <p>Guide a crowd of little aliens to the rescue beam. Give them jobs to tunnel, build, and get everyone home.</p>
-    <button class="big main" data-act="worlds">Play ▶</button>
+    <div class="menuList stage-list">${WORLDS.map((world, w) => `<button class="big worldCard" data-act="levels" data-arg="${w}" ${worldOpen(w) ? "" : "disabled"}>
+      <i style="--world:${world.color}" aria-hidden="true">${worldOpen(w) ? "" : "🔒"}</i>
+      <span>${w + 1} · ${world.name}<small>${worldOpen(w) ? `${world.levels.length} levels · ${best[w].reduce((sum, value) => sum + value, 0)}/${world.levels.length * 3} ★` : `Clear ${WORLDS[w - 1].name} to unlock`}</small></span>
+    </button>`).join("")}</div>
     <div class="menuFooter"><button class="big" data-act="help" data-arg="title|0">How to play</button>${soundBtn()}${arcadeLink}</div>`,
     t => { const [c, w, h] = fitDemo($("titleArt")); c.fillStyle = "#172951"; c.fillRect(0, 0, w, h);
       const k = Math.min(w / 120, h / 65); c.save(); c.translate((w - k * 120) / 2, (h - k * 65) / 2); demoHome(c, t, w, h, k); c.restore(); });
 }
-function worldsMenu() {
-  openMenu(`<p class="kicker">Alien Herd</p><h2>Choose a world</h2>
-    <div class="menuList">${WORLDS.map((world, w) => `<button class="big worldCard" data-act="levels" data-arg="${w}" ${worldOpen(w) ? "" : "disabled"}>
-      <i style="--world:${world.color}"></i><span>${world.name}<small>${worldOpen(w) ? `${world.levels.length} rescues · ${best[w].reduce((sum, value) => sum + value, 0)}/${world.levels.length * 3} ★` : `Finish ${WORLDS[w - 1].name} to unlock`}</small></span></button>`).join("")}</div>
-    <button class="big" data-act="title">Back</button>`);
-}
 function levelsMenu(w) {
   if (!worldOpen(w)) return;
   const world = WORLDS[w];
-  openMenu(`<p class="kicker">World ${w + 1} of ${WORLDS.length}</p><h2>${world.name}</h2><p>${world.intro}</p>
-    <div class="menuList levelList">${world.levels.map((level, l) => `<button class="big ${levelOpen(w, l) && !best[w][l] ? "main" : ""}" data-act="brief" data-arg="${w}|${l}" ${levelOpen(w, l) ? "" : "disabled"}>
-      ${l + 1}. ${level.name}<small>${levelOpen(w, l) ? stars(best[w][l]) : "Locked"}</small></button>`).join("")}</div>
-    <button class="big" data-act="worlds">Back to worlds</button>`);
+  openMenu(`<p class="kicker">Stage ${w + 1} of ${WORLDS.length}</p><h2>${world.name}</h2><p>${world.intro}</p>
+    <div class="menuList levelList">${world.levels.map((level, l) => `<button class="big ${levelOpen(w, l) && !best[w][l] ? "main" : ""}" data-act="brief" data-arg="${w}|${l}" aria-label="Level ${l + 1} · ${level.name}" ${levelOpen(w, l) ? "" : "disabled"}>
+      <span>${levelOpen(w, l) ? l + 1 : "🔒"}</span><small>${levelOpen(w, l) ? stars(best[w][l]) : "Locked"}</small></button>`).join("")}</div>
+    <button class="big" data-act="title">Back</button>${arcadeLink}`);
 }
 function briefing(w, l) {
   if (!levelOpen(w, l)) return;
@@ -686,7 +704,6 @@ function demoHome(c, t, w, h, k) {
 
 const ACT = {
   start: arg => { const [w, l] = arg.split("|").map(Number); if (levelOpen(w, l)) { newLevel(w, l); closeMenu(); } },
-  worlds: () => worldsMenu(),
   levels: arg => levelsMenu(Number(arg)),
   brief: arg => briefing(...arg.split("|").map(Number)),
   finish: () => finishLevel(),
