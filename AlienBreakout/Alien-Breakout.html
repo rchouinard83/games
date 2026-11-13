@@ -294,8 +294,8 @@ const W = 600, H = 600, PADDLE_Y = H - 48, R = 7; // a taller board: more room b
 const WORLDS = [
   { name: "The Oort Gate", crew: "Ice Blips", sky: ["#193555", "#0a142d"], color: "#76ebdf",
     cell: "#1e4d56", planet: "#587aa5", levels: [
-      { name: "Prison Ship", rows: ["..RRRRRR..", ".R.RRRR.R.", "..R.RR.R.."] },
-      { name: "Salvage Ring", rows: [".RR.BB.RR.", "RR..RR..RR", ".RC.RR.CR.", "..RR..RR.."] },
+      { name: "Prison Ship", rows: ["..RRRRRR..", ".RCRRRRCR.", "..RCRRCR..", ".CCC..CCC."] },
+      { name: "Salvage Ring", rows: [".RR.BB.RR.", "RR.CRR.CRR", ".RC.RR.CR.", ".CRR..RRC.", "...CCCC..."] },
       { name: "Security Wing", rows: ["..RRRRRR..", ".A.R..R.A.", ".R.ABBA.R.", "..R....R..", "....RR...."] },
     ] },
   { name: "Jupiter Storm", crew: "Storm Jellies", sky: ["#4a2d43", "#160e2a"], color: "#ffad79",
@@ -328,6 +328,8 @@ const ARCADE_LINK = '<a class="arcade" href="../AlienGameLauncher/AlienGameLaunc
 const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
 const STAR_FIELD = Array.from({length: 55}, (_, i) => [((i * 139 + 17) % W), ((i * 73 + 31) % H)]);
 const keys = new Set();
+const RESCUES_PER_SHIELD = 5;
+let rescueShield = false;
 let cells, total, rescued, balls, score, chain, paddle, ball, phase, pointer = null;
 let stageIndex = 0, arenaTime = 0, inset = 0, paused = true, helpBack = "title", menuName = "title";
 let records = {}, sound = true, audioContext;
@@ -373,6 +375,7 @@ function reset(index = stageIndex) {
     type === "." ? [] : [{x: 39 + x * 53, y: 61 + y * 37, type, hits: type === "A" ? 2 : 1, live: true}]));
   total = cells.filter(cell => cell.type === "R").length;
   rescued = score = chain = 0;
+  rescueShield = false;
   balls = 3; paddle = W / 2; arenaTime = inset = 0;
   ready("Aim the shuttle, then launch.");
 }
@@ -384,7 +387,8 @@ function ready(message) {
 }
 function hud() {
   $("rescued").textContent = rescued + " / " + total;
-  $("balls").textContent = balls;
+  $("balls").textContent = rescueShield ? balls + " + ◈" : balls;
+  $("balls").setAttribute("aria-label", rescueShield ? balls + " balls and one rescue shield" : balls + " balls");
   $("score").textContent = score.toLocaleString();
   $("best").textContent = stageBest(stageIndex).score.toLocaleString();
   $("serve").disabled = phase !== "ready";
@@ -441,7 +445,7 @@ function stageMenu(wi) {
 function helpMenu() {
   openMenu("help", `<h2>How to play</h2>
     <p><b>Slide</b> along the bar under the board to steer, so your finger stays off the game. You can also drag on the board. On desktop, use the mouse or arrow keys.</p>
-    <p><b>Tap</b> or press <b>Space</b> to launch. Hit the paddle’s edge to aim wider.</p>
+    <p><b>Tap</b> or press <b>Space</b> to launch. Hit the paddle’s edge to aim wider.</p><p>Every five rescues charges a shield that saves one missed ball.</p>
     <p><b>Free every alien.</b> <b>Gold armor</b> takes two hits. <b>Steel bumpers</b> deflect the ball and stay in place. <b>Closing walls</b> narrow later levels.</p>
     <p class="stars">★★★ 0 balls lost · ★★☆ 1 lost · ★☆☆ 2 lost</p>
     <div class="menu-actions"><button data-action="helpBack">Back</button></div>${ARCADE_LINK}`);
@@ -549,13 +553,25 @@ function step(dt) {
     chain++;
     tone(420 + 70 * Math.min(chain, 4));
     if (cell.type === "R") rescued++;
+    const charged = cell.type === "R" && rescued % RESCUES_PER_SHIELD === 0 && !rescueShield;
+    if (charged) rescueShield = true;
     score += (cell.type === "R" ? 100 : 40) * Math.min(chain, 4);
     if (rescued === total) finish(true);
     else {
-      if (chain > 1) $("status").textContent = "Ricochet ×" + Math.min(chain, 4);
+      if (charged) $("status").textContent = "Rescue shield charged. It catches one missed ball.";
+      else if (chain > 1) $("status").textContent = "Ricochet ×" + Math.min(chain, 4);
       hud();
     }
     break;
+  }
+  if (phase === "play" && rescueShield && ball.vy > 0 && ball.y + R >= H - 12) {
+    rescueShield = false;
+    ball.y = H - 12 - R;
+    ball.vy = -Math.abs(ball.vy);
+    chain = 0;
+    tone(660);
+    $("status").textContent = "Rescue shield saved the ball!";
+    hud();
   }
   if (phase === "play" && ball.y > H + R) {
     balls--; chain = 0;
@@ -628,6 +644,14 @@ function draw() {
   }
   c.fillStyle = "#fa6c8e28"; c.fillRect(0,H-12,W,12);
   c.save(); c.shadowColor = "#4fd1ff"; c.shadowBlur = 13;
+  if (rescueShield) {
+    c.strokeStyle = "#80f9d7";
+    c.lineWidth = 3;
+    c.beginPath();
+    c.moveTo(inset, H - 12);
+    c.lineTo(W - inset, H - 12);
+    c.stroke();
+  }
   const hull = c.createLinearGradient(0,PADDLE_Y,0,PADDLE_Y+15);
   hull.addColorStop(0,"#d6f7ff"); hull.addColorStop(1,"#477ba3");
   c.fillStyle = hull; c.beginPath(); c.roundRect(paddle-level.paddleWidth/2,PADDLE_Y,level.paddleWidth,15,7); c.fill();
