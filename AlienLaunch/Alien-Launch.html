@@ -88,17 +88,17 @@ const lerp = (a, b, k) => a + (b - a) * k;
 const pick = a => a[Math.floor(Math.random() * a.length)];
 let W = 0, H = 0, S = 0, DPR = 1;
 
-// ---------- stages, ordered by gravity: each one pulls harder ----------
+// ---------- stages, ordered by campaign progression ----------
 // g is gravity in course units per second squared, scaled by S.
 const STAGES = [
   { name: "The Oort Gate", short: "Oort Gate", g: 0.55, theme: "ice",     sky: ["#14284a", "#060c1c"], ground: ["#bcd8f0", "#5a7a9c"], glow: "#4fd1ff",
     feel: "Very light gravity. Floaty and forgiving.", obstacle: "ice spires" },
   { name: "Mars, the Red Wall", short: "Mars", g: 0.8, theme: "mars", sky: ["#4a1c14", "#1a0806"], ground: ["#c8744e", "#6a2a1a"], glow: "#ff7a5d",
     feel: "Light gravity. You'll fall a bit faster.", obstacle: "red rock towers" },
-  { name: "Earth, Final Stand", short: "Earth", g: 1.05, theme: "earth", sky: ["#123a5a", "#08142a"], ground: ["#4a8a52", "#24402a"], glow: "#5dff9b",
-    feel: "Normal gravity. Thrust carefully.", obstacle: "skyscrapers and antennas" },
   { name: "Jupiter Storm", short: "Jupiter", g: 1.45, theme: "jupiter", sky: ["#5a3420", "#1e0e08"], ground: ["#e0a070", "#7a3a20"], glow: "#ffb84d", wind: true,
-    feel: "Crushing gravity, plus wind gusts. The final test.", obstacle: "storm walls" },
+    feel: "Crushing gravity, plus wind gusts.", obstacle: "storm walls" },
+  { name: "Earth, Final Stand", short: "Earth", g: 1.05, theme: "earth", sky: ["#123a5a", "#08142a"], ground: ["#4a8a52", "#24402a"], glow: "#5dff9b", rain: true,
+    feel: "Rain squalls bring updrafts and downdrafts.", obstacle: "skyscrapers and antennas" },
 ];
 const MISSIONS = 3;
 // mission settings: number of obstacle gates, gap size, flight speed
@@ -115,7 +115,15 @@ const safeSpeed = () => G.intro ? 0.6 : 0.42; // touchdown speed limit, in S per
 // ---------- save ----------
 const KEY = "alienLaunch.v1";
 let SAVE = { stars: {}, sound: true, seenHelp: false };
-try { Object.assign(SAVE, JSON.parse(localStorage.getItem(KEY)) || {}); } catch (e) {}
+try {
+  Object.assign(SAVE, JSON.parse(localStorage.getItem(KEY)) || {});
+  if (SAVE.worldOrder !== 2) {
+    SAVE.stars = Object.fromEntries(Object.entries(SAVE.stars || {}).map(([key, value]) => [
+      key.replace(/^[23](?=-)/, world => world === "2" ? "3" : "2"), value
+    ]));
+    SAVE.worldOrder = 2;
+  }
+} catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(SAVE)); } catch (e) {} };
 const starsOf = (st, m) => SAVE.stars[st + "-" + m] || 0;
 const unlocked = (st, m) => (st === 0 && m === 0) || (m > 0 ? starsOf(st, m - 1) > 0 : starsOf(st - 1, MISSIONS - 1) > 0);
@@ -165,11 +173,11 @@ function newMission(st, m, seed = Math.floor(Math.random() * 2 ** 32), retry = f
   const intro = st === 0 && m === 0, ready = retry || intro;
   G = { st, m, ST, spec, seed, intro, phase: ready ? "launch" : "count", t: 0, flightTime: 0, count: ready ? 0 : 3, tapAt: null, boostFlash: 0, touchControl: false,
         x: 0, y: REST(), vy: 0, vx: 0, ang: 0,   // x = distance flown along the course
-        gates: [], tunnels: [], cans: [], debris: [], fuel: intro ? 100 : FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, windRandom: rand(seed ^ 0x9e3779b9), landStart: 0, padX: 0, touch: null, stars: 0 };
+        gates: [], tunnels: [], cans: [], debris: [], fuel: intro ? 100 : FUEL.start, lowWarned: false, passed: 0, score: 0, fx: [], over: false, done: false, wind: 0, windT: 3, raining: false, windRandom: rand(seed ^ 0x9e3779b9), landStart: 0, padX: 0, touch: null, stars: 0 };
   // the course: launch pad at 0, then gates and tunnels, then the landing pad
   let cy = 0.45, gx = S * 1.4;
   const moveChance = m === 0 ? 0 : 0.18 + (m - 1) * 0.14 + st * 0.07;          // sliding gaps from mission 2
-  const debrisChance = (m >= 2 && st >= 1) || st >= 2 ? 0.22 + st * 0.04 + m * 0.04 : 0;  // floating debris from Mars mission 3, then all of Earth and Jupiter
+  const debrisChance = (m >= 2 && st >= 1) || st >= 2 ? 0.22 + st * 0.04 + m * 0.04 : 0;  // floating debris from Mars mission 3, then all of Jupiter and Earth
   const nTunnels = (m >= 1 ? 1 : 0) + (st >= 2 ? 1 : 0) + (m === 2 && st >= 1 ? 1 : 0); // tunnels from mission 2, more on later planets
   const tunnelAt = new Set();
   while (tunnelAt.size < nTunnels) tunnelAt.add(2 + Math.floor(random() * Math.max(1, spec.gates - 3)));
@@ -301,7 +309,20 @@ function update(dt) {
   if (G.ST.wind && G.phase === "fly") {
     G.windT -= dt;
     if (G.windT <= 0) { G.wind = (G.windRandom() < 0.5 ? -1 : 1) * g * (0.16 + G.windRandom() * 0.19); G.windT = 1.2 + G.windRandom() * 1.5; if (G.windRandom() < 0.4) say(G.wind < 0 ? "Updraft! Ease off the thrust." : "Downdraft! Give it some power.", 1.8); }
-  } else G.wind *= 0.95;
+  } else if (G.ST.rain && G.phase === "fly") {
+    G.windT -= dt;
+    if (G.windT <= 0) {
+      G.raining = !G.raining;
+      G.windT = G.raining ? 2 + G.windRandom() * 2 : 4 + G.windRandom() * 3;
+      G.squallForce = (G.windRandom() < .5 ? -1 : 1) * (.17 + G.m * .065);
+      if (G.raining) say(G.squallForce < 0 ? "Rain squall · Updraft!" : "Rain squall · Downdraft!", 2);
+    }
+    const gust = G.raining ? g * G.squallForce * (.75 + .25 * Math.sin(G.flightTime * 4)) : 0;
+    G.wind = lerp(G.wind, gust, Math.min(1, dt * 6));
+  } else {
+    G.raining = false;
+    G.wind *= 0.95;
+  }
   if (G.phase === "launch") { // can't move forward until the ship has lifted off
     G.vy += (g + thrust) * dt; G.y += G.vy * dt;
     if (G.y > REST()) { G.y = REST(); G.vy = 0; }
@@ -653,6 +674,18 @@ function draw(t) {
   for (const d of G.debris) { const X = d.x - G.x + sx; if (X > -60 && X < W + 60) debrisArt(ctx, X, debrisY(d), d.r, G.ST.theme, d.seed, t); }
   for (const cn of G.cans) { const X = cn.x - G.x + sx; if (!cn.got && X > -40 && X < W + 40) fuelCell(ctx, X, cn.y * H, S * 0.035, t + cn.seed); }
   drawGround(t);
+  if (G.raining) {
+    ctx.strokeStyle = "#9bc9f253";
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    for (let drop = 0; drop < 58; drop++) {
+      const x = (drop * 149 + t * 160) % W;
+      const y = (drop * 79 + t * 570) % H;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 8, y + 21);
+    }
+    ctx.stroke();
+  }
   if (G.ST.wind && Math.abs(G.wind) > 1) { ctx.strokeStyle = `rgba(255,230,200,${Math.min(0.35, Math.abs(G.wind) / (S * 2))})`; ctx.lineWidth = 2; // wind streaks
     for (let k = 0; k < 14; k++) { const x = (k * 97 + t * 300) % W, y = (k * 53 + (G.wind > 0 ? t : -t) * 200) % H; ctx.beginPath(); ctx.moveTo(x, (y + H) % H); ctx.lineTo(x - 6, ((y + H) % H) + Math.sign(G.wind) * 26); ctx.stroke(); } }
   for (const p of G.fx) { ctx.globalAlpha = Math.max(0, p.life / p.max); ctx.fillStyle = p.col; ctx.fillRect(p.x - 3, p.y - 3, 6, 6); } ctx.globalAlpha = 1;
@@ -757,7 +790,7 @@ const HOWTO = [
   { title: "Fly through gaps", text: "<b>Thread the gaps.</b> Dodge moving walls and debris.", demo: demoGaps },
   { title: "Grab fuel", text: "<b>Grab glowing fuel cells</b> to keep your thruster running.", demo: demoFuel },
   { title: "Land softly", text: "Wait for <b>OVER PAD</b>. <b>Hold to brake</b> and keep the speed meter green.", demo: demoLand },
-  { title: "Stronger gravity", text: "<b>Gravity gets stronger</b> each world. Watch for <b>gusts on Jupiter</b>.", demo: demoGravity },
+  { title: "Stronger gravity", text: "<b>Gravity changes</b> between worlds. Watch for <b>gusts on Jupiter</b>.", demo: demoGravity },
 ];
 function helpMenu(back, page = 0) {
   const p = HOWTO[page], lastPage = page === HOWTO.length - 1, first = back === "first";
