@@ -248,7 +248,7 @@ footer { display:grid; grid-template-columns:1fr auto 1fr; padding-bottom:clamp(
 #guide svg { display:block; width:100%; height:100px; border-radius:12px; background:#101a34; }
 </style>
 <main>
-  <header><strong>Alien Tunnel Run</strong><span>Section <b id="section">1</b></span><span>Rings <b id="rings">0</b></span><span>Coins <b id="coins">0</b></span><span>Best coins <b id="best">0</b></span></header>
+  <header><strong>Alien Tunnel Run</strong><span>Section <b id="section">1</b></span><span>Rings <b id="rings">0</b></span><span>Coins <b id="coins">0</b></span><span>Best coins <b id="best">0</b></span><span>Best rings <b id="bestRings">0</b></span></header>
   <canvas id="tunnel" aria-label="Tunnel, alien pod, coins, and barriers"></canvas>
   <footer>
     <div id="steering" class="joystick" role="group" tabindex="0"
@@ -383,7 +383,7 @@ const CHARS = (() => {
 
 // what each alien is like on a board
 const firstGateDepth = 280;
-const spacing = 131;
+const spacing = 145;
 const maxSpeed = 420;
 const keyboardRate = 860;
 const maxGapStep = spacing / maxSpeed * (keyboardRate / 1000) * fullTurn * .8;
@@ -391,9 +391,13 @@ const gatesPerSection = 6;
 const arrival = 22;
 const keys = new Set();
 const recordKey = "alien-tunnel-run-best";
+const recordRingsKey = "alien-tunnel-run-best-rings";
 let best = 0;
+let bestRings = 0;
 try { best = Number(localStorage.getItem(recordKey)) || 0; } catch { /* Session record still works. */ }
+try { bestRings = Number(localStorage.getItem(recordRingsKey)) || 0; } catch { /* Session record still works. */ }
 byId("best").textContent = best;
+byId("bestRings").textContent = bestRings;
 
 const tracks = {
   orbit: { notes: [48, 55, 60, 55, 51, 58, 63, 58, 46, 53, 58, 53, 43, 50, 55, 50], beat: .34, voice: "sine" },
@@ -504,11 +508,11 @@ function addGates() {
   while (nextDepth < distance + 690) {
     const gap = nextGap;
     const blockers = nextDepth >= firstGateDepth + 4 * spacing
-      && nextDepth - lastBlockerDepth >= 3 * spacing && Math.random() < .2;
+      && nextDepth - lastBlockerDepth >= 3 * spacing && Math.random() < .12;
     if (blockers) lastBlockerDepth = nextDepth;
-    const rocks = blockers ? [1.25, 2.45, 3.7, 5].map(offset => ({
-      angle: gap + offset + (Math.random() - .5) * .4,
-      size: .12 + Math.random() * .09,
+    const rocks = blockers ? [2.0, 4.0].map(offset => ({
+      angle: gap + offset + (Math.random() - .5) * .5,
+      size: .06 + Math.random() * .05,
       rotation: Math.random() * fullTurn
     })) : null;
     gates.push({ depth: nextDepth, gap, openingScale: .88 + Math.random() * .24, rocks, coin: gap + (Math.random() - .5) * .55 });
@@ -541,6 +545,7 @@ function start() {
   byId("section").textContent = "1";
   byId("coins").textContent = "0";
   byId("rings").textContent = "0";
+  byId("bestRings").textContent = bestRings;
   resume();
 }
 
@@ -559,7 +564,7 @@ function showMenu(crashed) {
   byId("play").textContent = crashed ? "Try again" : "Resume";
   byId("main-menu").hidden = false;
   byId("summary").textContent = crashed
-    ? `Section ${section()} · ${coins} ${coins === 1 ? "coin" : "coins"} collected.`
+    ? `${passed} ${passed === 1 ? "ring" : "rings"} · ${coins} ${coins === 1 ? "coin" : "coins"} collected.`
     : "Run paused.";
   menu.hidden = false;
   byId("play").focus({ preventScroll:true });
@@ -571,7 +576,9 @@ function update(dt) {
     angle = (angle - turn * keyboardRate / 1000 * fullTurn * dt) % fullTurn;
     pointJoystick();
   }
-  distance += Math.min(maxSpeed, difficulty.speed + passed * 9) * dt;
+  const baseSpeed = difficulty.speed + passed * 9;
+  const introFactor = passed < gatesPerSection ? 0.55 : 1;
+  distance += Math.min(maxSpeed, baseSpeed * introFactor) * dt;
   trail.push({ angle, distance });
   while (trail.length && trail[0].distance < distance - 55) trail.shift();
   addGates();
@@ -594,6 +601,10 @@ function update(dt) {
     }
     passed++;
     byId("rings").textContent = passed;
+    if (passed > bestRings) {
+      byId("bestRings").textContent = bestRings = passed;
+      try { localStorage.setItem(recordRingsKey, String(bestRings)); } catch { /* Keep the session record. */ }
+    }
     if (passed % gatesPerSection === 0) {
       [60, 67, 72].forEach((note, index) => playTone(note, "triangle", .24, .048, index * .085));
     } else {
