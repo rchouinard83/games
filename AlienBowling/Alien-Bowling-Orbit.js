@@ -67,10 +67,61 @@ function createOrbitBowling(canvas){
       for(let y=(i*137)%180;y<1024;y+=180)c.fillRect(x,y,256/19,1);
     }
   });
+  const themes={
+    "Oort Gate":{shell:0x25485e,trim:0x9ae8fa,ceiling:0x3b6079,key:0xc8edff,grain:"#6ba8c1",style:"ice"},
+    Jupiter:{shell:0x48313e,trim:0xffc986,ceiling:0x66444b,key:0xffd4a0,grain:"#70472f",style:"storm"},
+    Mars:{shell:0x6a433b,trim:0xff9f72,ceiling:0x50322b,key:0xffc19f,grain:"#a66249",style:"stone"},
+    Earth:{shell:0x233b3e,trim:0xa8edd5,ceiling:0x374c50,key:0xffe2ba,grain:"#af784d",style:"wood"},
+  };
+  const laneSkins={};
+  for(const [name,theme] of Object.entries(themes)){
+    if(theme.style==="wood"){laneSkins[name]=wood;continue;}
+    laneSkins[name]=makeTexture(256,1024,c=>{
+      c.fillStyle=theme.grain;c.fillRect(0,0,256,1024);
+      const glaze=c.createLinearGradient(0,0,256,0);
+      glaze.addColorStop(0,"#0d182449");
+      glaze.addColorStop(.5,theme.style==="ice"?"#cadff572":"#f6d0a34c");
+      glaze.addColorStop(1,"#0d182460");
+      c.fillStyle=glaze;c.fillRect(0,0,256,1024);
+      let seed=417;
+      const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
+      for(let i=0;i<2200;i++){
+        c.fillStyle=i%2?"#15112220":"#fff4e220";
+        c.fillRect(random()*256,random()*1024,1+random()*1.5,1+random()*4);
+      }
+      if(theme.style==="ice"){
+        for(let i=0;i<33;i++){
+          const x=random()*256,y=random()*1024;
+          c.strokeStyle=i%3?"#edfaff58":"#21446c52";
+          c.beginPath();c.moveTo(x,y);c.lineTo(x-14,y+28);c.lineTo(x+5,y+54);c.lineTo(x-12,y+96);
+          c.stroke();
+        }
+      }else if(theme.style==="storm"){
+        for(let i=1;i<16;i++){
+          c.strokeStyle=i%2?"#fae2b04d":"#301a1969";
+          c.beginPath();c.moveTo(i*16,0);c.lineTo(i*16,1024);c.stroke();
+        }
+        for(let i=0;i<75;i++){
+          const x=random()*256, y=random()*1024;
+          c.strokeStyle="#efb77f35";c.beginPath();c.moveTo(x,y);c.bezierCurveTo(x+3,y+53,x-4,y+75,x+1,y+146);c.stroke();
+        }
+      }else{
+        c.strokeStyle="#4b22234d";
+        for(let y=64;y<1024;y+=128){
+          c.beginPath();c.moveTo(0,y);c.lineTo(256,y);c.stroke();
+        }
+        for(let i=0;i<40;i++){
+          const x=random()*256,y=random()*1024;
+          c.strokeStyle="#e69b7865";c.beginPath();c.moveTo(x,y);c.lineTo(x+12,y+3);c.lineTo(x+31,y+21);c.stroke();
+        }
+      }
+    });
+  }
   const deckGeometry=new THREE.PlaneGeometry(2.26,20.8);
   deckGeometry.rotateX(-Math.PI/2);
   const deckMaterial=new THREE.MeshStandardMaterial({map:wood,roughness:.64});
   const inlay=new THREE.MeshStandardMaterial({color:0xd8bc91,roughness:.61});
+  const alignmentMarks=[];
   const aimArrow=new THREE.ConeGeometry(.054,.13,3);
   aimArrow.rotateX(-Math.PI/2);
   const signArt=makeTexture(640,192,c=>{
@@ -99,22 +150,109 @@ function createOrbitBowling(canvas){
   for(let i=-3;i<=3;i++){
     const marker=new THREE.Mesh(aimArrow,inlay);
     marker.position.set(i*.22,.014,-3.5-Math.abs(i)*.17);scene.add(marker);
+    alignmentMarks.push(marker);
   }
 
   box(scene,0x19242b,0,2.45,-19.1,17,4.9,.35);
   box(scene,0x394b50,0,2.66,-18.91,16.8,1.51,.09);
   box(scene,0x25343a,0,1.82,-18.85,16.8,.12,.13);
   box(scene,0x617d79,0,3.44,-18.83,16.8,.072,.085);
-  const worldLighting=[];
-  for(const side of [-1,1]){
-    for(let i=0;i<8;i++){
-      const x=side*(2.4+i*.58);
-      box(scene,i%2?0x3b4c50:0x31454b,x,2.67,-18.81,.54,1.38,.105);
-      box(scene,0x222f37,x-.26,2.67,-18.74,.044,1.39,.038);
-      if(i%3===0)worldLighting.push(box(scene,0xb9e3c9,x,2.79,-18.738,.055,.56,.03,true));
+  const interior=new THREE.Group();
+  scene.add(interior);
+  for(const [name,theme] of Object.entries(themes)){
+    const room=new THREE.Group();
+    room.visible=false;
+    room.name=name;
+    interior.add(room);
+    box(room,theme.ceiling,0,4.59,-8,17,.29,23);
+    for(let i=0;i<7;i++){
+      const z=-17.5+i*3.05;
+      if(theme.style==="ice"){
+        box(room,0x7597aa,0,4.25,z,16,.24,.42);
+        for(const side of [-1,1]){
+          const brace=box(room,0x5c8095,side*6.25,2.98,z,.27,3.72,.32);
+          brace.rotation.z=side*-.39;
+          box(room,theme.trim,side*2.9,4.09,z,2.65,.025,.14,true);
+        }
+      }else if(theme.style==="storm"){
+        const arch=new THREE.TorusGeometry(6.55,.15,8,30,Math.PI);
+        piece(room,arch,0x875b54,0,0,z,1,.66,1);
+        box(room,theme.trim,0,4.13,z,1.35,.03,.35,true);
+      }else if(theme.style==="stone"){
+        box(room,0x74443a,0,3.96,z,16,.47,.57);
+        for(const side of [-1,1]){
+          box(room,0x855449,side*6.35,1.95,z,.82,4,.63);
+          box(room,theme.trim,side*4.4,3.71,z,1.28,.025,.26,true);
+        }
+      }else{
+        box(room,0x4d5658,0,4.26,z,16,.22,.36);
+        for(const x of [-5.8,-2.8,0,2.8,5.8]) {
+          box(room,0x293a43,x,4.13,z,1.1,.14,.53);
+          box(room,0xffe5c2,x,4.05,z,1,.025,.37,true);
+        }
+      }
+      for(const side of [-1,1]){
+        box(room,theme.shell,side*7.9,1.94,z,.21,4.12,3.2);
+        box(room,theme.trim,side*7.78,1.14,z,.045,.047,3.05,true);
+      }
+    }
+    const vista=makeTexture(640,190,c=>{
+      const gradients={
+        ice:["#101f40","#91bed7"],storm:["#502c50","#f1a775"],
+        stone:["#482c44","#d38a69"],wood:["#1b3740","#517c71"],
+      };
+      const fade=c.createLinearGradient(0,0,0,190);
+      gradients[theme.style].forEach((color,i)=>fade.addColorStop(i,color));
+      c.fillStyle=fade;c.fillRect(0,0,640,190);
+      if(theme.style==="storm"){
+        for(let i=0;i<13;i++){
+          const y=i*15;
+          c.strokeStyle=i%2?"#f9c0928c":"#6f3b568b";c.lineWidth=9+i%4;
+          c.beginPath();c.moveTo(0,y);c.bezierCurveTo(190,y+46,330,y-45,640,y+12);c.stroke();
+        }
+      }else if(theme.style==="wood"){
+        for(let i=0;i<26;i++){
+          const x=i*26,y=70+(i*67)%80;
+          c.fillStyle="#13232d";c.fillRect(x,y,21,190-y);
+          for(let wy=y+9;wy<181;wy+=15){
+            c.fillStyle=i%3?"#e4bf8289":"#a9dbc5a8";
+            c.fillRect(x+5,wy,3,4);c.fillRect(x+13,wy,3,4);
+          }
+        }
+      }else{
+        c.fillStyle=theme.style==="ice"?"#c3e9f0":"#ffd9a7";
+        c.beginPath();c.arc(432,70,theme.style==="ice"?64:27,0,2*Math.PI);c.fill();
+        for(let band=0;band<3;band++){
+          c.fillStyle=(theme.style==="ice"?["#7198b3","#52738d","#263f58"]:["#b6776c","#92524c","#663c45"])[band];
+          c.beginPath();c.moveTo(0,190);
+          for(let x=0;x<=640;x+=32)c.lineTo(x,115+band*17+Math.sin(x*.036+band*3)*(.7-band*.12)*27+Math.sin(x*.017)*18);
+          c.lineTo(640,190);c.fill();
+        }
+      }
+    });
+    for(const side of [-1,1]){
+      const windowPanel=new THREE.Mesh(new THREE.PlaneGeometry(4.6,1.57),new THREE.MeshBasicMaterial({map:vista}));
+      box(room,theme.shell,side*5.14,2.9,-18.93,4.88,1.83,.16);
+      windowPanel.position.set(side*5.14,2.9,-18.83);room.add(windowPanel);
     }
   }
-  box(scene,0x28313a,0,4.59,-8,17,.29,23);
+  let activeTheme=null;
+  function applyTheme(world){
+    if(activeTheme===world.name)return;
+    activeTheme=world.name;
+    const theme=themes[activeTheme]||themes.Earth;
+    for(const room of interior.children)room.visible=room.name===activeTheme;
+    deckMaterial.map=laneSkins[activeTheme]||wood;
+    deckMaterial.roughness=theme.style==="ice"?.56:theme.style==="stone"?.82:.64;
+    const onIce=theme.style==="ice";
+    inlay.color.setHex(onIce?0x17364d:0xd8bc91);
+    for(const mark of alignmentMarks)mark.scale.setScalar(onIce?1.24:1);
+    deckMaterial.needsUpdate=true;
+    key.color.setHex(theme.key);
+    fill.color.setHex(theme.trim);
+    scene.background.setHex(theme.shell);
+    scene.fog.color.setHex(theme.shell);
+  }
   const screenWidth=5.45, screenHeight=2.2;
   const screenGroup=new THREE.Group();
   scene.add(screenGroup);
@@ -123,6 +261,40 @@ function createOrbitBowling(canvas){
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(screenWidth,screenHeight),screenMaterial);
   screen.position.set(0,2.66,-18.59);
   screenGroup.add(screen);
+  const pinMapCanvas=document.createElement("canvas");
+  pinMapCanvas.width=336;pinMapCanvas.height=230;
+  const pinMapInk=pinMapCanvas.getContext("2d");
+  const pinMapTexture=new THREE.CanvasTexture(pinMapCanvas);
+  pinMapTexture.encoding=THREE.sRGBEncoding;
+  const pinMonitorMaterial=new THREE.MeshBasicMaterial({map:pinMapTexture,toneMapped:false});
+  const pinMonitorShape=new THREE.PlaneGeometry(2.18,1.49);
+  for(const side of [-1,1]){
+    box(scene,0x101519,side*4.04,2.61,-18.59,2.30,1.60,.13);
+    const monitor=new THREE.Mesh(pinMonitorShape,pinMonitorMaterial);
+    monitor.position.set(side*4.04,2.61,-18.51);
+    scene.add(monitor);
+  }
+  let currentRack=-1;
+  function updatePinMonitors(pins){
+    let mask=0;
+    for(const pin of pins)if(!pin.down)mask|=1<<pin.index;
+    if(mask===currentRack)return;
+    currentRack=mask;
+    const ink=pinMapInk;
+    ink.fillStyle="#111b27";ink.fillRect(0,0,336,230);
+    ink.fillStyle="#d2efe8";ink.font="800 24px system-ui";
+    ink.textAlign="center";ink.textBaseline="middle";ink.fillText("PINS LEFT",168,24);
+    for(let row=0;row<4;row++)for(let column=0;column<=row;column++){
+      const index=row*(row+1)/2+column;
+      const x=168+(column-row/2)*62,y=192-row*44;
+      const up=Boolean(mask&(1<<index));
+      ink.fillStyle=up?"#b2f0d7":"#273644";
+      ink.beginPath();ink.arc(x,y,18,0,Math.PI*2);ink.fill();
+      ink.fillStyle=up?"#162934":"#8192a1";ink.font="800 19px system-ui";
+      ink.fillText(String(index+1),x,y+.5);
+    }
+    pinMapTexture.needsUpdate=true;
+  }
   const pinFeed=new THREE.WebGLRenderTarget(768,310);
   pinFeed.texture.encoding=renderer.outputEncoding;
   const pinCamera=new THREE.PerspectiveCamera(34,screenWidth/screenHeight,.1,45);
@@ -188,6 +360,15 @@ function createOrbitBowling(canvas){
   const ring=new THREE.RingGeometry(.067,.087,24);
   ring.rotateX(-Math.PI/2);
   const targetDot=floorMark(ring,0xeaffab,0,0);
+  const guideMarks=[...aimDots,targetDot];
+  const borderRing=new THREE.RingGeometry(.056,.103,24);
+  borderRing.rotateX(-Math.PI/2);
+  const guideBorders=guideMarks.map((_,i)=>{
+    const border=floorMark(i===guideMarks.length-1?borderRing:discShape,0x122b40,0,0);
+    if(i<aimDots.length)border.scale.set(1.46,1,1.46);
+    border.position.y=.019;
+    return border;
+  });
   const arrowOutline=new THREE.Shape();
   arrowOutline.moveTo(-.13,-.066);
   arrowOutline.lineTo(.115,0);
@@ -209,18 +390,6 @@ function createOrbitBowling(canvas){
     shape.rotateX(-Math.PI/2);
     return floorMark(shape,0xe6acff,0,-8);
   });
-  for(let z=-18;z<3;z+=3.2){
-    box(scene,0x3c4248,0,4.29,z,16,.24,.38);
-    for(const x of [-5.8,-2.8,0,2.8,5.8]) {
-      box(scene,0x313c45,x,4.16,z,1.1,.14,.53);
-      box(scene,0xffe7c0,x,4.08,z,1,.025,.37,true);
-    }
-    for(const side of [-1,1]){
-      box(scene,0x303a40,side*7.72,1.97,z,.24,4.35,.29);
-      box(scene,0x34444e,side*7.9,1.94,z,.21,4.12,3.2);
-      box(scene,0x52656b,side*7.70,1.1,z,.21,.09,3.18);
-    }
-  }
   for(const side of [-1,1]){
     const light=new THREE.PointLight(side===1?0x8fe3ce:0xffbd8d,.27,11);
     light.position.set(side*2.25,2,-14.5);scene.add(light);
@@ -348,7 +517,8 @@ function createOrbitBowling(canvas){
       ballShade.position.set(active.x,.018,-active.y);
       ballShade.scale.set(.61,1,.52);
     }
-    for(const lamp of worldLighting)lamp.material.color.set(world.trim);
+    applyTheme(world);
+    updatePinMonitors(pins);
     const rails=kind==="rails";
     for(let i=0;i<rimLights.length;i++){
       rimLights[i].material.color.set(world.trim);
@@ -366,13 +536,18 @@ function createOrbitBowling(canvas){
         model.saucer.rotation.y=time*1.4;
       }
     }
-    for(const [i,dot] of [...aimDots,targetDot].entries()){
+    const onIce=world.name==="Oort Gate";
+    for(const [i,dot] of guideMarks.entries()){
       const point=guide[i];
+      const border=guideBorders[i];
       dot.visible=Boolean(point);
+      border.visible=dot.visible&&onIce;
       if(point){
         dot.position.x=point.x;
         dot.position.z=-point.y;
-        dot.material=material(point.hook?0xffd196:0xeaffab,true);
+        border.position.x=dot.position.x;
+        border.position.z=dot.position.z;
+        dot.material=material(point.hook?0xffd196:onIce?0xe1fff5:0xeaffab,true);
       }
     }
     driftArea.visible=Boolean(drift)||kind==="gravity";
@@ -383,6 +558,7 @@ function createOrbitBowling(canvas){
         arrow.position.x=((time*.65+i*.32)%1.85-.925)*drift;
         arrow.position.z=-(5.5+i*.66);
         arrow.rotation.y=drift<0?Math.PI:0;
+        arrow.material=material(onIce?0x18445c:0xe9faff,true);
       }
     }
     for(const mark of gravityRings){

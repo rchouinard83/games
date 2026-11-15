@@ -437,6 +437,16 @@ const LANES=[
   {name:"Spare Rescue",kind:"spare",hint:`One shot per setup. Clear ${SPARE_STARS.join(", ")} of ${SPARE_PATTERNS.length} for stars.`},
   {name:"Moving Pins",kind:"moving",hint:"On some frames, the whole rack slides while you aim. It stops when you roll."},
 ];
+const NORMAL_LANE={name:"Normal Lane",hint:"Standard ten-pin bowling with a clear lane."};
+const CROSSCURRENT=LANES.push({name:"Crosscurrent",kind:"crosscurrent",
+  hint:"On marked frames, moving arrows show which way the current pushes the ball."})-1;
+const editionAllowsLane=index=>edition==="orbit"
+  ? index===0||index===CROSSCURRENT
+  : index>=0&&index<CROSSCURRENT;
+function laneDetails(w,index){
+  if(index===0)return edition==="orbit"?NORMAL_LANE:WORLDS[w];
+  return LANES[index];
+}
 const LANE_STORAGE="alienArcade.bowling.lanes.v2";
 const validScore=(v,max)=>Number.isInteger(v)&&v>=0&&v<=max?v:0;
 const laneMax=l=>LANES[l].kind==="spare"?SPARE_PATTERNS.length:LANES[l].kind==="rails"?300+12*BANK_BONUS:300;
@@ -457,7 +467,7 @@ const HOOK_START=7, HOOK_DISTANCE=7.12, MAX_HOOK=.44;
 const hookProgress=y=>clamp((y-HOOK_START)/HOOK_DISTANCE,0,1);
 const hookFromSwipe=(dx,up)=>Math.abs(dx)>=10?MAX_HOOK*clamp(dx/Math.max(18,up)*1.75,-1,1):null;
 const world=()=>WORLDS[worldIndex];
-const lane=()=>laneIndex===0?world():LANES[laneIndex];
+const lane=()=>laneDetails(worldIndex,laneIndex);
 const laneBest=(w,l)=>l===0?(records[w]??0):laneRecords[w][l];
 const starText=n=>"★".repeat(n)+"☆".repeat(3-n);
 const rolls=()=>frames[frame];
@@ -567,7 +577,7 @@ function rack(enter=false){
     const index=row*(row+1)/2+col;
     if(spare&&!spare.includes(index))continue;
     const x=(col-row/2)*.53+stagger*[.21,-.16,.13,-.09][row],y=14.1+row*.42;
-    const p={x,y,homeX:x,homeY:y,vx:0,vy:0,down:false,spin:0,angle:0,id:CHARS.list[index%CHARS.list.length].id,mischief:row===3&&(col===0||col===3),
+    const p={index,x,y,homeX:x,homeY:y,vx:0,vy:0,down:false,spin:0,angle:0,id:CHARS.list[index%CHARS.list.length].id,mischief:row===3&&(col===0||col===3),
       act:null,actT:0,fall:0,walk:null,seed:Math.random()*10};
     if(enter){p.walk={x0:x+(Math.random()-.5)*1.2,y0:17.3+Math.random()*.4,t:-pins.length*.06};p.x=p.walk.x0;p.y=p.walk.y0;}
     pins.push(p);
@@ -703,7 +713,7 @@ function reactions(dt){
 }
 function obstacleOn(){return frame>=2&&(frame%2===0||frame>=6);}
 function slidingRack(){return lane().kind==="moving"&&frame%3===1&&!rolls()?.length&&!pins.some(p=>p.walk);}
-function sidesteppingPins(){return lane().kind!=="moving"&&frame>=6&&!rolls()?.length&&pins.length===10;}
+function sidesteppingPins(){return edition==="original"&&lane().kind!=="moving"&&frame>=6&&!rolls()?.length&&pins.length===10;}
 function moveHecklers(){
   if(lane().kind==="moving"){
     if(slidingRack()){
@@ -729,9 +739,13 @@ function laneEvents(){
   const first={x:.87*Math.sin(time*(kind==="saucer"?2.4:1.5)),y:8.7,r:kind==="saucer"?.21:.19};
   return frame>=7?[first,{x:.8*Math.sin(time*2+1.6),y:11.5,r:.18}]:[first];
 }
+const crosscurrentPush=()=>Math.sin(time*1.85+frame*.7);
 function hint(){
   const lines=["Bet you miss!","That your space ball?","We saw that bank!","No pressure, Earthling!"];
-  if(laneIndex!==0)return lane().hint;
+  if(laneIndex===CROSSCURRENT)return obstacleOn()
+    ?"Crosscurrent is active. Watch the lane arrows."
+    :"Crosscurrent is calm this frame.";
+  if(laneIndex!==0||edition==="orbit")return lane().hint;
   return obstacleOn()?`${lane().event} · ${lane().hint}`:`${lines[frame%lines.length]} · Aim just off the front alien.`;
 }
 function setStatus(message){$("status").textContent=message;}
@@ -804,14 +818,15 @@ function ballDetails(){
 }
 function matchMenu(i, l=0){
   if(!WORLDS[i]||!isOpen(i))return;
-  state="setup";pendingWorld=i;pendingLane=edition==="orbit"?0:l;
+  state="setup";pendingWorld=i;pendingLane=editionAllowsLane(l)?l:0;
+  const options=LANES.map((_,index)=>index).filter(editionAllowsLane);
   const w=WORLDS[i];
   showMenu(`<p class="kicker">Alien Bowling · Match setup</p><h2>${w.name}</h2>
     <div class="match-options">
       <section aria-label="Lane selection"><p class="kicker">Lane</p>
-        <div class="lane-options">${(edition==="orbit"?LANES.slice(0,1):LANES).map((lane,j)=>{const best=laneBest(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
-          <span>${lane.name}<small>${j===0?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best,j)} stars">${starText(stars(i,best,j))}</span>${best?` · ${best}${lane.kind==="spare"?"/10":""}`:""}</small></span></button>`;}).join("")}</div>
-        <p id="laneDetails">${pendingLane===0?w.hint:LANES[pendingLane].hint}</p>
+        <div class="lane-options">${options.map(j=>{const best=laneBest(i,j),label=j===0&&edition==="original"?LANES[0]:laneDetails(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
+          <span>${label.name}<small>${j===0&&edition==="original"?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best,j)} stars">${starText(stars(i,best,j))}</span>${best?` · ${best}${label.kind==="spare"?"/10":""}`:""}</small></span></button>`;}).join("")}</div>
+        <p id="laneDetails">${laneDetails(i,pendingLane).hint}</p>
       </section>
       <section aria-label="Ball selection"><label class="kicker" for="ballSelect">Ball</label>
         <select id="ballSelect" aria-describedby="ballDetails">${BALLS.map((b,j)=>`<option value="${j}" ${j===ballPick?"selected":""}>${b.name}</option>`).join("")}</select>
@@ -924,7 +939,7 @@ function demoAliens(c,tt,w,h){
       c.fillStyle="#1d1a33";c.textAlign="center";c.textBaseline="middle";c.fillText(lines[say],bx+tw/2,h*.12+11.5);}});
 }
 function start(i, l=0){
-  if(edition==="orbit")l=0;
+  if(!editionAllowsLane(l))l=0;
   if(!WORLDS[i]||!LANES[l]||!isOpen(i))return;
   pendingWorld=null;
   worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);bankBonuses=Array(10).fill(0);frame=0;time=0;position=0;hook=0;rack(true);ready();
@@ -982,6 +997,7 @@ function update(dt){
       }else if(obstacleOn()){
         if(kind==="ice")ball.vx+=dt*(frame%2?-.52:.52);
         if(kind==="wind")ball.vx+=dt*1.5*Math.sin(time*2.1);
+        if(kind==="crosscurrent")ball.vx+=dt*.94*crosscurrentPush();
       }
     }
     laneEvents().forEach((o,i)=>{
@@ -1114,10 +1130,10 @@ function result(){
     }
   }
   const next=worldIndex+1, canAdvance=next<WORLDS.length&&isOpen(next);
-  showMenu(`<div class="kicker">${world().name} · ${LANES[laneIndex].name}</div><h2>${spareLane()?`${score}/10 spares rescued`:`${score} points`}</h2>
+  showMenu(`<div class="kicker">${world().name} · ${laneIndex===0&&edition==="original"?LANES[0].name:lane().name}</div><h2>${spareLane()?`${score}/10 spares rescued`:`${score} points`}</h2>
     ${bankBonus?`<p>Includes +${bankBonus} from bank strikes.</p>`:""}
     <p><span class="stars">${starText(medal)}</span> · ${score>old?"New lane best!":`Lane best ${old}${spareLane()?"/10":""}`}</p>
-    <p>${canAdvance?`${WORLDS[next].name} is open.`:next<WORLDS.length?`Score ${world().unlock} on the Original lane to unlock ${WORLDS[next].name}.`:"You reached the Earth finals."}</p>
+    <p>${canAdvance?`${WORLDS[next].name} is open.`:next<WORLDS.length?`Score ${world().unlock} on the ${edition==="orbit"?"Normal Lane":"Original lane"} to unlock ${WORLDS[next].name}.`:"You reached the Earth finals."}</p>
     <div class="actions">${canAdvance?`<button class="primary" data-act="world" data-index="${next}">Next world</button>`:""}<button ${canAdvance ? "" : 'class="primary"'} data-act="retry">Bowl again</button>
     <button data-act="setup">Change lane or ball</button><button data-act="worlds">All worlds</button></div>`);
 
@@ -1342,15 +1358,15 @@ function draw(){
   if(edition==="orbit"){
     const phase=state==="pause"?resumeState:state;
     const kind=lane().kind;
-    const drift=kind==="ice"?(frame%2?-1:1):Math.sign(Math.sin(time*2.1));
+    const drift=kind==="crosscurrent"&&obstacleOn()?Math.sign(crosscurrentPush()):0;
     orbit.setBall(myBall().colors[1]);
     orbit.draw({pins,ball:ball&&ball.y<FINISH_Y?ball:null,position,aim:phase==="aim",
       live:phase==="roll"||phase==="settle",reaction:phase==="settle"&&rollTime>=.28,
-      shotResult:phase==="settle"?hitMessage:"",time,kind,events:laneEvents(),world:world(),guide,
+      shotResult:phase==="settle"?hitMessage:"",time,kind,events:laneEvents(),world:WORLDS[pendingWorld]??world(),guide,
       dialogue:phase==="settle"?bubbles.filter(b=>b.t<b.life).map(b=>({
         pin:b.pin,text:b.text,name:CHARS.byId(b.pin.id).name,
       })):[],
-      drift:obstacleOn()&&(kind==="ice"||kind==="wind")?drift:0,gravityX:gravityWellX()});
+      drift,gravityX:gravityWellX()});
   }
   if(edition==="original"){
     const objects=pins.map(p=>({y:p.y,draw:()=>paintAlien(p)}));
@@ -1389,9 +1405,9 @@ function act(name,i){
     case "worlds":worldsMenu();break;
     case "world":matchMenu(i);break;
     case "lane":
-      if(state!=="setup"||!LANES[i]||(edition==="orbit"&&i!==0))break;
+      if(state!=="setup"||!editionAllowsLane(i))break;
       pendingLane=i;
-      $("laneDetails").textContent=i===0?WORLDS[pendingWorld].hint:LANES[i].hint;
+      $("laneDetails").textContent=laneDetails(pendingWorld,i).hint;
       for(const b of $("panel").querySelectorAll("[data-act='lane']"))b.setAttribute("aria-pressed",String(Number(b.dataset.index)===i));
       break;
     case "bowl":if(state==="setup"&&i===pendingWorld)start(i,pendingLane);break;
@@ -1463,9 +1479,13 @@ document.addEventListener("keydown",e=>{
 });
 window.addEventListener("blur",pause);
 window.addEventListener("resize",resize);
+const compactBowling=matchMedia("(max-width: 600px), (pointer: coarse) and (max-width: 950px)");
+function deliveryRate(){
+  return edition==="orbit"&&state==="roll"&&compactBowling.matches?.80:1;
+}
 function animate(now){
   const dt=last?clamp((now-last)/1000,0,.06):0;last=now;
-  carry+=dt;
+  carry+=dt*deliveryRate();
   while(carry>=1/120){update(1/120);carry-=1/120;}
   draw();if(helpAnim)helpAnim(now/1000);requestAnimationFrame(animate);
 }
