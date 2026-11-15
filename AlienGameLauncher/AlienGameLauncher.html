@@ -83,6 +83,8 @@ const ROOT = (() => {
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien City Run 3D", tag: "3D runner", isNew: true, color: "#c77dff", href: "AlienCityRun/Alien-City-Run-3D.html", art: artCityRun,
+    desc: "Run through a neon alien metropolis in full 3D. Switch lanes, jump over barriers, and collect coins as the city scrolls past." },
   { name: "Alien Tunnel Run", tag: "Tunnel runner", isNew: true, color: "#88f7dc", href: "AlienTunnelRun/Alien-Tunnel-Run.html", art: artTunnelRun,
     desc: "Steer around a neon tunnel, dodge barriers, and collect coins as each section gets faster." },
   { name: "Alien Pipeworks", tag: "Pipe puzzle", isNew: true, color: "#76f4da", href: "AlienPipeworks/Alien-Pipeworks.html", art: artPipeworks,
@@ -227,6 +229,26 @@ function artBall(c, w, h, t) {
   c.fillStyle = "#bcecff38"; c.strokeStyle = "#c5f5ff"; c.lineWidth = 2;
   c.beginPath(); c.arc(flyX, flyY, r, 0, TAU); c.fill(); c.stroke();
 }
+function artCityRun(c, w, h, t) { // a runner sprints down a neon city street with buildings and rails
+  c.fillStyle = "#312653";
+  c.fillRect(0, 0, w, h);
+  const cx = w / 2;
+  for (let i = 0; i < 8; i++) {
+    const bx = (i * 53 + t * 12) % (w + 60) - 30;
+    const bh = 30 + Math.sin(i * 2.7) * 25;
+    c.fillStyle = `hsl(${250 + i * 8}, 20%, ${12 + i * 2}%)`;
+    c.fillRect(bx, h * 0.75 - bh, 28, bh);
+    for (let wy = h * 0.75 - bh + 4; wy < h * 0.75 - 4; wy += 8)
+      for (let wx = bx + 3; wx < bx + 25; wx += 7)
+        if (Math.sin(wx * 13 + wy * 7 + t) > 0.3) c.fillStyle = "rgba(255,200,100,.25)", c.fillRect(wx, wy, 3, 4);
+  }
+  c.strokeStyle = "#6affdb";
+  c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(0, h * 0.78); c.lineTo(w, h * 0.78); c.stroke();
+  c.beginPath(); c.moveTo(0, h * 0.82); c.lineTo(w, h * 0.82); c.stroke();
+  eyeAlien(c, cx + Math.sin(t * 3) * 15, h * 0.72, 10, "#c77dff", t);
+}
+
 function artTunnelRun(c, w, h, t) {
   c.fillStyle = "#111534";
   c.fillRect(0, 0, w, h);
