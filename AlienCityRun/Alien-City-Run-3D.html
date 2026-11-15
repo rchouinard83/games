@@ -170,9 +170,9 @@ let playerJumpY=0,playerJumpVY=0,isJumping=false;
 let obstacles=[],coinItems=[];
 
 const DIFFS=[
-  {name:'Easy',  jumpForce:15,speed:5},
-  {name:'Normal',jumpForce:17,speed:7},
-  {name:'Hard',  jumpForce:19,speed:9},
+  {name:'Easy',  speed:5},
+  {name:'Normal',speed:7},
+  {name:'Hard',  speed:9},
 ];
 let diff=1;
 
@@ -270,7 +270,7 @@ function titleAnim(t){
 const HOWTO=[
   {title:"Switch lanes",text:"Use <b>← / →</b> or swipe left and right."},
   {title:"Jump or roll",text:"Press <b>↑</b> or swipe up to jump over low hazards. Press <b>↓</b> or swipe down to roll under low overhangs. Press <b>↓</b> in midair to drop quickly and roll when you land."},
-  {title:"Ride the upper route",text:"Follow an entry ramp onto connected roofs. Follow the diagonal coin trail to jump across to another roof, or take the exit ramp back to the ground."},
+  {title:"Ride the upper route",text:"Follow an entry ramp onto connected roofs. Use ramps to get onto cars from the ground. Once you’re up, follow the diagonal coin trail to jump across to another roof."},
   {title:"Watch for blockers",text:"Switch lanes around tall obstacles. Gold coin trails show alternative routes."},
 ];
 
@@ -338,7 +338,7 @@ function launchJump(){
   jumpBuffer = 0;
   rollTime = 0;
   isJumping = true;
-  playerJumpVY = DIFFS[diff].jumpForce / 50;
+  playerJumpVY = 0.186;
   SFX.jump();
 }
 
@@ -367,30 +367,30 @@ const HAZARDS = {
   hurdle:{height:1.0, length:0.7},
   gate:{height:1.74, length:1.55, clearance:0.98},
   pillar:{height:3.1, length:2.2},
-  deck:{height:1.24, length:9, ramp:3.4},
-  float:{height:1.03, length:9.5, ramp:0},
-  convoy:{height:1.24, length:25.8, ramp:3.4, exit:3.4, cars:3},
-  petal:{height:1.85, length:19, ramp:0, exit:3.8},
-  sleds:{height:1.38, length:21, ramp:0, exit:0, cars:3},
-  ferry:{height:0.93, length:19.5, ramp:0, exit:4.2},
+  deck:{height:1.48, length:14.8, ramp:4.25},
+  float:{height:1.48, length:15.8, ramp:4.25},
+  convoy:{height:1.48, length:34.4, ramp:4.25, exit:4.25, cars:3},
+  petal:{height:1.88, length:25.2, ramp:0, exit:4.5},
+  sleds:{height:1.72, length:26.4, ramp:0, exit:0, cars:3},
+  ferry:{height:1.67, length:25.6, ramp:0, exit:4.5},
 };
 const ROUTES = [
   {
-    spacing: 15, coins: 5, transfer: {type:"petal", start:13, gate:true},
+    spacing: 15, coins: 5, transfer: {type:"petal", start:15, gate:true},
     rows: [
       ['convoy',null,'pod'], ['gate',null,'pod'], ['pod','gate',null],
       ['deck',null,'gate'], ['gate','pod',null], ['deck','gate',null],
     ],
   },
   {
-    spacing: 17, coins: 4, transfer: {type:"sleds", start:16},
+    spacing: 17, coins: 4, transfer: {type:"sleds", start:17},
     rows: [
       ['hurdle','pillar',null], ['pillar',null,'gate'], ['convoy',null,'hurdle'],
       [null,'gate','pillar'], ['pillar','float',null], ['hurdle',null,'gate'],
     ],
   },
   {
-    spacing: 18, coins: 6, transfer: {type:"ferry", start:12},
+    spacing: 18, coins: 6, transfer: {type:"ferry", start:14},
     rows: [
       ['float','gate',null], ['gate',null,'gate'], ['pod','float',null],
       ['convoy',null,'gate'], ['float',null,'pod'], ['gate','float',null],
@@ -423,7 +423,7 @@ function fillRoute(){
       rowLength = Math.max(rowLength, hazard?.length ?? 0);
       if (platform || !type || type === 'gate') {
         const start = platform ? HAZARDS[type].ramp + 0.7 : -3;
-        const count = hazard?.cars ? 12 : route.coins;
+        const count = hazard?.cars ? Math.floor((hazard.length-hazard.ramp-(hazard.exit ?? 0))/1.52) : route.coins;
         const gap = hazard?.cars ? 1.52 : platform ? 1 : 1.6;
         for (let i = 0; i < count; i++) {
           coinItems.push({lane, depth:depthAt(z - start - i * gap),
@@ -446,8 +446,8 @@ function fillRoute(){
         const t=i/6;
         coinItems.push({
           lane:shift+(destination-shift)*Math.min(1,t*2.6),
-          depth:depthAt(z-10-i*2.15),
-          y:HAZARDS.convoy.height+0.68+(roof.height-HAZARDS.convoy.height)*t+1.35*Math.sin(Math.PI*t),
+          depth:depthAt(z-(start-3)-i*1.42),
+          y:HAZARDS.convoy.height+0.68+(roof.height-HAZARDS.convoy.height)*t+0.88*Math.sin(Math.PI*t),
           collected:false,
         });
       }
