@@ -23,6 +23,14 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#1d2131
 /* the lane area takes whatever height is left; the canvas inside keeps a fixed shape and is centred */
 .arena{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 #lane{display:block;border:1px solid #646385;border-radius:15px;background:#221a38;touch-action:none;user-select:none}
+#orbitLane{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:15px;pointer-events:none}
+body.orbit #lane{position:relative;background:transparent;border-color:#80928f70}
+body.orbit{background:radial-gradient(ellipse at top,#213b40,#101722 74%);--accent:#a7efd9}
+body.orbit .frame.now{background:#254044;border-color:#a7efd9}
+body.orbit #panel.arcade-panel{background:#16252cf5;border-color:#68978b}
+#panel.arcade-panel .editions{display:grid;gap:9px;margin:14px 0}
+#panel.arcade-panel .editions button{display:block;text-align:left;padding:12px 14px}
+#panel.arcade-panel .editions button small{margin-top:4px}
 .status{flex:none;min-height:1.5em;margin:0 1px;font-size:.81rem;color:#ebe2ff;font-weight:750}.stage{font-weight:850;color:var(--accent);font-size:.75rem;text-align:right}
 .controls{display:grid;grid-template-columns:48px 1fr 48px;gap:6px}.controls button{touch-action:manipulation}.controls .primary{font-size:1.04rem}
 #rollOptions{margin-top:0}#rollOptions button[aria-pressed="true"]{background:#343d42;border-color:var(--accent);color:var(--accent)}
@@ -280,7 +288,7 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
 </head>
 <body><main>
 <header class="top"><div><div class="kicker">Alien Arcade · Ten-pin</div><h1>Alien <span>Bowling</span></h1></div><div class="topRight"><span class="stage" id="stage"></span><button id="fsBtn" type="button" aria-label="Full screen" aria-pressed="false" hidden></button></div></header>
-<div class="arena"><canvas id="lane" aria-label="Bowling lane and alien pins"></canvas>
+<div class="arena"><canvas id="orbitLane" aria-hidden="true" hidden></canvas><canvas id="lane" aria-label="Bowling lane and alien pins"></canvas>
 <section class="overlay arcade-menu" id="overlay" aria-label="Game menu"><div class="panel arcade-panel" id="panel" style="--menu-accent:#e8ff83"></div></section></div>
 <div class="score" id="score" aria-label="Ten-frame scorecard"></div>
 <p class="status" id="status" role="status"></p>
@@ -291,7 +299,10 @@ body.bigView .top>div:first-child{display:none}body.bigView .top{justify-content
   <button data-act="hookRight" aria-pressed="false">↷ Hook right</button>
   <button data-act="pause">Pause</button>
 </div>
-</main><script>
+</main>
+<script src="../lib/three.min.js"></script>
+<script src="Alien-Bowling-Orbit.js"></script>
+<script>
 "use strict";
 const $=id=>document.getElementById(id), cv=$("lane"), ctx=cv.getContext("2d");
 const PI=Math.PI, TAU=2*PI, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -742,12 +753,42 @@ function showMenu(html){
 }
 const ARCADE_LINK = '<a class="button" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
 let pendingWorld = null, pendingLane = 0;
+let edition="original", orbit=null;
+function editionMenu(message=""){
+  edition="original";
+  document.body.classList.remove("orbit");
+  $("orbitLane").hidden=true;
+  state="menu";pendingWorld=null;frames=[];bankBonuses=[];frame=0;ball=null;
+  rack();paintScore();setStatus("");
+  showMenu(`<h1>Alien Bowling</h1>
+    <p>Choose how you want to bowl.</p>
+    <div class="editions">
+      <button class="primary" data-act="orbit">Orbit Lanes <small>Play in a 3D bowling alley with rolling balls and animated alien pins.</small></button>
+      <button data-act="original">Original <small>Play the existing illustrated game.</small></button>
+    </div>
+    ${message ? '<p role="status">'+message+'</p>' : ''}${ARCADE_LINK}`);
+}
+function chooseEdition(next){
+  if(next==="orbit"){
+    try{
+      orbit ??= createOrbitBowling($("orbitLane"));
+    }catch{
+      editionMenu("Orbit Lanes needs WebGL. You can still play Original.");
+      return;
+    }
+  }
+  edition=next;
+  document.body.classList.toggle("orbit",edition==="orbit");
+  $("orbitLane").hidden=edition!=="orbit";
+  resize();
+  title();
+}
 function title(){
   state="menu";pendingWorld=null;frames=[];bankBonuses=[];frame=0;ball=null;hitMessage="";rack();paintScore();setStatus("");
-  showMenu(`<svg class="arcade-hero" viewBox="0 0 360 112" aria-hidden="true"><g fill="#9fb4ef"><circle cx="55" cy="20" r="1.7"/><circle cx="286" cy="17" r="1.5"/><circle cx="309" cy="74" r="1.3"/><circle cx="87" cy="86" r="1.5"/></g><path d="M100 107l47-72h66l47 72z" fill="#503f62" stroke="#9899c2" stroke-width="2"/><path d="M139 105l29-68m53 68l-28-68" fill="none" stroke="#e8ff83" opacity=".56"/><g fill="#86efb1" stroke="#163448" stroke-width="2"><ellipse cx="166" cy="30" rx="8" ry="13"/><ellipse cx="194" cy="30" rx="8" ry="13"/><ellipse cx="180" cy="42" rx="9" ry="15"/></g><g fill="#142c45"><circle cx="166" cy="27" r="2.5"/><circle cx="194" cy="27" r="2.5"/><circle cx="180" cy="38" r="3"/></g><circle cx="181" cy="83" r="16" fill="#aa8dfb" stroke="#e5d7ff" stroke-width="2"/><path d="M173 77q5-7 11-6" fill="none" stroke="#f2eaff" stroke-width="2" stroke-linecap="round"/></svg><p class="kicker">Alien Arcade</p><h1>Alien Bowling</h1>
+  showMenu(`${edition==="original"?`<svg class="arcade-hero" viewBox="0 0 360 112" aria-hidden="true"><g fill="#9fb4ef"><circle cx="55" cy="20" r="1.7"/><circle cx="286" cy="17" r="1.5"/><circle cx="309" cy="74" r="1.3"/><circle cx="87" cy="86" r="1.5"/></g><path d="M100 107l47-72h66l47 72z" fill="#503f62" stroke="#9899c2" stroke-width="2"/><path d="M139 105l29-68m53 68l-28-68" fill="none" stroke="#e8ff83" opacity=".56"/><g fill="#86efb1" stroke="#163448" stroke-width="2"><ellipse cx="166" cy="30" rx="8" ry="13"/><ellipse cx="194" cy="30" rx="8" ry="13"/><ellipse cx="180" cy="42" rx="9" ry="15"/></g><g fill="#142c45"><circle cx="166" cy="27" r="2.5"/><circle cx="194" cy="27" r="2.5"/><circle cx="180" cy="38" r="3"/></g><circle cx="181" cy="83" r="16" fill="#aa8dfb" stroke="#e5d7ff" stroke-width="2"/><path d="M173 77q5-7 11-6" fill="none" stroke="#f2eaff" stroke-width="2" stroke-linecap="round"/></svg>`:""}<p class="kicker">Alien Arcade</p><h1>${edition==="orbit"?"Orbit Lanes":"Alien Bowling"}</h1>
     <p>Ten aliens. One ball. They’re already heckling you.</p>
     <button class="primary" data-act="worlds">Play</button>
-    <div class="actions"><button data-act="help">How to play</button>${soundButton()}</div>${ARCADE_LINK}`);
+    <div class="actions"><button data-act="help">How to play</button>${soundButton()}</div><button data-act="editions">Choose edition</button>${ARCADE_LINK}`);
 }
 function worldsMenu(){
   state="menu";pendingWorld=null;
@@ -763,12 +804,12 @@ function ballDetails(){
 }
 function matchMenu(i, l=0){
   if(!WORLDS[i]||!isOpen(i))return;
-  state="setup";pendingWorld=i;pendingLane=l;
+  state="setup";pendingWorld=i;pendingLane=edition==="orbit"?0:l;
   const w=WORLDS[i];
   showMenu(`<p class="kicker">Alien Bowling · Match setup</p><h2>${w.name}</h2>
     <div class="match-options">
       <section aria-label="Lane selection"><p class="kicker">Lane</p>
-        <div class="lane-options">${LANES.map((lane,j)=>{const best=laneBest(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
+        <div class="lane-options">${(edition==="orbit"?LANES.slice(0,1):LANES).map((lane,j)=>{const best=laneBest(i,j);return `<button data-act="lane" data-index="${j}" aria-pressed="${j===pendingLane}">
           <span>${lane.name}<small>${j===0?`${w.caption} · `:""}<span class="stars" aria-label="${stars(i,best,j)} stars">${starText(stars(i,best,j))}</span>${best?` · ${best}${lane.kind==="spare"?"/10":""}`:""}</small></span></button>`;}).join("")}</div>
         <p id="laneDetails">${pendingLane===0?w.hint:LANES[pendingLane].hint}</p>
       </section>
@@ -883,6 +924,7 @@ function demoAliens(c,tt,w,h){
       c.fillStyle="#1d1a33";c.textAlign="center";c.textBaseline="middle";c.fillText(lines[say],bx+tw/2,h*.12+11.5);}});
 }
 function start(i, l=0){
+  if(edition==="orbit")l=0;
   if(!WORLDS[i]||!LANES[l]||!isOpen(i))return;
   pendingWorld=null;
   worldIndex=i;laneIndex=l;frames=Array.from({length:10},()=>[]);bankBonuses=Array(10).fill(0);frame=0;time=0;position=0;hook=0;rack(true);ready();
@@ -926,7 +968,7 @@ function update(dt){
   reactions(dt);
   if(state==="aim")moveHecklers();
   if(state==="settle"){
-    if((rollTime+=dt)>1.6)advance(); // long enough to hear them gloat (or groan)
+    if((rollTime+=dt)>(edition==="orbit"&&pins.some(p=>!p.down)?2.8:1.6))advance(); // long enough to hear them gloat (or groan)
     return;
   }
   if(state!=="roll")return;
@@ -988,6 +1030,23 @@ function update(dt){
   if(rollTime>3.65||(ballDone&&pins.every(p=>Math.hypot(p.vx,p.vy)<.23)))finishRoll();
 }
 let rackAfterRoll=false, endAfterRoll=false;
+function consecutiveStrikes(){
+  let streak=0;
+  for(let f=frame;f>=0;f--){
+    for(let i=frames[f].length-1;i>=0;i--){
+      if(frames[f][i]!==10)return streak;
+      streak++;
+    }
+  }
+  return streak;
+}
+function strikeCallout(streak){
+  if(streak===1)return "STRIKE!";
+  if(streak===2)return "DOUBLE!";
+  if(streak===3)return "TURKEY!";
+  if(streak===12)return "PERFECT GAME!";
+  return `${streak}-BAGGER!`;
+}
 function finishRoll(){
   if(spareLane()){
     const cleared=pins.every(p=>p.down);
@@ -1010,13 +1069,20 @@ function finishRoll(){
   const strike=hitCount===10, spare=r.length===2&&r[0]!==10&&sum===10;
   const bankStrike=strike&&ball.banked;
   if(bankStrike)bankBonuses[frame]+=BANK_BONUS;
-  hitMessage=bankStrike?`BANK STRIKE! +${BANK_BONUS}`:strike?"STRIKE!":spare?"SPARE!":hitCount?`${hitCount} DOWN`:ball.earlyGutter?"GUTTER BALL":"MISS!";
+  const streak=strike?consecutiveStrikes():0;
+  const callout=strike?strikeCallout(streak):"";
+  hitMessage=bankStrike?`${streak===1?"BANK STRIKE!":callout} +${BANK_BONUS}`:strike?callout:spare?"SPARE!":hitCount?`${hitCount} DOWN`:ball.earlyGutter?"GUTTER BALL":"MISS!";
   setStatus(hitMessage);if(strike||spare)playSound(strike?630:500,.27,"sine",820);
   const up=pins.filter(p=>!p.down),downs=pins.filter(p=>p.down);
-  if(!ball.earlyGutter||hitCount>0){
+  if(edition==="orbit"&&ball.earlyGutter&&!hitCount){
+    if(up.length)speak(pick(up),nextLine(GUTTER_LINES),2.8,"laugh");
+  }else if(!ball.earlyGutter||hitCount>0){
     bubbles=[];
     if(strike||spare){
-      if(downs.length)speak(pick(downs),nextLine(ball.dodged?(strike?MOVING_STRIKE:MOVING_SPARE):(strike?STRIKE_LINES:SPARE_LINES)),2);
+      if(downs.length){
+        const reaction=nextLine(ball.dodged?(strike?MOVING_STRIKE:MOVING_SPARE):(strike?STRIKE_LINES:SPARE_LINES));
+        speak(pick(downs),streak>1?`${callout} ${reaction}`:reaction,2);
+      }
     }else if(hitCount===0)laughAt(ball.dodged?MOVING_MISS:MISS);
     else if(up.length&&ball.dodged)speak(pick(up),nextLine(MOVING_SURVIVOR),2);
     else if(up.length===1)speak(up[0],nextLine(LONE_PIN),2);
@@ -1066,6 +1132,7 @@ function pause(){
 // A real lane is long and skinny (about 17 times longer than wide), so it's drawn narrow and tapering hard into the distance.
 const DECK=13.5, DECK_STRETCH=1.7, LANE_END=DECK+(17.8-DECK)*DECK_STRETCH;
 function project(x,y){
+  if(edition==="orbit")return orbit.project(x,y,width,height);
   const d=y<DECK?y:DECK+(y-DECK)*DECK_STRETCH, u=clamp(d/LANE_END,-.05,1.2);
   return {x:width/2+x*width*(.27-.13*u),y:height*(.95-.62*u),scale:1-.13/.27*u}; // things shrink exactly as fast as the lane narrows
 }
@@ -1122,6 +1189,9 @@ function paintLane(){
     const y=3.4-Math.abs(i)*.19, x=i*.232;
     polygon([[x-.024,y],[x+.024,y],[x,y+.20]],"#fff5d0bb");
   }
+  paintLaneEffects(kind);
+}
+function paintLaneEffects(kind){
   if(kind==="rails"){
     for(const side of [-1,1]){
       const edge=side*HALF_LANE;
@@ -1232,7 +1302,10 @@ function paintBall(x,y,spin=0){
 }
 function draw(){
   if(!width||!height)return;
-  ctx.setTransform(ratio,0,0,ratio,0,0);paintLane();
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  const guide=[];
+  if(edition==="orbit")ctx.clearRect(0,0,width,height);
+  else paintLane();
   if(state==="aim"){
     const target=aim(), curve=(gesture?.preview??hook)*myBall().hook;
     const line=y=>position+(target-position)*(y-.52)/13.6+curve*hookProgress(y)**2;
@@ -1252,18 +1325,41 @@ function draw(){
       return guideX;
     }
     for(let i=1;i<=13;i++){
-      const y=.52+i*.94,p=project(guideAt(y),y);
-      circle(p.x,p.y,3.5*p.scale,y>HOOK_START&&curve?"#ffd196":"#efff9ee5");
+      const y=.52+i*.94,x=guideAt(y);
+      if(edition==="orbit")guide.push({x,y,hook:Boolean(y>HOOK_START&&curve)});
+      else{
+        const p=project(x,y);
+        circle(p.x,p.y,3.5*p.scale,y>HOOK_START&&curve?"#ffd196":"#efff9ee5");
+      }
     }
-    const p=project(guideAt(13.67),13.67),r=5;
-    ctx.strokeStyle="#f0ff98";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,r,0,TAU);ctx.stroke();
+    const x=guideAt(13.67);
+    if(edition==="orbit")guide.push({x,y:13.67,target:true});
+    else{
+      const p=project(x,13.67);
+      ctx.strokeStyle="#f0ff98";ctx.lineWidth=2;ctx.beginPath();ctx.arc(p.x,p.y,5,0,TAU);ctx.stroke();
+    }
   }
-  const objects=pins.map(p=>({y:p.y,draw:()=>paintAlien(p)}));
-  for(const o of laneEvents())objects.push({y:o.y,draw:()=>paintObstacle(o)});
-  if(ball&&ball.y<FINISH_Y)objects.push({y:ball.y,draw:()=>paintBall(ball.x,ball.y,ball.spin)});
-  objects.sort((a,b)=>b.y-a.y).forEach(o=>o.draw());
-  if(state==="aim")paintBall(position,.52);
-  paintBubbles();
+  if(edition==="orbit"){
+    const phase=state==="pause"?resumeState:state;
+    const kind=lane().kind;
+    const drift=kind==="ice"?(frame%2?-1:1):Math.sign(Math.sin(time*2.1));
+    orbit.setBall(myBall().colors[1]);
+    orbit.draw({pins,ball:ball&&ball.y<FINISH_Y?ball:null,position,aim:phase==="aim",
+      live:phase==="roll"||phase==="settle",reaction:phase==="settle"&&rollTime>=.28,
+      shotResult:phase==="settle"?hitMessage:"",time,kind,events:laneEvents(),world:world(),guide,
+      dialogue:phase==="settle"?bubbles.filter(b=>b.t<b.life).map(b=>({
+        pin:b.pin,text:b.text,name:CHARS.byId(b.pin.id).name,
+      })):[],
+      drift:obstacleOn()&&(kind==="ice"||kind==="wind")?drift:0,gravityX:gravityWellX()});
+  }
+  if(edition==="original"){
+    const objects=pins.map(p=>({y:p.y,draw:()=>paintAlien(p)}));
+    for(const o of laneEvents())objects.push({y:o.y,draw:()=>paintObstacle(o)});
+    if(ball&&ball.y<FINISH_Y)objects.push({y:ball.y,draw:()=>paintBall(ball.x,ball.y,ball.spin)});
+    objects.sort((a,b)=>b.y-a.y).forEach(o=>o.draw());
+    if(state==="aim")paintBall(position,.52);
+  }
+  if(edition==="original"||state!=="settle"||rollTime<.28)paintBubbles();
   if(state==="settle"){
     const text=hitMessage, y=height*.49;
     ctx.font=`950 ${clamp(width*.076,23,43)}px system-ui`;ctx.textAlign="center";ctx.textBaseline="middle";
@@ -1282,15 +1378,18 @@ function resize(){
   width=Math.floor(w);height=Math.floor(h);ratio=Math.min(2,window.devicePixelRatio||1);
   cv.style.width=width+"px";cv.style.height=height+"px";
   cv.width=Math.round(width*ratio);cv.height=Math.round(height*ratio);
+  if(edition==="orbit")orbit.resize(width,height,ratio);
 }
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv.parentElement); // also refits when the buttons show or hide
 function act(name,i){
   enableSound();poked();
   switch(name){
+    case "editions":editionMenu();break;
+    case "orbit":case "original":chooseEdition(name);break;
     case "worlds":worldsMenu();break;
     case "world":matchMenu(i);break;
     case "lane":
-      if(state!=="setup"||!LANES[i])break;
+      if(state!=="setup"||!LANES[i]||(edition==="orbit"&&i!==0))break;
       pendingLane=i;
       $("laneDetails").textContent=i===0?WORLDS[pendingWorld].hint:LANES[i].hint;
       for(const b of $("panel").querySelectorAll("[data-act='lane']"))b.setAttribute("aria-pressed",String(Number(b.dataset.index)===i));
@@ -1411,5 +1510,5 @@ function animate(now){
   btn.addEventListener("click",()=>{enableSound();const r=isFull()?(document.exitFullscreen||document.webkitExitFullscreen).call(document):req.call(root);if(r&&r.catch)r.catch(()=>{});});
   document.addEventListener("fullscreenchange",sync);document.addEventListener("webkitfullscreenchange",sync);sync();
 })();
-resize();showSound();title();requestAnimationFrame(animate);
+resize();showSound();editionMenu();requestAnimationFrame(animate);
 </script></body></html>
