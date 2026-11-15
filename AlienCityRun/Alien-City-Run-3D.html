@@ -170,9 +170,9 @@ let playerJumpY=0,playerJumpVY=0,isJumping=false;
 let obstacles=[],coinItems=[];
 
 const DIFFS=[
-  {name:'Easy',  speed:5},
-  {name:'Normal',speed:7},
-  {name:'Hard',  speed:9},
+  {name:'Easy', speed:5, topSpeed:9, recovery:10, spacing:4, rollFrames:58, hurdleTolerance:0.24},
+  {name:'Normal',speed:6.6, topSpeed:11.4, recovery:8, spacing:1.5, rollFrames:51, hurdleTolerance:0.17},
+  {name:'Hard', speed:9, topSpeed:14, recovery:5.5, spacing:-1.5, rollFrames:46, hurdleTolerance:0.10},
 ];
 let diff=1;
 
@@ -348,7 +348,7 @@ function roll(){
     if (!dropping) playerJumpVY = Math.min(playerJumpVY, -0.39);
     dropping = true;
   } else if (rollTime <= 0) {
-    rollTime = ROLL_DURATION;
+    rollTime = DIFFS[diff].rollFrames;
   }
 }
 
@@ -380,6 +380,7 @@ const ROUTES = [
     rows: [
       ['convoy',null,'pod'], ['gate',null,'pod'], ['pod','gate',null],
       ['deck',null,'gate'], ['gate','pod',null], ['deck','gate',null],
+      [null,'pod','pod'], ['gate',null,'deck'], ['pod',null,'gate'],
     ],
   },
   {
@@ -387,6 +388,7 @@ const ROUTES = [
     rows: [
       ['hurdle','pillar',null], ['pillar',null,'gate'], ['convoy',null,'hurdle'],
       [null,'gate','pillar'], ['pillar','float',null], ['hurdle',null,'gate'],
+      ['pillar',null,'hurdle'], ['float','gate',null], ['hurdle','pillar',null],
     ],
   },
   {
@@ -394,10 +396,11 @@ const ROUTES = [
     rows: [
       ['float','gate',null], ['gate',null,'gate'], ['pod','float',null],
       ['convoy',null,'gate'], ['float',null,'pod'], ['gate','float',null],
+      ['pod',null,'pod'], ['deck',null,'gate'], ['gate','pod',null],
     ],
   },
 ];
-const ROLL_DURATION = 46;
+
 let world = 0;
 let distance = 0, nextPattern = 0, patternIndex = 0;
 let rollTime = 0;
@@ -407,6 +410,7 @@ const depthAt = z => 1 + z / 68;
 
 function fillRoute(){
   const route = ROUTES[world];
+  const difficulty = DIFFS[diff];
   while (nextPattern < distance + 58) {
     const pattern = route.rows[patternIndex % route.rows.length];
     const convoyIndex = pattern.indexOf('convoy');
@@ -415,7 +419,10 @@ function fillRoute(){
       patternIndex === 0 ? 2 : Math.floor(Math.random() * LANE_COUNT);
     const z = distance - nextPattern - 16;
     let rowLength = 0;
-    pattern.forEach((type, index) => {
+    const spareLane = diff===0 && patternIndex%3===1
+      ? pattern.findIndex(type=>type==='pod'||type==='hurdle'||type==='gate') : -1;
+    pattern.forEach((obstacle, index) => {
+      const type = index===spareLane ? null : obstacle;
       const lane = mirror ? shift - index : (index + shift) % LANE_COUNT;
       if (type) obstacles.push({lane,type,depth:depthAt(z),passed:false});
       const hazard = HAZARDS[type];
@@ -462,7 +469,7 @@ function fillRoute(){
       }
     }
     patternIndex++;
-    nextPattern += Math.max(rowLength + 3, route.spacing - diff * 1.25) + Math.random() * 3;
+    nextPattern += Math.max(rowLength + difficulty.recovery, route.spacing + difficulty.spacing) + Math.random() * 3;
   }
 }
 
@@ -731,7 +738,7 @@ function drawScene(travel = 0) {
   const stride = Math.sin(frameCount * 0.26);
   runner.position.set(laneX(playerLane), playerJumpY + Math.abs(stride) * 0.035, 0);
   const rolling = rollTime > 0 || dropping;
-  const turn = dropping ? 0.17 : rollTime > 0 ? 1 - rollTime / ROLL_DURATION : 0;
+  const turn = dropping ? 0.17 : rollTime > 0 ? 1 - rollTime / DIFFS[diff].rollFrames : 0;
   rollPivot.position.y = rolling ? 0.48 : 0;
   rollPivot.rotation.x = -turn * TAU;
   runner.rotation.z = (playerLane - targetLane) * 0.23;
@@ -752,10 +759,10 @@ function loop(now){
   const step = Math.min(2, lastFrame ? (now - lastFrame) / (1000 / 60) : 1);
   lastFrame = now;
   frameCount += step;
-  speed = DIFFS[diff].speed + frameCount * 0.0005;
+  speed = Math.min(DIFFS[diff].topSpeed, DIFFS[diff].speed + frameCount * 0.0005);
   playerLane += (targetLane - playerLane) * (1 - 0.73 ** step);
   rollTime = Math.max(0, rollTime - step);
-  const travel = (0.14 + Math.min(speed, 14) * 0.025) * step;
+  const travel = (0.14 + speed * 0.025) * step;
   distance += travel;
   for (const item of obstacles) item.depth += travel / 68;
   for (const coin of coinItems) coin.depth += travel / 68;
@@ -788,7 +795,7 @@ function loop(now){
       isJumping = false;
       if (dropping) {
         dropping = false;
-        rollTime = ROLL_DURATION;
+        rollTime = DIFFS[diff].rollFrames;
       }
       if (jumpBuffer > 0) launchJump();
     }
@@ -805,7 +812,8 @@ function loop(now){
     if (Math.abs(playerLane - item.lane) < 0.46 && z > -0.29 && z < shape.length + 0.26) {
       const top = shape.ramp === undefined ? shape.height : platformHeight(shape,z);
       const under = shape.clearance ?? 0;
-      if (head > under && playerJumpY < top - 0.10 && (shape.ramp === undefined || z < shape.length)) crashed = true;
+      const tolerance = item.type==='pod'||item.type==='hurdle' ? DIFFS[diff].hurdleTolerance : 0.10;
+      if (head > under && playerJumpY < top - tolerance && (shape.ramp === undefined || z < shape.length)) crashed = true;
     }
     if (z > shape.length + 0.35 && !item.passed) {
       item.passed = true;
