@@ -302,13 +302,14 @@ function createOrbitBowling(canvas){
   pinCamera.lookAt(0,.24,-14.86);
   const reactionCamera=new THREE.PerspectiveCamera(29,screenWidth/screenHeight,.08,35);
   const captionArt=document.createElement("canvas");
-  captionArt.width=768;captionArt.height=310;
+  captionArt.width=768;captionArt.height=92;
   const captionInk=captionArt.getContext("2d");
   const captionMap=new THREE.CanvasTexture(captionArt);
   captionMap.encoding=THREE.sRGBEncoding;
-  const caption=new THREE.Mesh(new THREE.PlaneGeometry(screenWidth,screenHeight),
-    new THREE.MeshBasicMaterial({map:captionMap,transparent:true,depthWrite:false,toneMapped:false}));
-  caption.position.set(0,2.66,-18.58);
+  const caption=new THREE.Mesh(new THREE.PlaneGeometry(screenWidth,.61),
+    new THREE.MeshBasicMaterial({map:captionMap,transparent:true,depthTest:false,depthWrite:false,toneMapped:false}));
+  caption.position.set(0,4.09,-18.58);
+  caption.renderOrder=10;
   screenGroup.add(caption);
   let lastCaption="";
   function showCaption(name,text){
@@ -316,17 +317,17 @@ function createOrbitBowling(canvas){
     const key=name+"\n"+text;
     if(!caption.visible||key===lastCaption)return;
     lastCaption=key;
-    captionInk.clearRect(0,0,768,310);
+    captionInk.clearRect(0,0,768,92);
     captionInk.fillStyle="#111d29ee";
-    captionInk.fillRect(0,218,768,92);
+    captionInk.fillRect(0,0,768,92);
     if(name){
       captionInk.font="700 24px system-ui";
       captionInk.fillStyle="#a6edcf";
-      captionInk.fillText(name,21,247,725);
+      captionInk.fillText(name,21,29,725);
     }
     captionInk.fillStyle="#fff7dc";
     captionInk.font="800 39px system-ui";
-    captionInk.fillText(text,21,name?289:276,726);
+    captionInk.fillText(text,21,name?71:58,726);
     captionMap.needsUpdate=true;
   }
 
