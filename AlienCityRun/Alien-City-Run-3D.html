@@ -231,8 +231,8 @@ function titleMenu(){
     <div class="char-picker">${chars.map(id=>`<button data-act="char" data-arg="${id}" class="${id===currentChar?'on':''}">
       <canvas data-alien="${id}" width="48" height="48"></canvas>${names[id]}</button>`).join('')}</div>
     <p class="kicker">Difficulty</p>
-    <div class="diff-picker">${DIFFS.map((d,i)=>`<button data-act="diff" data-arg="${i}" class="${i===diff?'on':''}">
-      <canvas data-alien="${currentChar}" width="42" height="42"></canvas>${d.name}</button>`).join('')}</div>
+    <div class="diff-picker" aria-label="Difficulty">${DIFFS.map((d,i)=>
+      `<button data-act="diff" data-arg="${i}" aria-pressed="${i===diff}" class="${i===diff?'on':''}">${d.name}</button>`).join('')}</div>
     <button class="big main" data-act="play">▶&ensp;Play</button>
     <button class="big" data-act="help">How to play</button>
     <button class="big" data-act="sound">Sound: ${soundOn?'On':'Off'}</button>
@@ -310,6 +310,7 @@ function resetGame(){
   patternIndex = 0;
   rollTime = 0;
   dropping = false;
+  jumpBuffer = 0;
   speed = DIFFS[diff].speed;
   frameCount = 0;
   playerJumpY = 0;
@@ -323,15 +324,19 @@ let lastFrame = 0;
 function startGame(){resetGame();gameRunning=true;closeMenu();}
 
 function jump(){
-  if (!isJumping && playerJumpVY === 0) {
-    rollTime = 0;
-    isJumping = true;
-    playerJumpVY = DIFFS[diff].jumpForce / 50;
-    SFX.jump();
-  }
+  jumpBuffer = 8;
+}
+
+function launchJump(){
+  jumpBuffer = 0;
+  rollTime = 0;
+  isJumping = true;
+  playerJumpVY = DIFFS[diff].jumpForce / 50;
+  SFX.jump();
 }
 
 function roll(){
+  jumpBuffer = 0;
   if (isJumping || playerJumpVY < 0) {
     if (!dropping) playerJumpVY = Math.min(playerJumpVY, -0.39);
     dropping = true;
@@ -373,8 +378,8 @@ const ROUTES = [
   {
     spacing: 17, coins: 4, transfer: {type:"sleds", start:16},
     rows: [
-      ['hurdle','pillar',null], ['pillar',null,'pillar'], ['convoy',null,'hurdle'],
-      [null,'hurdle','pillar'], ['pillar','float',null], ['hurdle',null,'hurdle'],
+      ['hurdle','pillar',null], ['pillar',null,'gate'], ['convoy',null,'hurdle'],
+      [null,'gate','pillar'], ['pillar','float',null], ['hurdle',null,'gate'],
     ],
   },
   {
@@ -390,6 +395,7 @@ let world = 0;
 let distance = 0, nextPattern = 0, patternIndex = 0;
 let rollTime = 0;
 let dropping = false;
+let jumpBuffer = 0;
 const depthAt = z => 1 + z / 68;
 
 function fillRoute(){
@@ -508,6 +514,7 @@ function mineral(parent,color,x,y,z,radius,height,rotation){
   shard.rotation.set(...rotation);
   return shard;
 }
+const rootArch = new THREE.TorusGeometry(5.8, 0.26, 6, 18, Math.PI);
 const trackTop = new THREE.PlaneGeometry(8.3, 14);
 trackTop.rotateX(-Math.PI / 2);
 const surfaces = WORLDS.map((palette, worldIndex) => {
@@ -627,8 +634,7 @@ function buildTrack(){
         mesh(section, sphere, 0xffc88b, x - side, 4.6, z, 0.28, 0.55, 0.29, true);
         mesh(section, sphere, 0x705063, x + side, 0.35, z + 2, 2.3, 0.57, 0.7).rotation.y = side * 0.45;
         if (side === 1 && index % 3 === 1) {
-          const arch = new THREE.TorusGeometry(5.8, 0.26, 6, 18, Math.PI);
-          mesh(section, arch, 0x6f5067, 0, 0, z, 1, 1, 1);
+          mesh(section, rootArch, 0x6f5067, 0, 0, z, 1, 1, 1);
         }
       } else if (world === 1) {
         crystalOutcrop(section,x,z,side,index);
@@ -771,17 +777,23 @@ function createItem(item) {
     mesh(group, coinShape, 0xffe27a, 0, 0.64, -0.065, 0.72, 0.72, 0.12, true);
   } else {
     const {height:h, length, ramp, exit = 0, cars = 1} = HAZARDS[item.type];
-    if (item.type === 'gate' && world === 2) {
-      const center=-length/2;
+    if (item.type === 'gate' && world !== 0) {
+      const center = -length/2;
+      const support = world === 1 ? 0x5a647c : 0x438581;
+      const brace = world === 1 ? 0x3a4258 : 0x396d71;
+      const trim = world === 1 ? 0xf8c579 : 0xb3e5cf;
       for (const side of [-1,1]) {
-        box(group,0x438581,side*0.99,h*0.5,center,0.24,h,length);
-        box(group,0xd3b884,side*0.97,0.17,center,0.35,0.34,length);
+        box(group,support,side*0.99,h*0.5,center,0.24,h,length);
+        box(group,trim,side*0.97,0.17,center,0.35,0.34,length);
       }
-      box(group,0x396d71,0,(h+0.98)/2,center,2.19,h-0.98,length);
-      box(group,0xb3e5cf,0,h-0.13,0.02,2.16,0.1,0.065);
-      for (const x of [-0.66,0,0.66]) {
-        const marker=box(group,0xf8bd6b,x,1.16,0.033,0.22,0.12,0.075,true);
-        marker.rotation.z=Math.PI/4;
+      const clearance = HAZARDS.gate.clearance;
+      box(group,brace,0,(h+clearance)/2,center,2.19,h-clearance,length);
+      box(group,trim,0,h-0.13,0.02,2.16,0.1,0.065);
+      for (const x of [-0.61,0.61]) {
+        const left = box(group,0xffcf80,x-0.077,1.24,0.056,0.21,0.06,0.075,true);
+        const right = box(group,0xffcf80,x+0.077,1.24,0.056,0.21,0.06,0.075,true);
+        left.rotation.z = -Math.PI/4;
+        right.rotation.z = Math.PI/4;
       }
     } else if (item.type === 'gate') {
       const center = -length/2;
@@ -955,7 +967,9 @@ function loop(now){
       floor = Math.max(floor, top);
     }
   }
-  if (isJumping || dropping || (!onPlatform && playerJumpY > floor + 0.025)) {
+  if (jumpBuffer > 0 && !isJumping && !dropping && playerJumpVY === 0 &&
+      (onPlatform || playerJumpY <= floor + 0.025)) launchJump();
+  if (isJumping || dropping || playerJumpVY !== 0 || (!onPlatform && playerJumpY > floor + 0.025)) {
     playerJumpVY -= 0.013 * step;
     playerJumpY += playerJumpVY * step;
     if (playerJumpVY <= 0 && playerJumpY <= floor) {
@@ -967,11 +981,13 @@ function loop(now){
         dropping = false;
         rollTime = ROLL_DURATION;
       }
+      if (jumpBuffer > 0) launchJump();
     }
   } else {
     playerJumpY = floor;
   }
 
+  jumpBuffer = Math.max(0, jumpBuffer - step);
   let crashed = false;
   const head = playerJumpY + (rollTime > 0 ? 0.96 : 1.53);
   for (const item of obstacles) {
@@ -1027,7 +1043,7 @@ document.addEventListener('keydown',e=>{
   switch(e.key){
     case'ArrowLeft':case'a':case'A':switchLane(-1);e.preventDefault();break;
     case'ArrowRight':case'd':case'D':switchLane(1);e.preventDefault();break;
-    case'ArrowUp':case'w':case'W':jump();e.preventDefault();break;
+    case'ArrowUp':case'w':case'W':if(!e.repeat) jump();e.preventDefault();break;
     case'ArrowDown':case's':case'S':if(!e.repeat) roll();e.preventDefault();break;
     case' ':case'p':case'P':case'Escape':
       if(gameRunning&&!paused){paused=true;pauseMenu();e.preventDefault();}break;
