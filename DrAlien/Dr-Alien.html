@@ -135,6 +135,12 @@
     border-radius: 10px; background: #080f20d9; padding: 12px; gap: 12px;
   }
   .overlay h2 { font-size: 24px; letter-spacing: -.035em; }
+  /* Level-20 surprise video: full-screen canvas, 16:9 letterboxed. */
+  #surprise { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: #03050c; touch-action: none; }
+  #surprise[hidden] { display: none; }
+  #surprise canvas { width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9; display: block; }
+  #surprise-skip { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom));
+    padding: 8px 16px; border: 1px solid #3d5a92; border-radius: 10px; background: #16264acc; color: var(--ink); font: 700 14px system-ui, sans-serif; }
   .overlay[hidden] { display: none; }
   button, select {
     min-height: 38px; padding: 7px 10px; border-radius: 8px; border: 1px solid #42537b;
@@ -582,6 +588,10 @@
     </section>
   </div>
 </main>
+<div id="surprise" role="dialog" aria-label="Surprise: bonus levels unlocked" hidden>
+  <canvas id="surprise-canvas" width="640" height="360"></canvas>
+  <button id="surprise-skip" type="button">Skip ▸</button>
+</div>
 <script>
 "use strict";
 // Hive Queen portrait and drawing primitives from Alien Defense.
@@ -747,7 +757,25 @@ const cells = Array.from({ length: COLS * ROWS }, () => {
   byId("board").append(cell);
   return cell;
 });
-for (let i = 0; i <= 20; i++) byId("start-level").add(new Option(i, i));
+// Levels 21-25 are bonus levels, unlocked (and saved) the first time level 20 is beaten.
+const MAIN_LEVELS = 20, BONUS_LEVELS = 25, BONUS_KEY = "dralien-bonus";
+let bonusUnlocked = false;
+try { bonusUnlocked = localStorage.getItem(BONUS_KEY) === "1"; } catch { /* storage can be unavailable */ }
+const maxLevel = () => bonusUnlocked ? BONUS_LEVELS : MAIN_LEVELS;
+function fillLevelSelect() {
+  const select = byId("start-level"), value = select.value;
+  select.length = 0;
+  for (let i = 0; i <= maxLevel(); i++) select.add(new Option(i > MAIN_LEVELS ? `${i} ★ bonus` : i, i));
+  if (value !== "") select.value = Math.min(Number(value), maxLevel());
+}
+function unlockBonus() {
+  bonusUnlocked = true;
+  try { localStorage.setItem(BONUS_KEY, "1"); } catch { /* keep it for this session */ }
+  fillLevelSelect();
+}
+// Bonus levels drop capsules a bit faster each level (about 30% faster by level 25).
+const fallDelay = () => Math.round(speeds[speed] * 0.93 ** Math.max(0, level - MAIN_LEVELS));
+fillLevelSelect();
 byId("start-level").addEventListener("change", () => {
   byId("play").textContent = "Start mission";
 });
@@ -864,7 +892,7 @@ function showMenu(open) {
   if (!open) syncPlayViewport();
   byId("resume-game").hidden = phase === "ready";
   const saved = loadProgress();
-  byId("start-level").value = Math.max(0, Math.min(20, phase === "ready" ? saved?.level ?? 0 : level));
+  byId("start-level").value = Math.max(0, Math.min(maxLevel(), phase === "ready" ? saved?.level ?? 0 : level));
   byId("play").textContent = phase === "ready" ? (saved && saved.level > 0 ? `Continue · Level ${saved.level}` : "Start mission") : `Restart level ${level}`;
   const focusTarget = phase === "ready" ? "play" : "resume-game";
   byId(open ? focusTarget : "board").focus({ preventScroll: true });
@@ -979,7 +1007,8 @@ function seedSpores() {
   for (let y = ceiling; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) slots.push(y * COLS + x);
   }
-  spores = 4 * (level + 1);
+  // Bonus levels add 2 spores each instead of 4, so the board never fills up (level 25: 94 of 104 slots).
+  spores = level <= MAIN_LEVELS ? 4 * (level + 1) : 4 * (MAIN_LEVELS + 1) + 2 * (level - MAIN_LEVELS);
   const occupied = new Set(shuffle(slots).slice(0, spores));
   // Fill in reading order and rule out pre-existing matches.
   for (let y = ceiling; y < ROWS; y++) {
@@ -1038,7 +1067,7 @@ function start(newRun) {
     const selectedLevel = Number(byId("start-level").value);
     const progress = loadProgress();
     const saved = progress?.level === selectedLevel ? progress : null;
-    if (saved) { level = Math.max(0, Math.min(20, saved.level)); speed = saved.speed ?? Number(byId("speed").value); score = saved.score || 0; }
+    if (saved) { level = Math.max(0, Math.min(maxLevel(), saved.level)); speed = saved.speed ?? Number(byId("speed").value); score = saved.score || 0; }
     else { level = selectedLevel; speed = Number(byId("speed").value); score = 0; }
   }
   saveProgress();
@@ -1065,11 +1094,21 @@ function finish(won) {
     ? "“Chamber clean. Bring me the next batch.”"
     : "“The feed is jammed. Vent the chamber.”";
   if (won) {
-    saveProgress(Math.min(20, level + 1)); // the next level is waiting if you close the game now
+    if (level === MAIN_LEVELS) {
+      unlockBonus();
+      saveProgress(level + 1); // the next level is waiting if you close the game now
+      setOverlay("Bonus levels unlocked!", "Mother Blob escaped into the Bonus Labs. Levels 21–25 are open.",
+        "Bonus level 21", true);
+      byId("overlay").hidden = true;
+      surpriseVideo.play(() => { byId("overlay").hidden = false; byId("action").focus({ preventScroll: true }); });
+      return;
+    }
+    saveProgress(Math.min(maxLevel(), level + 1)); // the next level is waiting if you close the game now
     const milestone = speed > 0 && level > 0 && level % 5 === 0;
-    setOverlay(milestone ? `Level ${level} cleared` : "Chamber secured",
-      milestone ? "The spore colony retreats." : "Every spore cleared.",
-      level < 20 ? "Next level" : "New mission", milestone);
+    const finale = level === BONUS_LEVELS;
+    setOverlay(finale ? "All bonus labs secured!" : milestone ? `Level ${level} cleared` : "Chamber secured",
+      finale ? "Mother Blob is back in her tank. You beat every level." : milestone ? "The spore colony retreats." : "Every spore cleared.",
+      finale ? "New mission" : level >= MAIN_LEVELS ? `Bonus level ${level + 1}` : "Next level", milestone);
   } else {
     const was = level;
     if (level <= 7) level = Math.max(0, level - 1);
@@ -1090,7 +1129,7 @@ function spawn() {
     return;
   }
   phase = stillPortrait.matches ? "fall" : "toss";
-  remaining = phase === "toss" ? tossDuration : speeds[speed];
+  remaining = phase === "toss" ? tossDuration : fallDelay();
   if (phase === "toss") {
     capsuleToss.innerHTML = capsule.colors.map((color, i) => pieceHTML({ color, link: i * 2 })).join("");
     drawCapsuleToss();
@@ -1189,7 +1228,7 @@ function drop() {
   const candidate = { ...capsule, y: capsule.y + 1 };
   if (fits(candidate)) {
     capsule = candidate;
-    remaining = speeds[speed];
+    remaining = fallDelay();
     return;
   }
   positions(capsule).forEach(([x, y], i) => {
@@ -1271,7 +1310,7 @@ byId("main-menu").addEventListener("click", () => showMenu(true));
 byId("overlay-menu").addEventListener("click", () => showMenu(true));
 byId("action").addEventListener("click", () => {
   if (paused) togglePause();
-  else if (phase === "won" && level < 20) {
+  else if (phase === "won" && level < maxLevel()) {
     level++;
     start(false);
   } else if (phase === "lost") start(false);
@@ -1514,7 +1553,7 @@ function frame(now) {
     if (remaining <= 0) {
       if (phase === "toss") {
         phase = "fall";
-        remaining = speeds[speed];
+        remaining = fallDelay();
       } else if (phase === "fall") drop();
       else if (phase === "flash") clearMatches();
       else if (gravityStep()) remaining = 75;
@@ -1525,6 +1564,187 @@ function frame(now) {
   if (phase === "toss" || !capsuleToss.hidden) drawCapsuleToss();
   requestAnimationFrame(frame);
 }
+// ---------- Level 20 surprise video: "The Great Escape" ----------
+// Mother Blob bursts out of her tank and flees; bonus chambers 21-25 light up. Drawn live on a canvas.
+const surpriseVideo = (() => {
+  const W = 640, H = 360, DUR = 9.5, END_AT = 6.4;
+  const RED = "#ff5d7a", GOLD = "#ffd25d", CYAN = "#4fd1ff", MINT = "#5dff9b", VIOLET = "#c77dff";
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = p => 1 - (1 - clamp(p)) ** 3;
+  const easeIn = p => clamp(p) ** 2;
+  const pop = p => { p = clamp(p); return p === 0 ? 0 : 1 + 2.2 * (p - 1) ** 3 + 1.2 * (p - 1) ** 2; };
+  function rng(seed) { return () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646; }
+  
+  function labBg(c) {
+    const g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "#16224a"); g.addColorStop(1, "#070b16");
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.strokeStyle = "rgba(79,209,255,0.05)"; c.lineWidth = 1;
+    for (let x = 20; x < W; x += 40) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 300); c.stroke(); }
+    c.fillStyle = "#0b1226"; c.fillRect(0, 300, W, 60);
+    c.strokeStyle = "rgba(79,209,255,0.45)"; c.beginPath(); c.moveTo(0, 300.5); c.lineTo(W, 300.5); c.stroke();
+    c.strokeStyle = "#22345e"; c.lineWidth = 8; c.beginPath(); c.moveTo(0, 30); c.lineTo(W, 30); c.stroke();
+  }
+  function pill(c, x, y, r, rot, a, b) {
+    c.save(); c.translate(x, y); c.rotate(rot);
+    c.fillStyle = a; c.beginPath(); c.roundRect(-2 * r, -r, 2 * r, 2 * r, [r, 0, 0, r]); c.fill();
+    c.fillStyle = b; c.beginPath(); c.roundRect(0, -r, 2 * r, 2 * r, [0, r, r, 0]); c.fill();
+    c.fillStyle = "rgba(255,255,255,0.35)"; c.beginPath(); c.ellipse(-r * 0.6, -r * 0.45, r * 0.9, r * 0.25, 0, 0, TAU); c.fill();
+    c.restore();
+  }
+  const PILL_COLORS = [RED, GOLD, CYAN];
+  function tankPills(c, x, y, w) {
+    const set = [[0, 0, 1], [1, 2, 2], [2, 1, 0], [0, 2, 1], [1, 0, 2]];
+    set.forEach(([a, b], i) => pill(c, x + 22 + (i % 3) * 40, y - 10 - Math.floor(i / 3) * 20, 9, 0, PILL_COLORS[a], PILL_COLORS[b]));
+  }
+  function tankGlass(c, x, y, w, h, front) {
+    c.save();
+    if (!front) { c.fillStyle = "rgba(79,209,255,0.07)"; c.beginPath(); c.roundRect(x, y, w, h, 12); c.fill(); }
+    else {
+      c.strokeStyle = "rgba(79,209,255,0.7)"; c.lineWidth = 3; c.beginPath(); c.roundRect(x, y, w, h, 12); c.stroke();
+      c.fillStyle = "rgba(255,255,255,0.08)"; c.fillRect(x + 10, y + 12, 8, h - 24);
+    }
+    c.restore();
+  }
+  function queen(c, x, y, s, t, exc = 0, rot = 0, extra) {
+    c.save(); c.translate(x, y); c.rotate(rot); drawQueen(c, t, s, exc); if (extra) extra(c, s); c.restore();
+  }
+  function virus(c, id, x, y, s, t, hop = 0, tilt = 0) { virusCharacters.draw(c, id, x, y, s, t, hop, tilt); }
+  function text(c, str, x, y, size, color = "#fff", alpha = 1, glow = CYAN, weight = 800) {
+    if (alpha <= 0) return;
+    c.save(); c.globalAlpha = clamp(alpha); c.font = `${weight} ${size}px system-ui, sans-serif`;
+    c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = glow; c.shadowBlur = 16;
+    c.fillStyle = color; c.fillText(str, x, y); c.restore();
+  }
+  function caption(c, t, str = "LEVEL 20 CLEARED") {
+    const a = seg(t, 0.15, 0.5) * (1 - seg(t, 1.3, 1.7));
+    text(c, str, W / 2, 70, 34, "#fff", a, MINT);
+  }
+  function bubble(c, x, y, str, alpha, tailLeft = true) {
+    if (alpha <= 0) return;
+    c.save(); c.globalAlpha = clamp(alpha); c.font = "800 17px system-ui, sans-serif";
+    const w = c.measureText(str).width + 26, h = 36, bx = tailLeft ? x : x - w;
+    c.fillStyle = "#f4f7ff"; c.beginPath(); c.roundRect(bx, y - h, w, h, 12); c.fill();
+    c.beginPath(); c.moveTo(x + (tailLeft ? 14 : -14), y - 2); c.lineTo(x + (tailLeft ? 4 : -4), y + 12); c.lineTo(x + (tailLeft ? 30 : -30), y - 2); c.fill();
+    c.fillStyle = "#121a33"; c.textBaseline = "middle"; c.fillText(str, bx + 13, y - h / 2 + 1);
+    c.restore();
+  }
+  
+  // Shared ending: five bonus chambers light up one by one (lt = seconds into the ending; < 0 = still locked).
+  const TUBE_COLORS = [MINT, CYAN, GOLD, VIOLET, RED];
+  const TUBE_IDS = ["runner", "jelly", "mother", "runner", "jelly"];
+  function endCard(c, lt, t, opts = {}) {
+    if (!opts.noDim) { c.fillStyle = `rgba(5,8,18,${0.82 * ease(seg(lt, 0, 0.4))})`; c.fillRect(0, 0, W, H); }
+    const ids = opts.lastId ? [...TUBE_IDS.slice(0, 4), opts.lastId] : TUBE_IDS;
+    for (let i = 0; i < 5; i++) {
+      const x = 128 + i * 96, top = 140, h = 120, a = 0.35 + i * 0.28, p = seg(lt, a, a + 0.3), on = p > 0;
+      const col = TUBE_COLORS[i];
+      c.save();
+      c.fillStyle = "#0b1226"; c.beginPath(); c.roundRect(x - 32, top, 64, h, 16); c.fill();
+      if (on) {
+        const lv = ease(p) * (h - 16);
+        c.save(); c.beginPath(); c.roundRect(x - 32, top, 64, h, 16); c.clip();
+        c.globalAlpha = 0.32; c.fillStyle = col; c.fillRect(x - 32, top + h - lv, 64, lv); c.restore();
+        virus(c, ids[i], x, top + h - 44 + Math.sin(t * 3 + i) * 4, 19 * pop(p), t + i);
+      } else text(c, "?", x, top + h / 2, 34, "#3a4b78", 1, "transparent");
+      c.strokeStyle = on ? col : "#2a3a66"; c.lineWidth = 3; c.shadowColor = col; c.shadowBlur = on ? 18 : 0;
+      c.beginPath(); c.roundRect(x - 32, top, 64, h, 16); c.stroke();
+      c.restore();
+      c.fillStyle = "#22345e"; c.fillRect(x - 38, top - 10, 76, 12); c.fillRect(x - 38, top + h - 2, 76, 12);
+      text(c, String(21 + i), x, top + h + 34, 24 * (on ? pop(p) : 1), on ? "#fff" : "#3a4b78", 1, on ? col : "transparent");
+      if (p > 0 && p < 1) { c.save(); c.globalAlpha = 1 - p; c.strokeStyle = col; c.lineWidth = 4; c.beginPath(); c.arc(x, top + h / 2, 40 + p * 50, 0, TAU); c.stroke(); c.restore(); }
+    }
+    if (lt >= 0) {
+      if (opts.kicker) text(c, opts.kicker, W / 2, 50, 15, CYAN, seg(lt, 0.1, 0.4), CYAN, 700);
+      const s = pop(seg(lt, 0.15, 0.55));
+      c.save(); c.translate(W / 2, 88); c.scale(s, s); text(c, "BONUS LEVELS UNLOCKED", 0, 0, 34, "#fff", 1, MINT); c.restore();
+      text(c, "Pick them from the Start level menu", W / 2, 330, 15, "#c3cdee", seg(lt, 2.1, 2.5), "transparent", 600);
+    }
+  }
+  
+  // ---------- A: The Great Escape ----------
+  const shardRng = rng(7), SHARDS = Array.from({ length: 22 }, () => ({ a: shardRng() * TAU, v: 120 + shardRng() * 260, spin: (shardRng() - 0.5) * 12, s: 6 + shardRng() * 12 }));
+  const CRACKS = [[[400, 120], [420, 150], [412, 180], [436, 210]], [[420, 150], [450, 160]], [[380, 200], [366, 232], [380, 260]], [[412, 180], [390, 196]], [[436, 210], [452, 250], [446, 280]]];
+  function sceneA(c, t) {
+    labBg(c);
+    const tx = 340, ty = 70, tw = 150, th = 228, cx = tx + tw / 2;
+    const grow = ease(seg(t, 1.2, 3));
+    const shake = t > 1.2 && t < 3 ? Math.sin(t * 60) * 3 * grow : 0;
+    if (t < 3) {
+      tankGlass(c, tx, ty, tw, th, false); tankPills(c, tx, ty + th, tw);
+      const s = 26 + grow * 42;
+      virus(c, "mother", cx + shake, ty + th - 30 - s * 0.65, s, t);
+      tankGlass(c, tx, ty, tw, th, true);
+      c.save(); c.strokeStyle = "rgba(230,245,255,0.9)"; c.lineWidth = 2;
+      CRACKS.forEach((line, i) => { if (grow > i / CRACKS.length) { c.beginPath(); line.forEach(([x, y], k) => k ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } });
+      c.restore();
+    } else {
+      const k = t - 3;
+      c.strokeStyle = "rgba(79,209,255,0.6)"; c.lineWidth = 3;
+      c.beginPath(); c.moveTo(tx, ty + th - 50); c.lineTo(tx, ty + th); c.lineTo(tx + tw, ty + th); c.lineTo(tx + tw, ty + th - 70); c.stroke();
+      SHARDS.forEach(sh => {
+        const x = cx + Math.cos(sh.a) * sh.v * k, y = ty + th / 2 + Math.sin(sh.a) * sh.v * k + 300 * k * k;
+        if (y > 300) return;
+        c.save(); c.translate(x, y); c.rotate(sh.spin * k); c.globalAlpha = clamp(1.6 - k);
+        c.fillStyle = "rgba(180,235,255,0.75)"; poly(c, [[0, -sh.s], [sh.s * 0.6, sh.s * 0.5], [-sh.s * 0.5, sh.s * 0.3]]); c.fill(); c.restore();
+      });
+      const run = easeIn(seg(t, 3.3, 5.8)), bx = cx + run * 420, hop = Math.abs(Math.sin(k * 9)) * 34 * (k > 0.3 ? 1 : 0);
+      c.fillStyle = "rgba(255,93,122,0.35)";
+      for (let gx = cx; gx < Math.min(bx, W); gx += 46) { c.beginPath(); c.ellipse(gx, 302, 14, 4, 0, 0, TAU); c.fill(); }
+      virus(c, "mother", bx, 250, 60, t * 2, hop, Math.sin(k * 9) * 0.15);
+    }
+    const qx = 130 + ease(seg(t, 4.4, 6.2)) * 210, qShake = t > 3 && t < 4.4 ? Math.sin(t * 50) * 3 : 0;
+    queen(c, qx + qShake, 232, 48, t * (t > 3 ? 2.2 : 1), t > 3 ? 1 : 0.2, t > 4.4 ? 0.12 : 0);
+    if (t > 2.95 && t < 3.25) { c.fillStyle = `rgba(255,255,255,${0.7 * (1 - seg(t, 2.95, 3.25))})`; c.fillRect(0, 0, W, H); }
+    bubble(c, 170, 150, "Hey! Back in your tank!", seg(t, 3.3, 3.5) * (1 - seg(t, 5.6, 5.9)));
+    caption(c, t);
+    if (t > END_AT) endCard(c, t - END_AT, t, { kicker: "SHE ESCAPED INTO THE BONUS LABS", lastId: "mother" });
+  }
+
+  const root = byId("surprise"), canvas = byId("surprise-canvas"), skip = byId("surprise-skip"), ctx = canvas.getContext("2d");
+  let raf = 0, onDone = null;
+  function sound() {
+    if (!byId("effects").checked) return;
+    unlockAudio();
+    [1.5, 2.1, 2.6].forEach(at => tone(41, at, 0.22, 0.12, "square"));
+    for (let i = 0; i < 8; i++) tone(102 - i * 2, 3 + i * 0.03, 0.12, 0.03, "square");
+    for (let i = 0; i < 9; i++) tone(i % 2 ? 62 : 57, 3.4 + i * 0.3, 0.16, 0.04, "sine");
+    [72, 76, 79].forEach((n, i) => tone(n, 0.15 + i * 0.15, 0.3, 0.05, "triangle"));
+    [72, 76, 79, 84, 88].forEach((n, i) => tone(n, END_AT + 0.35 + i * 0.28, 0.35, 0.06, "triangle"));
+    [72, 76, 79].forEach(n => tone(n, END_AT + 1.9, 1.1, 0.035, "sine"));
+  }
+  function close() {
+    cancelAnimationFrame(raf);
+    root.hidden = true;
+    window.removeEventListener("keydown", onKey, true);
+    const done = onDone; onDone = null;
+    if (done) done();
+  }
+  function onKey(event) {
+    event.stopPropagation();
+    if (event.key === "Enter" || event.key === " " || event.key === "Escape") { event.preventDefault(); close(); }
+  }
+  skip.addEventListener("click", close);
+  function play(done) {
+    onDone = done;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    root.hidden = false;
+    skip.focus({ preventScroll: true });
+    window.addEventListener("keydown", onKey, true);
+    sound();
+    const t0 = performance.now();
+    const frame = now => {
+      const t = Math.min((now - t0) / 1000, DUR);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H); sceneA(ctx, t);
+      if (t < DUR) raf = requestAnimationFrame(frame); else close();
+    };
+    raf = requestAnimationFrame(frame);
+  }
+  return { play };
+})();
+
 showMenu(true);
 render();
 requestAnimationFrame(frame);
