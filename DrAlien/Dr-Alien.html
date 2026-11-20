@@ -180,7 +180,10 @@
   #play-controls [data-move="right"]::before { content: "→"; }
   #soft-drop::before { margin-inline-end: .3em; }
   #play-controls button:active { background: #24527a; }
-  #arrow-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+  #arrow-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  #arrow-controls [data-move="left"] { grid-column: 1 / 2; }
+  #arrow-controls [data-drop] { grid-column: 2 / 3; }
+  #arrow-controls [data-move="right"] { grid-column: 3 / 4; }
   #control-mode { grid-column: 1 / -1; min-height: 40px; }
   [hidden] { display: none !important; }
   .menu-layout { grid-template-columns: minmax(0, 450px); justify-content: center; gap: 0; }
@@ -557,7 +560,6 @@
         <button id="soft-drop" type="button" data-drop aria-label="Soft Drop">Soft Drop</button>
         <div id="arrow-controls" hidden>
           <button type="button" data-move="left" aria-label="Move left"></button>
-          <button type="button" data-move="cw" aria-label="Rotate clockwise"></button>
           <button type="button" data-drop aria-label="Soft drop"></button>
           <button type="button" data-move="right" aria-label="Move right"></button>
         </div>
