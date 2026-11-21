@@ -951,7 +951,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x06070f);
 scene.fog = new THREE.Fog(0x06070f, 7, 17);
-const camera = new THREE.PerspectiveCamera(46, 1, 0.02, 40);
+const camera = new THREE.PerspectiveCamera(46, 1, 0.05, 30); // a tighter near/far range keeps depth precise on the far walls
 const FLOOR_Y = -0.79;
 
 function canvasTex(w, h, draw, repeat) {
@@ -980,7 +980,7 @@ const hemi = new THREE.HemisphereLight(0x8a96ff, 0x0b0b14, 0.22); scene.add(hemi
 const spots = [];
 for (let i = 0; i < 2; i++) {
   const s = new THREE.SpotLight(0xfff0da, 1.15, 0, 0.78, 0.7, 1);
-  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0003; s.shadow.normalBias = 0.002;
+  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0006; s.shadow.normalBias = 0.012; // enough bias to stop shimmering "acne" stripes on the floor
   s.shadow.camera.near = 0.4; s.shadow.camera.far = 3;
   scene.add(s, s.target); spots.push(s);
 }
@@ -998,7 +998,7 @@ const room = new THREE.Group(); scene.add(room);
   floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; floor.receiveShadow = true; room.add(floor);
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x151833, roughness: 0.95 });
   const walls = new THREE.Mesh(new THREE.BoxGeometry(11, 4.2, 8.5), [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat].map(m => { const c = m.clone(); c.side = THREE.BackSide; return c; }));
-  walls.position.y = FLOOR_Y + 2.1; room.add(walls);
+  walls.position.y = FLOOR_Y + 2.05; room.add(walls); // bottom face sits 5 cm under the floor so the two never fight over the same depth
   const neon = (w, h, d, color, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color })); m.position.set(x, y, z); room.add(m); };
   neon(10.8, 0.04, 0.04, 0x5dff9b, 0, FLOOR_Y + 1.25, -4.2); neon(10.8, 0.04, 0.04, 0xc77dff, 0, FLOOR_Y + 1.25, 4.2);
   neon(0.04, 0.04, 8.3, 0x4fd1ff, 5.45, FLOOR_Y + 1.25, 0); neon(0.04, 0.04, 8.3, 0x4fd1ff, -5.45, FLOOR_Y + 1.25, 0);
@@ -1242,6 +1242,8 @@ function newRack(breaker) {
   aim = 0; spinA = spinB = 0; updateSpinDot(); setPower(0);
   // Phones in portrait get a higher, farther camera so more of the table fits above the controls.
   if (camera.aspect < 1) { pitch = 0.5; camDist = 1.15; } else { pitch = 0.3; camDist = 0.95; }
+  // A new rack always starts live, even when it was started from the Pause menu.
+  phase = "rack"; pausedFrom = null; cpu = null; strikeAnim = null; drag = null; powerDrag = null; spaceHeld = false;
   closeMenu(); document.body.classList.add("playing"); $("hud").hidden = false;
   updateHud();
   toast(breaker === 0 ? "Your break. Drag the cue ball behind the line if you like." : `${players[breaker].name} breaks.`, "");
@@ -1612,7 +1614,8 @@ function updateCamera(dt, t) {
   const k = 1 - Math.exp(-dt * (phase === "aim" || phase === "cpu" || phase === "strike" ? 9 : 3.2));
   camPos.lerp(wantPos, k); camLook.lerp(wantLook, k); camUp.lerp(wantUp, k).normalize();
   camera.position.copy(camPos); camera.up.copy(camUp); camera.lookAt(camLook);
-  if (lampGroup) lampGroup.visible = camPos.y < 1.05; // the lamp hood would block an overhead camera
+  // Hide the lamp only when the camera is above the table looking down (Top view); otherwise it would pop in and out.
+  if (lampGroup) lampGroup.visible = !(camPos.y > 1.1 && Math.abs(camPos.x) < T.L * 0.36 + 0.3 && Math.abs(camPos.z) < 0.6);
 }
 let shotDir = [1, 0];
 
