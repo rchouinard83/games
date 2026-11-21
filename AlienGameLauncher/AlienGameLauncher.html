@@ -83,11 +83,13 @@ const ROOT = (() => {
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien Pool", tag: "3D billiards", isNew: true, color: "#4fd1ff", href: "AlienPool/Alien-Pool.html", art: artPool,
+    desc: "3D 8-ball, 9-ball, or three-way cut-throat against Blip, Jelly, and Runner on a 7 ft, 8 ft, or Olympic 9 ft table. Pick your cue and use spin." },
   { name: "Alien City Run 3D", tag: "3D runner", isNew: true, color: "#c77dff", href: "AlienCityRun/Alien-City-Run-3D.html", art: artCityRun,
-    desc: "Run through a neon alien metropolis in full 3D. Switch lanes, jump over barriers, and collect coins as the city scrolls past." },
-  { name: "Alien Tunnel Run", tag: "Tunnel runner", isNew: true, color: "#88f7dc", href: "AlienTunnelRun/Alien-Tunnel-Run.html", art: artTunnelRun,
+    desc: "Run through Living Canopy, Crystal Badlands, and Tidal Reef. Jump between rooftops, roll under low gates, and follow coin trails." },
+  { name: "Alien Tunnel Run", tag: "Tunnel runner", color: "#88f7dc", href: "AlienTunnelRun/Alien-Tunnel-Run.html", art: artTunnelRun,
     desc: "Steer around a neon tunnel, dodge barriers, and collect coins as each section gets faster." },
-  { name: "Alien Pipeworks", tag: "Pipe puzzle", isNew: true, color: "#76f4da", href: "AlienPipeworks/Alien-Pipeworks.html", art: artPipeworks,
+  { name: "Alien Pipeworks", tag: "Pipe puzzle", color: "#76f4da", href: "AlienPipeworks/Alien-Pipeworks.html", art: artPipeworks,
     desc: "Build a pipeline around obstacles and send an alien from the pump to the coolant tank." },
   { name: "Alien Launch", tag: "Flight", color: "#ffb84d", href: "AlienLaunch/Alien-Launch.html", art: artLaunch,
     desc: "Blast off, weave through obstacles and tunnels, grab fuel, then land softly. Every planet pulls harder." },
@@ -110,7 +112,7 @@ const GAMES = [
   { name: "Alien Lockdown", tag: "Arcade puzzle", color: "#4fd1ff", href: "AlienLockdown/Alien-Lockdown.html", art: artLockdown,
     desc: "Swipe force beams across the arena to fence in the bouncing aliens. Lock down 75% without getting your beams broken." },
   { name: "Alien Bowling", tag: "Bowling", color: "#e8ff83", href: "AlienBowling/Alien-Bowling.html?lanes=4", art: artBowling,
-    desc: "Ten alien pins who taunt, panic and laugh at your gutter balls. Pick a ball, hook it, and bowl across four worlds." },
+    desc: "Bowl with the original illustrated game or take on the animated alien pins in the Orbit Lanes 3D alley." },
   { name: "Alien Lob", tag: "Artillery", color: "#ffd25d", href: "AlienLob/Alien-Lob.html?balance=1", art: artLob,
     desc: "Lob goo across alien skylines in a turn-by-turn duel. Read the wind, feel each planet's gravity, and blast craters." },
   { name: "Alien Rocks", tag: "Space shooter", color: "#4fd1ff", href: "AlienRocks/Alien-Rocks.html?menu=phone3", art: artRocks,
@@ -381,6 +383,30 @@ function artLob(c, w, h, t) { // goo arcs over a tall tower, bent by the wind, a
     const r = Math.min(1, (T - 1.8) * 3) * 22; c.fillStyle = "rgba(255,210,93,0.6)"; c.beginPath(); c.arc(x1, y1 - 4, r, 0, TAU); c.fill();
     c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("SPLAT!", w * 0.62, h * 0.24);
   }
+}
+function artPool(c, w, h, t) { // the cue ball breaks the rack and a ball drops while an alien watches
+  sky(c, w, h, "#16224a", "#070915", 29);
+  const T = t % 4.5, tx = w * 0.1, ty = h * 0.24, tw = w * 0.8, th = h * 0.62, rim = Math.min(w, h) * 0.05;
+  c.fillStyle = "#5a2e17"; c.beginPath(); c.roundRect(tx - rim, ty - rim, tw + rim * 2, th + rim * 2, rim); c.fill();
+  const g = c.createRadialGradient(tx + tw / 2, ty + th / 2, 4, tx + tw / 2, ty + th / 2, tw * 0.6); g.addColorStop(0, "#2a78d6"); g.addColorStop(1, "#123a74");
+  c.fillStyle = g; c.fillRect(tx, ty, tw, th);
+  c.fillStyle = "#05060c";
+  for (const [px, py] of [[0, 0], [0.5, 0], [1, 0], [0, 1], [0.5, 1], [1, 1]]) { c.beginPath(); c.arc(tx + px * tw, ty + py * th, rim * 0.7, 0, TAU); c.fill(); }
+  const r = Math.min(w, h) * 0.035, cols = ["#f2c200", "#1d44c8", "#d4202c", "#5b2a90", "#141414", "#f06b12"];
+  const hit = 1.1, burst = Math.max(0, T - hit), rx = tx + tw * 0.68, ry = ty + th / 2;
+  let n = 0;
+  for (let row = 0; row < 3; row++) for (let k = 0; k <= row; k++) {
+    const bx = rx + row * r * 1.75, by = ry + (k - row / 2) * r * 2.02, a = Math.atan2(by - ry + 0.001, bx - rx + r * 2);
+    const d = Math.min(1, burst * 1.6) * r * (2 + n % 3) * 1.6, x = bx + Math.cos(a) * d, y = by + Math.sin(a) * d;
+    const sink = n === 2 && burst > 0.9;
+    if (!sink) { c.fillStyle = cols[n % cols.length]; c.beginPath(); c.arc(Math.min(x, tx + tw - r), Math.max(ty + r, Math.min(ty + th - r, y)), r, 0, TAU); c.fill(); }
+    n++;
+  }
+  const cx = T < hit ? tx + tw * 0.22 + (rx - r * 2 - tx - tw * 0.22) * (T / hit) ** 1.4 : rx - r * 2 - Math.min(0.5, burst) * r * 3;
+  c.fillStyle = "#f4f1e6"; c.beginPath(); c.arc(cx, ry, r, 0, TAU); c.fill();
+  const back = T < 0.6 ? (0.6 - T) * r * 4 : 0, cueX = T < hit ? Math.min(cx - r * 1.4, tx + tw * 0.22 - r * 1.4) - back : tx + tw * 0.22 - r * 1.4 - (T - hit) * r * 6;
+  c.strokeStyle = "#e9d3a6"; c.lineWidth = r * 0.55; c.lineCap = "round"; c.beginPath(); c.moveTo(cueX, ry); c.lineTo(cueX - w * 0.3, ry + h * 0.12); c.stroke();
+  eyeAlien(c, w * 0.86, h * 0.17 - Math.abs(Math.sin(t * 5)) * h * 0.03 * (burst > 0.9 ? 1 : 0), Math.min(w, h) * 0.08, "#5dff9b", t);
 }
 function artBowling(c, w, h, t) { // a ball rolls down the lane into ten taunting alien pins, which go flying
   sky(c, w, h, "#332449", "#101229", 71);
