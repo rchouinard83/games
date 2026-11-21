@@ -1255,7 +1255,8 @@ function startTurn() {
   const p = players[game.turn];
   document.body.classList.toggle("cpu", p.cpu);
   if (!p.cpu) {
-    phase = "aim"; setCueMesh(cueDef()); pointAtBestTarget();
+    // No auto-aim: the cue stays where it was, so finding the angle is up to you. The break starts pointed at the rack.
+    phase = "aim"; setCueMesh(cueDef()); if (game.isBreak) pointAtBestTarget();
   } else {
     phase = "cpu"; setCueMesh(cpuCue(p.o));
     if (game.ballInHand && !game.isBreak) placeCueBall(T, balls, game, game.turn, p.o.level, game.kitchen);
@@ -1413,7 +1414,8 @@ canvas.addEventListener("pointermove", e => {
     return;
   }
   if (viewMode === "top") { const p = tablePoint(e), c = cueBall(); if (p && Math.hypot(p.x - c.x, p.z - c.z) > 0.02) aim = Math.atan2(p.z - c.z, p.x - c.x); }
-  else { aim += dx * 0.0032 * (e.shiftKey ? 0.2 : 1); pitch = Math.max(0.08, Math.min(1.35, pitch + dy * 0.004)); }
+  // The table follows your finger: dragging right turns the view so the table slides right (the aim swings left).
+  else { aim -= dx * 0.0032 * (e.shiftKey ? 0.2 : 1); pitch = Math.max(0.08, Math.min(1.35, pitch + dy * 0.004)); }
 });
 canvas.addEventListener("pointerup", e => {
   if (!drag) return;
@@ -1459,7 +1461,7 @@ spinEl.addEventListener("dblclick", () => { spinA = spinB = 0; updateSpinDot(); 
 
 // Fine aim (hold to repeat) and view toggle.
 let fineDir = 0;
-for (const [id, d] of [["aimL", 1], ["aimR", -1]]) {
+for (const [id, d] of [["aimL", -1], ["aimR", 1]]) { // increasing aim swings the cue toward screen-right
   const b = $(id);
   b.addEventListener("pointerdown", e => { b.setPointerCapture(e.pointerId); fineDir = d; fineHeld = 0; });
   for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => { fineDir = 0; });
@@ -1474,8 +1476,8 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape" || e.key === "p") { if (phase === "paused" && !helpReturn) resume(); else if (phase !== "paused") pauseMenu(); return; }
   if (phase !== "aim") return;
   const k = e.key;
-  if (k === "ArrowLeft") aim += (e.shiftKey ? 0.0006 : 0.012);
-  else if (k === "ArrowRight") aim -= (e.shiftKey ? 0.0006 : 0.012);
+  if (k === "ArrowLeft") aim -= (e.shiftKey ? 0.0006 : 0.012);
+  else if (k === "ArrowRight") aim += (e.shiftKey ? 0.0006 : 0.012);
   else if (k === "ArrowUp") pitch = Math.min(1.35, pitch + 0.05);
   else if (k === "ArrowDown") pitch = Math.max(0.08, pitch - 0.05);
   else if (k === "v") $("viewBtn").click();
