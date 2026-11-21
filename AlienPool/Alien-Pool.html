@@ -1,0 +1,1761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#070915">
+<title>Alien Pool</title>
+<style>
+/* ---- Arcade menu standard (from lib/arcade-menu.css) ---- */
+.arcade-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(5, 5, 16, .78);
+}
+#panel.arcade-panel {
+  box-sizing: border-box;
+  width: min(100%, 430px);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 16px;
+  border: 1px solid #33336e;
+  border-radius: 18px;
+  background: #141436;
+  color: #eef0ff;
+  text-align: center;
+  box-shadow: 0 0 40px #7070ca26;
+}
+#panel.arcade-panel h1 {
+  margin: 8px 0 5px;
+  font-size: clamp(32px, 9vw, 46px);
+  letter-spacing: -.04em;
+  line-height: 1.04;
+  background: linear-gradient(90deg, #ff8bd0, #ffd25d 40%, #5dff9b 70%, #4fd1ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+#panel.arcade-panel h2 { margin: 4px 0 6px; font-size: 26px; line-height: 1.14; }
+#panel.arcade-panel p { margin: 6px 0 10px; color: #dcdff7; font-size: 15px; line-height: 1.4; }
+#panel.arcade-panel .kicker,
+#panel.arcade-panel .eyebrow,
+#panel.arcade-panel .step {
+  margin: 6px 0 4px;
+  color: var(--menu-accent, #8fe9dc);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+#panel.arcade-panel :is(button, a.arcade, a.button) {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #33336e;
+  border-radius: 12px;
+  background: #22225a;
+  color: #eef0ff;
+  font: 800 16px/1.2 system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+}
+#panel.arcade-panel :is(button, a):focus-visible { outline: 2px solid #a7f5e5; outline-offset: 2px; }
+#panel.arcade-panel button.primary { background: #1d4a3a; border-color: #2f7a5c; color: #82f7b2; }
+#panel.arcade-panel button:disabled { opacity: .44; }
+#panel.arcade-panel button small {
+  display: block;
+  margin: 3px 0 0;
+  color: #aeb4dd;
+  font: 700 12px/1.25 system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#panel.arcade-panel > :is(button, a) { margin: 8px 0 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds, .balls) { gap: 8px; margin: 8px 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#panel.arcade-panel :is(.choices, .stage-list) button:not(.arcade-stage) { display: block; }
+#panel.arcade-panel :is(.choices, .stage-list, .worlds).arcade-stages { grid-template-columns: 1fr; }
+#panel.arcade-panel button.arcade-stage {
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+.arcade-stage > span:last-child { min-width: 0; }
+.arcade-planet {
+  --planet: #90e4ff;
+  --shade: #23436e;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 15% 16%, #acb6dc 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 72%, #acb6dc 0 1px, transparent 2px), #0d1331;
+}
+.arcade-planet::after {
+  content: "";
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 29% 27%, #ffffffaa, transparent 42%),
+    repeating-linear-gradient(-22deg, transparent 0 4px, #15264a35 5px 7px),
+    radial-gradient(circle at 32% 34%, var(--planet), var(--shade) 76%);
+  box-shadow: 0 0 8px var(--shade);
+}
+.arcade-planet[data-world="1"] { --planet: #f6cc9d; --shade: #874265; }
+.arcade-planet[data-world="2"] { --planet: #ff9276; --shade: #70283d; }
+.arcade-planet[data-world="3"] { --planet: #92efb3; --shade: #2552a0; }
+.arcade-hero {
+  display: block;
+  width: 100%;
+  height: clamp(75px, 22dvh, 145px);
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 80%, #272759, #0b1231 70%);
+}
+#panel.arcade-panel button.arcade-choice { justify-content: space-between; text-align: left; }
+#panel.arcade-panel button.arcade-choice > span:last-child { color: #94f0c4; font-size: 13px; }
+#panel.arcade-panel .balls button { justify-content: flex-start; text-align: left; }
+#panel.arcade-panel .balls button.on { background: #193d37; border-color: #589d80; }
+#panel.arcade-panel .stars { color: #ffd25d; }
+
+#panel.arcade-panel .arcade-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#panel.arcade-panel .arcade-footer > * {
+  width: auto;
+  flex: 1 1 135px;
+  margin: 0;
+}
+
+/* The phone menu has its own backdrop and keeps its actions outside scrolling lists. */
+@media (max-width: 520px), (max-height: 500px) and (pointer: coarse) {
+  .arcade-menu {
+    box-sizing: border-box;
+    bottom: auto;
+    height: 100vh;
+    height: 100dvh;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    background: radial-gradient(ellipse at 50% 18%, #20214a, #090c24 74%);
+    -webkit-text-size-adjust: 100%;
+  }
+  #panel.arcade-panel { padding: clamp(12px, 4vw, 16px); }
+  #panel.arcade-panel .arcade-hero { height: clamp(72px, 19dvh, 122px); }
+  #panel.arcade-panel h1 { font-size: clamp(29px, 8vw, 39px); }
+  #panel.arcade-panel h2 { font-size: clamp(23px, 6vw, 26px); }
+  #panel.arcade-panel p { font-size: 14px; }
+  #panel.arcade-panel :is(button, a.arcade, a.button) { font-size: 15px; }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) > :not(.balls, .arcade-stages) {
+    flex: 0 0 auto;
+  }
+  #panel.arcade-panel > :is(.balls, .arcade-stages) {
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #panel.arcade-panel .balls i { width: 32px; height: 32px; }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  #panel.arcade-panel { width: min(100%, 580px); padding: 12px; }
+  #panel.arcade-panel:has(> .arcade-hero) {
+    display: grid;
+    grid-template-columns: minmax(105px, .42fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+  }
+  #panel.arcade-panel > .arcade-hero {
+    grid-row: 1 / 7;
+    height: clamp(92px, 37dvh, 155px);
+  }
+  #panel.arcade-panel:has(> .arcade-hero) > :not(.arcade-hero) { grid-column: 2; }
+  #panel.arcade-panel h1 { font-size: clamp(26px, 6dvh + 12px, 36px); }
+  #panel.arcade-panel p { margin: 4px 0 7px; }
+  #panel.arcade-panel > :is(button, a) { margin-top: 6px; }
+  #panel.arcade-panel :is(.actions, .choices, .menu-actions) { margin: 6px 0; }
+  #panel.arcade-panel :is(.balls, .arcade-stages) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #panel.arcade-panel button.arcade-stage { gap: 9px; padding: 7px 10px; }
+  #panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex-basis: 40px; }
+  #panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
+  #panel.arcade-panel :is(.guide svg, #howCv) { height: min(85px, 25dvh); }
+}
+/* ---- Alien Pool ---- */
+.arcade-menu[hidden], .hud[hidden] { display: none; }
+:root { --ink: #eef0ff; --dim: #aeb4dd; --line: #2c3758; --box: #161c35e6; --good: #5dff9b; --cyan: #4fd1ff; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #070915; color: var(--ink);
+  font-family: system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#view { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; touch-action: none; }
+.hud { position: fixed; z-index: 2; top: max(8px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right));
+  display: grid; grid-template-columns: repeat(var(--np, 2), minmax(0, 1fr)) auto auto; gap: 6px; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.hud .pl, .hud .rec { background: var(--box); border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 7px; align-items: center; transition: border-color .2s, box-shadow .2s; }
+.hud .rec { grid-template-columns: 1fr; text-align: center; }
+.hud .pl.turn { border-color: var(--pc); box-shadow: 0 0 14px color-mix(in srgb, var(--pc) 40%, transparent); }
+.hud .pl.out { opacity: .45; }
+.hud small { display: block; color: var(--dim); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud strong { display: block; font-size: clamp(13px, 3.4vw, 16px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud .face { width: 34px; height: 34px; grid-row: span 3; }
+.hud .youface { width: 34px; height: 34px; grid-row: span 3; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, #fff, #cfd6e8 60%, #8e97b5); color: #10131f; font-weight: 900; font-size: 13px; }
+.rack { display: flex; gap: 2px; flex-wrap: wrap; min-height: 10px; margin-top: 2px; }
+.rack i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: inset -2px -2px 3px #0006; }
+.rack i.st { background: linear-gradient(#f4f1e6 0 25%, var(--c) 25% 75%, #f4f1e6 75%); }
+.hud #pauseBtn { min-height: 0; padding: 0 14px; border-radius: 10px; background: #161c35; border: 1px solid var(--line); color: var(--ink); font: 800 14px system-ui, sans-serif; }
+#toast { position: fixed; z-index: 2; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 62px); transform: translateX(-50%); max-width: min(92vw, 520px);
+  padding: 8px 14px; border-radius: 12px; background: #0d1230e8; border: 1px solid #3a4680; font-weight: 800; font-size: 15px; text-align: center; pointer-events: none;
+  opacity: 0; transition: opacity .25s; }
+#toast.show { opacity: 1; }
+#toast.foul { border-color: #ff5d7a; color: #ffd0d8; }
+#toast.good { border-color: var(--good); color: #c9ffe0; }
+.ctl { position: fixed; z-index: 2; display: none; }
+body.playing .ctl { display: flex; }
+body.playing.cpu .ctl.mine { opacity: .35; pointer-events: none; }
+#spin { left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); width: 84px; height: 84px; border-radius: 50%; touch-action: none;
+  background: radial-gradient(circle at 36% 30%, #ffffff, #e7e9f2 45%, #aab2cc 80%, #7a83a3); box-shadow: 0 4px 16px #0008, inset 0 0 0 2px #ffffff55; cursor: crosshair; }
+#spin::before, #spin::after { content: ""; position: absolute; background: #10131f33; }
+#spin::before { left: 50%; top: 12%; bottom: 12%; width: 1px; }
+#spin::after { top: 50%; left: 12%; right: 12%; height: 1px; }
+#spinDot { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #ff3d6e; box-shadow: 0 0 0 2px #fff, 0 0 10px #ff3d6e; left: 50%; top: 50%; pointer-events: none; }
+#spinLbl { position: absolute; left: 50%; bottom: -18px; transform: translateX(-50%); font: 800 11px system-ui; color: var(--dim); white-space: nowrap; letter-spacing: .05em; text-transform: uppercase; }
+#aimRow { left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); gap: 8px; }
+#aimRow button { min-width: 52px; min-height: 48px; border-radius: 12px; border: 1px solid #3a4680; background: #161c35e6; color: var(--ink); font: 800 15px system-ui, sans-serif; touch-action: none; }
+#aimRow #viewBtn { min-width: 84px; }
+#power { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); top: calc(max(8px, env(safe-area-inset-top)) + 64px); max-height: 380px; margin-top: auto;
+  width: 58px; border-radius: 16px; border: 1px solid #3a4680; background: #0d1230d9; touch-action: none; flex-direction: column; align-items: center; padding: 8px 0; box-sizing: border-box; cursor: ns-resize; }
+#power .track { position: relative; flex: 1; width: 18px; border-radius: 9px; background: #232a52; overflow: hidden; margin: 6px 0; }
+#power .fill { position: absolute; left: 0; right: 0; top: 0; height: 0; background: linear-gradient(#5dff9b, #ffd25d 60%, #ff5d7a); border-radius: 9px; }
+#power small { font: 800 10px system-ui; color: var(--dim); letter-spacing: .08em; text-align: center; line-height: 1.2; }
+#power b { font: 900 14px system-ui; }
+@media (max-width: 560px) {
+  .hud { grid-template-columns: repeat(var(--np, 2), minmax(0, 1fr)) auto; gap: 4px; }
+  .hud .pl { padding: 4px 6px; column-gap: 5px; }
+  .hud .rec { display: none; }
+  .hud .face, .hud .youface { width: 28px; height: 28px; }
+  #spin { width: 70px; height: 70px; }
+  #aimRow button { min-width: 46px; } #aimRow #viewBtn { min-width: 70px; }
+  #power { width: 52px; }
+}
+@media (max-height: 460px) {
+  #toast { top: calc(max(6px, env(safe-area-inset-top)) + 54px); font-size: 13px; }
+  .hud .pl, .hud .rec { padding: 3px 8px; }
+  .rack { display: none; }
+}
+/* menu extras */
+#panel.arcade-panel .chars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+#panel.arcade-panel button.charBtn { display: block; min-height: 0; padding: 6px 4px 8px; background: #0b1430; border: 2px solid #2f4274; border-radius: 14px; }
+#panel.arcade-panel button.charBtn.on { border-color: var(--good); background: #10301f; }
+#panel.arcade-panel button.charBtn canvas { width: min(100%, 92px); aspect-ratio: 1; display: block; margin: 0 auto; }
+#panel.arcade-panel button.charBtn small { color: #7ff0b0; }
+#panel .tables { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+#panel.arcade-panel .tables button { display: block; min-height: 0; padding: 8px 6px; }
+#panel.arcade-panel .tables button[aria-pressed="true"], #panel.arcade-panel .cues button[aria-pressed="true"] { background: #193d37; border-color: #589d80; }
+#panel .tables .swatch { display: block; width: 100%; height: 26px; margin: 0 auto 6px; border-radius: 6px; border: 3px solid #6b4426; background: var(--felt); box-sizing: border-box; }
+#panel .cues { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+#panel.arcade-panel .cues button { display: block; text-align: left; min-height: 0; padding: 8px 10px; }
+#panel .cues .stick { display: block; height: 8px; margin: 2px 0 6px; border-radius: 4px; background: var(--stick); }
+#panel .stat { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 6px; font: 800 11px system-ui; color: #aeb4dd; margin-top: 2px; }
+#panel .stat span { display: flex; gap: 2px; }
+#panel .stat span i { flex: 1; height: 6px; border-radius: 3px; background: #2a3366; }
+#panel .stat span i.on { background: var(--sc, #5dff9b); }
+#panel.arcade-panel .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+#panel.arcade-panel .modes button { display: block; min-height: 0; padding: 8px 6px; }
+#panel.arcade-panel .modes button[aria-pressed="true"] { background: #193d37; border-color: #589d80; }
+#panel.arcade-panel .chars.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#panel.arcade-panel .chars.two canvas { width: min(100%, 64px); }
+#panel canvas.cuehero { display: block; width: 100%; height: auto; aspect-ratio: 800 / 84; margin: 2px 0 6px; border-radius: 10px; background: radial-gradient(ellipse at 50% 50%, #26306a, #0b1231 75%); }
+#panel .cues canvas.cuepic { display: block; width: 100%; height: auto; aspect-ratio: 360 / 44; margin: 0 0 4px; }
+#panel .guide { display: block; width: 100%; height: 130px; border-radius: 12px; background: #0b1231; margin: 6px 0; }
+#panel .result-face { width: 110px; height: 110px; display: block; margin: 0 auto; }
+@media (max-width: 520px) { #panel .cues { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<canvas id="view" aria-label="3D pool table"></canvas>
+<div class="hud" id="hud" hidden></div>
+<div id="toast" role="status"></div>
+<div class="ctl mine" id="spin" aria-label="Cue tip position: drag to set spin"><span id="spinDot"></span><span id="spinLbl">Center</span></div>
+<div class="ctl" id="aimRow">
+  <button class="mine-btn" id="aimL" type="button" aria-label="Fine aim left">◀</button>
+  <button id="viewBtn" type="button">Top view</button>
+  <button class="mine-btn" id="aimR" type="button" aria-label="Fine aim right">▶</button>
+</div>
+<div class="ctl mine" id="power" aria-label="Power: drag down, release to shoot"><small>PULL<br>▼</small><div class="track"><div class="fill" id="powerFill"></div></div><b id="powerPct">0%</b></div>
+<section class="arcade-menu" id="overlay" aria-label="Game menu"><div class="arcade-panel" id="panel" style="--menu-accent:#8fe9dc"></div></section>
+<script src="../lib/three.min.js"></script>
+<script>
+"use strict";
+const TAU = Math.PI * 2;
+// ===================== PHYSICS (pure JS, no DOM) =====================
+// Units: metres, seconds, radians. x runs along the table, z across it, y is up. Cloth surface is y = 0.
+// Ball model: sliding friction turns slip into rolling (the 2/7 rule falls out of it), then rolling
+// resistance; vertical-axis (side) spin decays on its own and changes cushion rebounds and ball-to-ball throw.
+const BALL_R = 0.028575, GRAV = 9.81;
+const MU_SLIDE = 0.2, MU_ROLL = 0.010, SPIN_DECEL = 10;
+const E_BALL = 0.94, MU_BALL = 0.06, E_CUSH = 0.78, MU_CUSH = 0.18;
+const CUSHION_W = 0.05, RAIL_W = 0.115;
+const TABLES = {
+  "7": { id: "7", name: "7 ft", sub: "Bar box · roomy pockets", L: 1.981, W: 0.991, corner: 0.124, side: 0.137, felt: "#11703f" },
+  "8": { id: "8", name: "8 ft", sub: "Home table", L: 2.235, W: 1.118, corner: 0.119, side: 0.133, felt: "#17508f" },
+  "9": { id: "9", name: "9 ft · Olympic", sub: "Pro tournament size · tight pockets", L: 2.54, W: 1.27, corner: 0.114, side: 0.127, felt: "#44308c" },
+};
+
+function buildTable(spec) {
+  const hx = spec.L / 2, hz = spec.W / 2, B = CUSHION_W;
+  const dC = spec.corner / Math.SQRT2, dS = spec.side / 2;
+  const segs = [], cushions = [], pockets = [];
+  const seg = (ax, az, bx, bz) => segs.push({ ax, az, bx, bz, dx: bx - ax, dz: bz - az, len2: (bx - ax) ** 2 + (bz - az) ** 2 });
+  const c38 = Math.cos(38 * Math.PI / 180), s38 = Math.sin(38 * Math.PI / 180), t13 = Math.tan(13 * Math.PI / 180);
+  // Corner pockets: capture point a little past the corner, on the pocket's axis.
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    // A ball is gone once its centre is ~1 cm past the mouth; shots that clip a jaw knuckle still rattle out.
+    const d = 0.012 / Math.SQRT2;
+    pockets.push({ x: sx * hx + sx * d, z: sz * hz + sz * d, r: 0.052, vis: 0.066, corner: true, sx, sz });
+  }
+  for (const sz of [-1, 1]) pockets.push({ x: 0, z: sz * (hz + 0.03), r: 0.055, vis: 0.064, corner: false, sx: 0, sz });
+  // Long rails: two halves per side. Corner jaws are cut at 142 degrees, side jaws at 103 degrees (throats narrow inward).
+  for (const sz of [-1, 1]) for (const half of [-1, 1]) {
+    const z = sz * hz, xc = half * (hx - dC), xs = half * dS;
+    const jc = [xc + half * (B / s38) * c38, sz * (hz + B)];
+    const js = [xs - half * B * t13, sz * (hz + B)];
+    seg(xc, z, xs, z); seg(xc, z, jc[0], jc[1]); seg(xs, z, js[0], js[1]);
+    cushions.push([jc, [xc, z], [xs, z], js]);
+  }
+  // Short rails.
+  for (const sx of [-1, 1]) {
+    const x = sx * hx, z1 = -(hz - dC), z2 = hz - dC;
+    const j1 = [sx * (hx + B), z1 - (B / s38) * c38], j2 = [sx * (hx + B), z2 + (B / s38) * c38];
+    seg(x, z1, x, z2); seg(x, z1, j1[0], j1[1]); seg(x, z2, j2[0], j2[1]);
+    cushions.push([j1, [x, z1], [x, z2], j2]);
+  }
+  // Back walls behind each pocket so nothing escapes the table.
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const a = [sx * (hx - dC) + sx * (B / s38) * c38, sz * (hz + B)], b = [sx * (hx + B), sz * (hz - dC) + sz * (B / s38) * c38];
+    seg(a[0], a[1], b[0], b[1]);
+  }
+  for (const sz of [-1, 1]) seg(-(dS - B * t13), sz * (hz + B), dS - B * t13, sz * (hz + B));
+  return { spec, L: spec.L, W: spec.W, hx, hz, segs, cushions, pockets, headX: -spec.L / 4, footX: spec.L / 4 };
+}
+
+const isSolid = id => id >= 1 && id <= 7, isStripe = id => id >= 9 && id <= 15;
+const groupOf = id => id === 0 ? "cue" : id === 8 ? "eight" : isSolid(id) ? "solids" : "stripes";
+
+function makeRack(table, mode = "eight", rand = Math.random) {
+  const balls = [];
+  const add = (id, x, z) => balls.push({ id, x, z, vx: 0, vz: 0, wx: 0, wy: 0, wz: 0, on: true, moving: false });
+  add(0, table.headX, 0);
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // Racks are never perfectly tight: small random gaps make every break different.
+  const gap = 0.0007, dx = (2 * BALL_R + gap) * Math.sqrt(3) / 2, dz = 2 * BALL_R + gap;
+  const put = (id, row, k, n) => add(id, table.footX + row * dx + (rand() - 0.5) * 5e-4, (k - (n - 1) / 2) * dz + (rand() - 0.5) * 5e-4);
+  if (mode === "nine") {
+    // Diamond: 1 at the front, 9 in the middle.
+    const rest = shuffle([2, 3, 4, 5, 6, 7, 8]), rows = [1, 2, 3, 2, 1];
+    rows.forEach((n, row) => { for (let k = 0; k < n; k++) put(row === 0 ? 1 : row === 2 && k === 1 ? 9 : rest.pop(), row, k, n); });
+    return balls;
+  }
+  let fixed;
+  if (mode === "cut") fixed = { "0,0": 1, "4,0": 6, "4,4": 11 }; // one ball from each group on the apex and back corners
+  else {
+    // 8-ball: 8 in the middle of row three, one solid and one stripe in the back corners.
+    const s = rand() < 0.5;
+    fixed = { "2,1": 8 };
+    const solid = 1 + Math.floor(rand() * 7), stripe = 9 + Math.floor(rand() * 7);
+    fixed["4,0"] = s ? solid : stripe; fixed["4,4"] = s ? stripe : solid;
+  }
+  const used = new Set(Object.values(fixed)), rest = shuffle([...Array(15)].map((_, i) => i + 1).filter(id => !used.has(id)));
+  for (let row = 0; row < 5; row++) for (let k = 0; k <= row; k++) put(fixed[`${row},${k}`] || rest.pop(), row, k, row + 1);
+  return balls;
+}
+
+// Cue strike. a = side offset (+ = right of centre), b = height offset (+ = above), both as fractions of the radius.
+function strike(ball, angle, speed, a = 0, b = 0) {
+  const dx = Math.cos(angle), dz = Math.sin(angle);
+  const sx = -dz, sz = dx; // right-hand side when looking along the shot
+  const c = Math.sqrt(Math.max(0, 1 - a * a - b * b));
+  // contact point r (world) relative to the centre
+  const rx = (a * sx - c * dx) * BALL_R, ry = b * BALL_R, rz = (a * sz - c * dz) * BALL_R;
+  ball.vx = dx * speed; ball.vz = dz * speed;
+  // w = 5 v (r x d) / (2 R^2)
+  const k = 2.5 * speed / (BALL_R * BALL_R);
+  ball.wx = k * (ry * dz - rz * 0);
+  ball.wy = k * (rz * dx - rx * dz);
+  ball.wz = k * (rx * 0 - ry * dx);
+  ball.moving = true;
+}
+
+function newEvents() { return { firstHit: null, railAfterContact: false, potted: [], cushionHits: 0, time: 0 }; }
+
+// One time step for the whole table. hooks: optional { sound(type, strength, x) }.
+function stepTable(state, dt, ev, hooks) {
+  const balls = state.balls, t = state.table, R = BALL_R;
+  let moving = false;
+  for (const b of balls) {
+    if (!b.on || !b.moving) continue;
+    const ux = b.vx + R * b.wz, uz = b.vz - R * b.wx, u = Math.hypot(ux, uz);
+    if (u > 1e-4) {
+      const dv = MU_SLIDE * GRAV * dt, k = Math.min(1, u / (3.5 * dv));
+      const fx = -ux / u * dv * k, fz = -uz / u * dv * k;
+      b.vx += fx; b.vz += fz; b.wx -= 2.5 * fz / R; b.wz += 2.5 * fx / R;
+    } else {
+      const v = Math.hypot(b.vx, b.vz);
+      if (v > 0) { const nv = Math.max(0, v - MU_ROLL * GRAV * dt), s = nv / v; b.vx *= s; b.vz *= s; }
+      b.wx = b.vz / R; b.wz = -b.vx / R;
+    }
+    if (b.wy) { const d = SPIN_DECEL * dt; b.wy = Math.abs(b.wy) <= d ? 0 : b.wy - Math.sign(b.wy) * d; }
+    b.x += b.vx * dt; b.z += b.vz * dt;
+    if (Math.hypot(b.vx, b.vz) < 0.004 && Math.hypot(b.vx + R * b.wz, b.vz - R * b.wx) < 0.02) {
+      b.vx = b.vz = b.wx = b.wz = b.wy = 0; b.moving = false;
+    } else moving = true;
+  }
+  // Ball-ball collisions (equal masses), with friction at the contact for cut-induced and spin-induced throw.
+  for (let i = 0; i < balls.length; i++) {
+    const a = balls[i]; if (!a.on) continue;
+    for (let j = i + 1; j < balls.length; j++) {
+      const b = balls[j]; if (!b.on || (!a.moving && !b.moving)) continue;
+      const nx = b.x - a.x, nz = b.z - a.z, d2 = nx * nx + nz * nz;
+      if (d2 >= 4 * R * R || d2 === 0) continue;
+      const d = Math.sqrt(d2), ux = nx / d, uz = nz / d;
+      const vn = (a.vx - b.vx) * ux + (a.vz - b.vz) * uz;
+      const over = 2 * R - d; a.x -= ux * over / 2; a.z -= uz * over / 2; b.x += ux * over / 2; b.z += uz * over / 2;
+      if (vn <= 0) continue;
+      const J = (1 + E_BALL) / 2 * vn;
+      a.vx -= J * ux; a.vz -= J * uz; b.vx += J * ux; b.vz += J * uz;
+      const tx = -uz, tz = ux;
+      const s = (a.vx - b.vx) * tx + (a.vz - b.vz) * tz - R * (a.wy + b.wy);
+      const Jt = Math.max(-MU_BALL * J, Math.min(MU_BALL * J, s / 7));
+      a.vx -= Jt * tx; a.vz -= Jt * tz; b.vx += Jt * tx; b.vz += Jt * tz;
+      a.wy += 2.5 * Jt / R; b.wy += 2.5 * Jt / R;
+      a.moving = b.moving = true; moving = true;
+      if (ev) {
+        if (ev.firstHit === null && (a.id === 0 || b.id === 0)) ev.firstHit = a.id === 0 ? b.id : a.id;
+      }
+      if (hooks && hooks.sound) hooks.sound("ball", vn, (a.x + b.x) / 2);
+    }
+  }
+  // Cushions (segment noses, jaws and pocket back walls).
+  const nearX = t.hx - R - 0.012, nearZ = t.hz - R - 0.012;
+  for (const b of balls) {
+    if (!b.on || !b.moving || (Math.abs(b.x) < nearX && Math.abs(b.z) < nearZ)) continue;
+    for (const sg of t.segs) {
+      let k = ((b.x - sg.ax) * sg.dx + (b.z - sg.az) * sg.dz) / sg.len2;
+      k = k < 0 ? 0 : k > 1 ? 1 : k;
+      const qx = sg.ax + sg.dx * k, qz = sg.az + sg.dz * k;
+      const nx = b.x - qx, nz = b.z - qz, d2 = nx * nx + nz * nz;
+      if (d2 >= R * R || d2 === 0) continue;
+      const d = Math.sqrt(d2), ux = nx / d, uz = nz / d;
+      b.x = qx + ux * R; b.z = qz + uz * R;
+      const vn = b.vx * ux + b.vz * uz;
+      if (vn >= 0) continue;
+      const Jn = -(1 + E_CUSH) * vn;
+      b.vx += Jn * ux; b.vz += Jn * uz;
+      const tx = -uz, tz = ux, s = b.vx * tx + b.vz * tz + R * b.wy;
+      const Jt = Math.max(-MU_CUSH * Jn, Math.min(MU_CUSH * Jn, s / 3.5));
+      b.vx -= Jt * tx; b.vz -= Jt * tz; b.wy -= 2.5 * Jt / R;
+      // The cushion nose sits above the ball's equator, so the impact mostly cancels the roll that was
+      // carrying the ball into the rail (otherwise a rolling ball would stall after every rebound).
+      const roll = b.wx * uz - b.wz * ux; b.wx -= roll * 0.9 * uz; b.wz += roll * 0.9 * ux;
+      if (ev) { ev.cushionHits++; if (ev.firstHit !== null) ev.railAfterContact = true; }
+      if (hooks && hooks.sound) hooks.sound("cushion", -vn, b.x);
+    }
+  }
+  // Pockets.
+  for (const b of balls) {
+    if (!b.on) continue;
+    if (Math.abs(b.x) < t.hx - 0.07 && Math.abs(b.z) < t.hz - 0.07) continue;
+    for (let p = 0; p < t.pockets.length; p++) {
+      const pk = t.pockets[p];
+      if ((b.x - pk.x) ** 2 + (b.z - pk.z) ** 2 < pk.r * pk.r) {
+        b.on = false; b.moving = false;
+        if (ev) ev.potted.push(b.id);
+        if (hooks && hooks.pot) hooks.pot(b, p);
+        break;
+      }
+    }
+  }
+  if (ev) ev.time += dt;
+  return moving;
+}
+
+function cloneBalls(balls) { return balls.map(b => ({ ...b })); }
+function anyMoving(balls) { return balls.some(b => b.on && b.moving); }
+
+// Runs a shot to completion (for the computer's planning). Returns events.
+function simulateShot(table, balls, shot, dt = 1 / 600, maxTime = 14) {
+  const st = { table, balls: cloneBalls(balls) };
+  const cue = st.balls.find(b => b.id === 0);
+  strike(cue, shot.angle, shot.speed, shot.a || 0, shot.b || 0);
+  const ev = newEvents();
+  let steps = Math.ceil(maxTime / dt);
+  while (steps-- > 0) { if (!stepTable(st, dt, ev) && !anyMoving(st.balls)) break; }
+  return { ev, balls: st.balls };
+}
+
+// ===================== RULES =====================
+// game: { mode: "eight" | "nine" | "cut", players, groups, out[], turn, isBreak, ballInHand, kitchen }
+// Cut-throat: player 0 owns 1-5, player 1 owns 6-10, player 2 owns 11-15. Sink the other players' balls;
+// the last player with balls left on the table wins.
+const cutGroupOf = id => id <= 5 ? 0 : id <= 10 ? 1 : 2;
+const CUT_LABELS = ["1–5", "6–10", "11–15"];
+function lowestBall(balls) { let m = null; for (const b of balls) if (b.on && b.id && (m === null || b.id < m)) m = b.id; return m; }
+function nextPlayer(game, from) { for (let k = 1; k <= game.players; k++) { const i = (from + k) % game.players; if (!game.out[i]) return i; } return from; }
+// Balls the shooter is trying to sink (and, for 8-ball and 9-ball, must hit first).
+function legalTargets(game, balls, shooter) {
+  const on = balls.filter(b => b.on && b.id !== 0);
+  if (game.mode === "nine") { const lo = lowestBall(balls); return lo ? [lo] : []; }
+  if (game.mode === "cut") return on.filter(b => cutGroupOf(b.id) !== shooter && !game.out[cutGroupOf(b.id)]).map(b => b.id);
+  const g = game.groups[shooter];
+  if (!g) return on.filter(b => b.id !== 8).map(b => b.id);
+  const own = on.filter(b => groupOf(b.id) === g).map(b => b.id);
+  return own.length ? own : [8];
+}
+function judgeShot(game, ballsBefore, ballsAfter, ev, shooter) {
+  const res = { foul: false, reason: "", continueTurn: false, assign: null, win: null, respot: [], out: [], potted: ev.potted.filter(id => id !== 0) };
+  const scratch = ev.potted.includes(0);
+  const noRail = !game.isBreak && !res.potted.length && !ev.railAfterContact;
+  if (game.mode === "nine") {
+    const lo = lowestBall(ballsBefore);
+    if (scratch) { res.foul = true; res.reason = game.isBreak ? "Scratch on the break" : "Scratch"; }
+    else if (ev.firstHit === null) { res.foul = true; res.reason = "No ball hit"; }
+    else if (ev.firstHit !== lo) { res.foul = true; res.reason = `Hit the ${ev.firstHit} before the ${lo}`; }
+    else if (noRail) { res.foul = true; res.reason = "No rail after contact"; }
+    if (ev.potted.includes(9)) {
+      if (!res.foul) { res.win = shooter; res.reason = game.isBreak ? "Nine on the break!" : "Sank the 9 ball"; return res; }
+      res.respot.push(9);
+    }
+    res.continueTurn = !res.foul && res.potted.length > 0;
+    return res;
+  }
+  if (game.mode === "cut") {
+    if (scratch) { res.foul = true; res.reason = game.isBreak ? "Scratch on the break" : "Scratch"; }
+    else if (!game.isBreak && ev.firstHit === null) { res.foul = true; res.reason = "No ball hit"; }
+    else if (noRail) { res.foul = true; res.reason = "No rail after contact"; }
+    const isOn = id => ballsAfter.find(b => b.id === id).on;
+    if (res.foul) { // every other player still in gets one of their sunk balls back
+      for (let p = 0; p < game.players; p++) {
+        if (p === shooter || game.out[p]) continue;
+        const gone = []; for (let id = 1; id <= 15; id++) if (cutGroupOf(id) === p && !isOn(id)) gone.push(id);
+        if (gone.length) res.respot.push(gone[0]);
+      }
+    }
+    const left = p => ballsAfter.some(b => b.on && b.id && cutGroupOf(b.id) === p) || res.respot.some(id => cutGroupOf(id) === p);
+    for (let p = 0; p < game.players; p++) if (!game.out[p] && !left(p)) res.out.push(p);
+    const alive = []; for (let p = 0; p < game.players; p++) if (!game.out[p] && !res.out.includes(p)) alive.push(p);
+    if (alive.length <= 1) { res.win = alive.length ? alive[0] : shooter; res.reason = "Last one with balls on the table"; return res; }
+    const sankOther = game.isBreak ? res.potted.length > 0 : res.potted.some(id => cutGroupOf(id) !== shooter);
+    res.continueTurn = !res.foul && sankOther && !res.out.includes(shooter);
+    return res;
+  }
+  // 8-ball
+  const other = 1 - shooter, g = game.groups[shooter];
+  const targets = legalTargets(game, ballsBefore, shooter);
+  const clearedBefore = g && targets.length === 1 && targets[0] === 8;
+  if (game.isBreak) {
+    if (scratch) { res.foul = true; res.reason = "Scratch on the break"; }
+    if (ev.potted.includes(8)) res.respot.push(8);
+    res.continueTurn = !res.foul && res.potted.some(id => id !== 8);
+    return res;
+  }
+  if (scratch) { res.foul = true; res.reason = "Scratch"; }
+  else if (ev.firstHit === null) { res.foul = true; res.reason = "No ball hit"; }
+  else if (!targets.includes(ev.firstHit)) { res.foul = true; res.reason = ev.firstHit === 8 ? "Hit the 8 first" : "Hit the wrong group first"; }
+  else if (noRail) { res.foul = true; res.reason = "No rail after contact"; }
+  if (ev.potted.includes(8)) {
+    res.win = !res.foul && clearedBefore ? shooter : other;
+    res.reason = res.win === shooter ? "Sank the 8 ball" : res.foul ? `${res.reason} on the 8 ball` : "Sank the 8 ball too early";
+    return res;
+  }
+  let group = g;
+  if (!g && !res.foul) { const first = res.potted.find(id => id !== 8); if (first) { group = groupOf(first); res.assign = group; } }
+  res.continueTurn = !res.foul && !!group && res.potted.some(id => groupOf(id) === group);
+  return res;
+}
+// Applies a judged shot to the game (group assignment, re-spots, eliminations, turn). Mutates game and balls.
+function applyResult(table, game, balls, res, shooter) {
+  if (res.assign) { game.groups[shooter] = res.assign; game.groups[1 - shooter] = res.assign === "solids" ? "stripes" : "solids"; }
+  for (const id of res.respot) respotBall(table, balls, id);
+  for (const p of res.out) game.out[p] = true;
+  game.isBreak = false; game.kitchen = false; game.ballInHand = res.foul;
+  if (!res.continueTurn) game.turn = nextPlayer(game, shooter);
+}
+function copyGame(game) { return { ...game, groups: [...game.groups], out: [...game.out] }; }
+
+// ===================== COMPUTER PLAYER =====================
+const AI_LEVELS = {
+  easy:   { aimSigma: 1.5, powerSigma: 0.16, topN: 5, speeds: [1], spins: [0], position: false, sloppy: 0.35, breakSpeed: 7.2 },
+  medium: { aimSigma: 0.5, powerSigma: 0.07, topN: 9, speeds: [1, 1.45], spins: [0, 0.32], position: true, sloppy: 0, breakSpeed: 8.2 },
+  hard:   { aimSigma: 0.1, powerSigma: 0.025, topN: 12, speeds: [0.85, 1.2, 1.7], spins: [0, 0.35, -0.38], position: true, sloppy: 0, breakSpeed: 8.8 },
+};
+function pathClear(balls, x1, z1, x2, z2, ignore, clearance) {
+  const dx = x2 - x1, dz = z2 - z1, L2 = dx * dx + dz * dz;
+  for (const b of balls) {
+    if (!b.on || ignore.includes(b.id)) continue;
+    let k = L2 ? ((b.x - x1) * dx + (b.z - z1) * dz) / L2 : 0; k = Math.max(0, Math.min(1, k));
+    if ((b.x - x1 - dx * k) ** 2 + (b.z - z1 - dz * k) ** 2 < clearance * clearance) return false;
+  }
+  return true;
+}
+// Geometric pot candidates from the cue ball's position.
+function potCandidates(table, balls, targets, cueX, cueZ) {
+  const out = [], R = BALL_R;
+  for (const id of targets) {
+    const ob = balls.find(b => b.id === id); if (!ob || !ob.on) continue;
+    table.pockets.forEach((pk, pi) => {
+      // aim slightly inside the mouth
+      const px = pk.corner ? pk.sx * (table.hx - 0.02) : 0, pz = pk.corner ? pk.sz * (table.hz - 0.02) : pk.sz * table.hz; // mouth centre
+      let ux = px - ob.x, uz = pz - ob.z; const d2 = Math.hypot(ux, uz); ux /= d2; uz /= d2;
+      if (!pk.corner && Math.abs(uz) < 0.45) return;                       // too shallow into a side pocket
+      if (pk.corner && (ux * pk.sx + uz * pk.sz) / Math.SQRT2 < 0.55) return; // along the rail into a corner is still fine, but not from behind
+      const gx = ob.x - ux * 2 * R, gz = ob.z - uz * 2 * R;
+      let ax = gx - cueX, az = gz - cueZ; const d1 = Math.hypot(ax, az); if (d1 < 1e-6) return; ax /= d1; az /= d1;
+      const cos = ax * ux + az * uz; if (cos < 0.22) return;
+      if (!pathClear(balls, cueX, cueZ, gx, gz, [0, id], 2 * R - 0.001)) return;
+      if (!pathClear(balls, ob.x, ob.z, px, pz, [0, id], 2 * R - 0.002)) return;
+      const ease = cos * cos / (0.25 + d1 * 0.6 + d2 * 1.1);
+      const vOb = Math.sqrt(2 * 0.25 * d2) + 0.35, vHit = vOb / (Math.max(cos, 0.3) * 0.97);
+      const speed = Math.sqrt(vHit * vHit + 2 * 0.6 * d1);
+      out.push({ id, pocket: pi, angle: Math.atan2(az, ax), speed, ease, cut: Math.acos(Math.min(1, cos)), d1, d2 });
+    });
+  }
+  return out.sort((p, q) => q.ease - p.ease);
+}
+function positionScore(table, balls, game, shooter) {
+  const cue = balls.find(b => b.id === 0); if (!cue || !cue.on) return 0;
+  const tg = legalTargets(game, balls, shooter);
+  const c = potCandidates(table, balls, tg, cue.x, cue.z);
+  return c.length ? c[0].ease * 3 + Math.min(c.length, 5) * 0.08 : 0;
+}
+function gauss(rand = Math.random) { return Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand()); }
+
+// Generator so the planner can spread work across animation frames. Yields between simulations.
+function* planShot(table, balls, game, shooter, levelId, maxSpeed, rand = Math.random) {
+  const lv = AI_LEVELS[levelId];
+  const cue = balls.find(b => b.id === 0);
+  if (game.isBreak) {
+    const apex = balls.filter(b => b.on && b.id !== 0).sort((p, q) => p.x - q.x)[0];
+    return { angle: Math.atan2(apex.z - cue.z, apex.x - cue.x) + gauss(rand) * 0.004, speed: Math.min(maxSpeed, lv.breakSpeed), a: 0, b: 0.1, kind: "break" };
+  }
+  const targets = legalTargets(game, balls, shooter);
+  const cands = potCandidates(table, balls, targets, cue.x, cue.z).slice(0, lv.topN);
+  const tries = [];
+  for (const c of cands) for (const sm of lv.speeds) for (const spin of lv.spins) tries.push({ angle: c.angle, speed: Math.min(maxSpeed, c.speed * sm), a: 0, b: spin, cand: c });
+  let best = null, wins = [];
+  for (const shot of tries) {
+    const { ev, balls: after } = simulateShot(table, balls, shot);
+    const g2 = copyGame(game);
+    const r = judgeShot(g2, balls, after, ev, shooter);
+    if (r.assign) { g2.groups[shooter] = r.assign; g2.groups[1 - shooter] = r.assign === "solids" ? "stripes" : "solids"; }
+    for (const p of r.out) g2.out[p] = true;
+    let score = -1;
+    if (r.win === shooter) score = 1000;
+    else if (r.continueTurn && r.win === null) {
+      score = 100 + (lv.position ? positionScore(table, after, g2, shooter) * 40 : 0) - shot.speed * 0.5;
+      if (game.mode === "cut") { const own = r.potted.filter(id => cutGroupOf(id) === shooter).length; score += (r.potted.length - own - 1) * 12 - own * 35; }
+    }
+    if (score > 0) wins.push({ shot, score });
+    if (!best || score > best.score) best = { shot, score };
+    yield;
+  }
+  let plan = null;
+  if (wins.length) {
+    wins.sort((p, q) => q.score - p.score);
+    plan = lv.sloppy && rand() < lv.sloppy ? wins[Math.floor(rand() * Math.min(3, wins.length))].shot : wins[0].shot;
+  } else {
+    // No pot found: play a legal safety (hard: leave the opponent the least).
+    let safe = null;
+    for (const id of targets) {
+      const ob = balls.find(b => b.id === id);
+      for (const off of [0, -0.6, 0.6]) for (const sp of [0.9, 1.6, 2.6]) {
+        const ang = Math.atan2(ob.z - cue.z, ob.x - cue.x) + off * Math.asin(Math.min(1, BALL_R * 1.6 / Math.max(0.06, Math.hypot(ob.z - cue.z, ob.x - cue.x))));
+        const shot = { angle: ang, speed: Math.min(maxSpeed, sp), a: 0, b: 0 };
+        const { ev, balls: after } = simulateShot(table, balls, shot);
+        const r = judgeShot(game, balls, after, ev, shooter);
+        let score = r.foul || (r.win !== null && r.win !== shooter) ? -100 : 10;
+        if (r.continueTurn) score += 50;
+        if (score > 0 && levelId !== "easy") score -= positionScore(table, after, game, nextPlayer(game, shooter)) * 20;
+        if (!safe || score > safe.score) safe = { shot, score };
+        yield;
+      }
+      if (levelId === "easy" && safe && safe.score > 0) break;
+    }
+    plan = safe ? safe.shot : { angle: rand() * Math.PI * 2, speed: 2, a: 0, b: 0 };
+  }
+  return { ...plan, angle: plan.angle + gauss(rand) * lv.aimSigma * Math.PI / 180, speed: Math.min(maxSpeed, plan.speed * (1 + gauss(rand) * lv.powerSigma)), kind: wins.length ? "pot" : "safety" };
+}
+
+// Where the computer puts the cue ball with ball in hand: behind an easy straight-in shot.
+function placeCueBall(table, balls, game, shooter, levelId, kitchenOnly, rand = Math.random) {
+  const cue = balls.find(b => b.id === 0), targets = legalTargets(game, balls, shooter);
+  const spots = [];
+  for (const id of targets) {
+    const ob = balls.find(b => b.id === id);
+    for (const pk of table.pockets) {
+      let ux = pk.x - ob.x, uz = pk.z - ob.z; const d = Math.hypot(ux, uz); ux /= d; uz /= d;
+      for (const back of [0.18, 0.3, 0.45]) for (const skew of [0, 0.25, -0.25]) {
+        const ang = Math.atan2(uz, ux) + skew;
+        const x = ob.x - Math.cos(ang) * (2 * BALL_R + back), z = ob.z - Math.sin(ang) * (2 * BALL_R + back);
+        if (validCueSpot(table, balls, x, z, kitchenOnly)) spots.push({ x, z, score: d + back * 0.6 + Math.abs(skew) * (levelId === "hard" ? 0.1 : 0.6) + rand() * (levelId === "easy" ? 0.8 : 0.1) });
+      }
+    }
+  }
+  spots.sort((p, q) => p.score - q.score);
+  const s = spots[0] || findFreeSpot(table, balls, kitchenOnly);
+  cue.x = s.x; cue.z = s.z; cue.on = true; cue.vx = cue.vz = cue.wx = cue.wy = cue.wz = 0; cue.moving = false;
+}
+function validCueSpot(table, balls, x, z, kitchenOnly) {
+  if (Math.abs(x) > table.hx - BALL_R - 0.002 || Math.abs(z) > table.hz - BALL_R - 0.002) return false;
+  if (kitchenOnly && x > table.headX) return false;
+  return balls.every(b => b.id === 0 || !b.on || (b.x - x) ** 2 + (b.z - z) ** 2 > (2 * BALL_R + 0.002) ** 2);
+}
+function findFreeSpot(table, balls, kitchenOnly) {
+  for (let r = 0; r < 1.5; r += 0.02) for (let k = 0; k < 16; k++) {
+    const x = (kitchenOnly ? table.headX : 0) - r * Math.cos(k * Math.PI / 8) * (kitchenOnly ? 1 : 1), z = r * Math.sin(k * Math.PI / 8);
+    if (validCueSpot(table, balls, x, z, kitchenOnly)) return { x, z };
+  }
+  return { x: table.headX, z: 0 };
+}
+function respotBall(table, balls, id) {
+  const e = balls.find(b => b.id === id);
+  // On the foot spot, or the nearest free point behind it on the long string (then in front of it).
+  for (const dir of [1, -1]) for (let x = table.footX; Math.abs(x) < table.hx - BALL_R; x += 0.002 * dir) {
+    if (balls.every(b => b.id === id || !b.on || (b.x - x) ** 2 + b.z ** 2 > (2 * BALL_R + 0.001) ** 2)) { Object.assign(e, { x, z: 0, on: true, moving: false, vx: 0, vz: 0, wx: 0, wy: 0, wz: 0 }); return; }
+  }
+  Object.assign(e, { x: table.footX, z: 0, on: true });
+}
+// ===================== END PHYSICS =====================
+
+// Character art from Alien Slopes (Blip, Jelly, Runner and friends).
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15, desc: "Little wobbling slime drop. Squishy and bouncy.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95, desc: "Big round three-eyed bruiser. Built like a bowling ball.",
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+
+// ===================== DATA =====================
+const $ = id => document.getElementById(id);
+const ARCADE_LINK = '<a class="button arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
+const OPPONENTS = [
+  { id: "blip", name: "Blip", level: "easy", label: "Easy", color: "#5dff9b", cpuSpeed: 7.4, taunt: ["Ooh, shiny balls!", "Was that a good one?", "Bloop!"] },
+  { id: "jelly", name: "Jelly", level: "medium", label: "Medium", color: "#7ab8ff", cpuSpeed: 8.3, taunt: ["Drifting right in.", "Smooth.", "Your turn, earthling."] },
+  { id: "runner", name: "Runner", level: "hard", label: "Hard", color: "#ffe35d", cpuSpeed: 8.9, taunt: ["Too slow!", "Run the table!", "Zip zip zip!"] },
+];
+// Cue stats are 1-5. Power sets top speed, Aim sets how much of the guide you see, Spin sets how far off-centre
+// you can hit, Control sets how steady hard strokes are.
+const MODES = [
+  { id: "eight", name: "8-Ball", sub: "Standard · solids vs stripes" },
+  { id: "nine", name: "9-Ball", sub: "Lowest ball first · sink the 9" },
+  { id: "cut", name: "Cut-throat", sub: "3 players · you vs 2 aliens" },
+];
+const CUES = [
+  { id: "moon", name: "Moon Maple", desc: "Balanced starter. Longest aim guide.", power: 3, aim: 5, spin: 3, control: 4, shaft: "#e9d3a6", body: "#3b6fd8", wrap: "#1a1f33", glow: "#7ab8ff" },
+  { id: "nebula", name: "Nebula Breaker", desc: "Monster breaks, but wild at full power.", power: 5, aim: 2, spin: 2, control: 2, shaft: "#d8c39a", body: "#8a2be2", wrap: "#2a0f3a", glow: "#ff5df0" },
+  { id: "comet", name: "Comet Finesse", desc: "Light, steady, and spins like crazy.", power: 2, aim: 3, spin: 5, control: 5, shaft: "#f1e2c2", body: "#16a085", wrap: "#0d2b26", glow: "#5dff9b" },
+  { id: "quasar", name: "Quasar Pro", desc: "Pro cue: strong and accurate. Short guide.", power: 4, aim: 1, spin: 4, control: 4, shaft: "#e2cb9c", body: "#c0392b", wrap: "#141414", glow: "#ffd25d" },
+];
+const cueMaxSpeed = c => 4.6 + c.power * 0.95;            // 6.5 .. 9.35 m/s at the tip
+const cueMaxTip = c => 0.22 + c.spin * 0.055;             // fraction of radius
+const cueGuide = c => 0.12 + c.aim * 0.13;                // metres of object-ball line
+const BALL_COLORS = { 0: "#f4f1e6", 1: "#f2c200", 2: "#1d44c8", 3: "#d4202c", 4: "#5b2a90", 5: "#f06b12", 6: "#0e8044", 7: "#7c1b26", 8: "#141414" };
+const colorOf = id => BALL_COLORS[id > 8 ? id - 8 : id];
+const HOWTO = [
+  { title: "Aim", text: "Drag left or right to swing the cue. Tap any ball to aim straight at it. Use ◀ ▶ to fine-tune. In Top view, drag toward where you want to shoot. The aim guide (the line and ghost ball) can be turned off in Match setup or Pause.", art: "aim" },
+  { title: "Shoot", text: "Drag the power bar down to pull the cue back, then let go to shoot. Drag back to the top to cancel. Keyboard: hold Space, release to shoot.", art: "power" },
+  { title: "Spin", text: "Drag the dot on the cue-ball pad. Top = follow (rolls forward after contact), bottom = draw (spins back), sides = english that changes cushion rebounds.", art: "spin" },
+  { title: "8-Ball", text: "The first ball you sink after the break makes you solids (1–7) or stripes (9–15). Clear your group, then sink the 8. Scratching, hitting the wrong ball first, or no rail after contact is a foul and gives your opponent ball in hand. Sinking the 8 early or scratching on it loses.", art: "rules" },
+  { title: "9-Ball", text: "Balls 1–9 only. Always hit the lowest-numbered ball first. Sink any ball on a legal shot to keep shooting. Whoever sinks the 9 on a legal shot wins, even on the break or with a combo. A foul gives ball in hand.", art: "nine" },
+  { title: "Cut-throat", text: "Three players: you own 1–5, the first alien owns 6–10, and the second owns 11–15. Sink the other players' balls to keep shooting. If you foul, each opponent gets one of their sunk balls back. When all your balls are gone you're out. The last player with balls left wins.", art: "cut" },
+];
+
+// ===================== SAVE =====================
+const SAVE_KEY = "alienpool-save";
+let SAVE = { opp: "jelly", opp2: "blip", mode: "eight", table: "8", cue: "moon", sound: true, guide: true, record: {} };
+try { SAVE = { ...SAVE, ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") }; } catch { /* storage can be off */ }
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch { /* ignore */ } }
+const rec = id => (SAVE.record[id] = SAVE.record[id] || { w: 0, l: 0 });
+const opp = () => OPPONENTS.find(o => o.id === SAVE.opp) || OPPONENTS[1];
+const cueDef = () => CUES.find(c => c.id === SAVE.cue) || CUES[0];
+const opp2 = () => OPPONENTS.find(o => o.id === SAVE.opp2 && o.id !== SAVE.opp) || OPPONENTS.find(o => o.id !== SAVE.opp);
+// Records are kept per game type and opponent(s).
+const recKey = () => SAVE.mode === "eight" ? opp().id : SAVE.mode === "nine" ? `nine:${opp().id}` : `cut:${opp().id}+${opp2().id}`;
+let players = [];
+function buildPlayers() {
+  const list = [{ name: "You", cpu: false, color: "#5dff9b" }, { name: opp().name, cpu: true, o: opp(), color: opp().color }];
+  if (SAVE.mode === "cut") list.push({ name: opp2().name, cpu: true, o: opp2(), color: opp2().color });
+  return list;
+}
+
+// ===================== SOUND =====================
+let actx = null, noiseBuf = null, soundBudget = 0;
+function audio() {
+  if (!SAVE.sound) return null;
+  try {
+    if (!actx) {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      noiseBuf = actx.createBuffer(1, actx.sampleRate * 0.3, actx.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (actx.state !== "running") actx.resume();
+  } catch { actx = null; }
+  return actx;
+}
+function blip(freq, dur, vol, type = "sine", f2) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(dur, vol, freq, q, type = "bandpass") {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, s = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain();
+  s.buffer = noiseBuf; f.type = type; f.frequency.value = freq; f.Q.value = q;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(a.destination); s.start(t); s.stop(t + dur + 0.02);
+}
+const SFX = {
+  ball(v) { const k = Math.min(1, v / 3.5); if (k < 0.02) return; noise(0.05, 0.5 * k, 3600, 1.6); blip(2600 + 600 * Math.random(), 0.035, 0.18 * k, "sine"); },
+  cushion(v) { const k = Math.min(1, v / 4); if (k < 0.03) return; noise(0.09, 0.35 * k, 380, 0.8, "lowpass"); blip(130, 0.09, 0.25 * k); },
+  pocket() { blip(110, 0.22, 0.45, "sine", 55); noise(0.25, 0.25, 700, 0.7, "lowpass"); setTimeout(() => noise(0.12, 0.12, 1800, 2), 120); },
+  cue(v) { const k = Math.min(1, v / 8); noise(0.04, 0.6 * (0.3 + k), 1900, 1.2); blip(820, 0.04, 0.2 * (0.3 + k)); },
+  win() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => blip(f, 0.25, 0.12, "triangle"), i * 110)); },
+  lose() { [392, 330, 262].forEach((f, i) => setTimeout(() => blip(f, 0.3, 0.12, "triangle"), i * 150)); },
+  foul() { blip(220, 0.18, 0.12, "square", 160); },
+};
+
+// ===================== RENDERER / SCENE =====================
+const canvas = $("view");
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06070f);
+scene.fog = new THREE.Fog(0x06070f, 7, 17);
+const camera = new THREE.PerspectiveCamera(46, 1, 0.02, 40);
+const FLOOR_Y = -0.79;
+
+function canvasTex(w, h, draw, repeat) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h; draw(c.getContext("2d"), w, h);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
+  return t;
+}
+// Reflections: a tiny "room" with a bright lamp panel and neon strips, baked into an environment map.
+(function makeEnvironment() {
+  const pm = new THREE.PMREMGenerator(renderer), env = new THREE.Scene();
+  env.add(new THREE.Mesh(new THREE.BoxGeometry(14, 6, 14), new THREE.MeshBasicMaterial({ color: 0x0a0c18, side: THREE.BackSide })));
+  const panel = (w, h, rgb, x, y, z, rx, ry) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+    m.material.color.setRGB(...rgb); m.position.set(x, y, z); m.rotation.set(rx || 0, ry || 0, 0); env.add(m);
+  };
+  panel(2.6, 0.7, [5, 4.6, 4], 0, 2.6, 0, Math.PI / 2);
+  panel(10, 0.12, [0.3, 2.4, 1.2], 0, 1.2, -6.9);
+  panel(10, 0.12, [1.8, 0.4, 2.2], 0, 1.2, 6.9);
+  panel(0.12, 10, [0.4, 1.4, 2.4], 6.9, 1.2, 0, 0, Math.PI / 2);
+  scene.environment = pm.fromScene(env, 0.03).texture;
+  pm.dispose();
+})();
+
+const hemi = new THREE.HemisphereLight(0x8a96ff, 0x0b0b14, 0.22); scene.add(hemi);
+const spots = [];
+for (let i = 0; i < 2; i++) {
+  const s = new THREE.SpotLight(0xfff0da, 1.15, 0, 0.78, 0.7, 1);
+  s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -0.0003; s.shadow.normalBias = 0.002;
+  s.shadow.camera.near = 0.4; s.shadow.camera.far = 3;
+  scene.add(s, s.target); spots.push(s);
+}
+
+// Room: floor, walls with neon strips and a sign.
+const room = new THREE.Group(); scene.add(room);
+{
+  const floorTex = canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = "#14122a"; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1600; i++) { g.fillStyle = `rgba(${120 + Math.random() * 80},${90 + Math.random() * 60},255,${Math.random() * 0.06})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+    g.strokeStyle = "rgba(93,255,155,0.07)"; g.lineWidth = 3;
+    for (let k = 0; k < 6; k++) { g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 18 + Math.random() * 30, 0, TAU); g.stroke(); }
+  }, [10, 10]);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(24, 24), new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.92 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; floor.receiveShadow = true; room.add(floor);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x151833, roughness: 0.95 });
+  const walls = new THREE.Mesh(new THREE.BoxGeometry(11, 4.2, 8.5), [wallMat, wallMat, wallMat, wallMat, wallMat, wallMat].map(m => { const c = m.clone(); c.side = THREE.BackSide; return c; }));
+  walls.position.y = FLOOR_Y + 2.1; room.add(walls);
+  const neon = (w, h, d, color, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color })); m.position.set(x, y, z); room.add(m); };
+  neon(10.8, 0.04, 0.04, 0x5dff9b, 0, FLOOR_Y + 1.25, -4.2); neon(10.8, 0.04, 0.04, 0xc77dff, 0, FLOOR_Y + 1.25, 4.2);
+  neon(0.04, 0.04, 8.3, 0x4fd1ff, 5.45, FLOOR_Y + 1.25, 0); neon(0.04, 0.04, 8.3, 0x4fd1ff, -5.45, FLOOR_Y + 1.25, 0);
+  const sign = (text, sub, x, ry) => {
+    const tex = canvasTex(1024, 320, (g, w, h) => {
+      g.clearRect(0, 0, w, h); g.textAlign = "center"; g.textBaseline = "middle";
+      g.font = "900 150px system-ui, sans-serif"; g.shadowColor = "#5dff9b"; g.shadowBlur = 40; g.fillStyle = "#c9ffe0"; g.fillText(text, w / 2, h * 0.42);
+      g.font = "800 54px system-ui, sans-serif"; g.shadowColor = "#ff5df0"; g.fillStyle = "#ffd0f6"; g.fillText(sub, w / 2, h * 0.82);
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false }));
+    m.position.set(x, FLOOR_Y + 2.35, 0); m.rotation.y = ry; room.add(m);
+  };
+  sign("ALIEN POOL", "★ 8-BALL PARLOR ★", 5.4, -Math.PI / 2);
+  sign("RACK 'EM", "NO EARTHLINGS ON THE TABLE", -5.4, Math.PI / 2);
+}
+
+// ===================== TABLE MESHES =====================
+let T = buildTable(TABLES[SAVE.table] || TABLES["8"]);
+let tableGroup = null, lampGroup = null;
+const woodTex = canvasTex(1024, 128, (g, w, h) => {
+  const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, "#4a2614"); grad.addColorStop(0.5, "#5e3119"); grad.addColorStop(1, "#3d1e10");
+  g.fillStyle = grad; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 90; i++) {
+    g.strokeStyle = `rgba(${20 + Math.random() * 30},${8 + Math.random() * 10},0,${0.15 + Math.random() * 0.25})`; g.lineWidth = 1 + Math.random() * 2;
+    const y = Math.random() * h; g.beginPath(); g.moveTo(0, y);
+    for (let x = 0; x <= w; x += 32) g.lineTo(x, y + Math.sin(x * 0.01 + i) * 4 + Math.sin(x * 0.043 + i * 3) * 2);
+    g.stroke();
+  }
+}, [3, 1]);
+function feltTexture(color) {
+  return canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = color; g.fillRect(0, 0, w, h);
+    const img = g.getImageData(0, 0, w, h);
+    for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 18; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
+    g.putImageData(img, 0, 0);
+  }, [8, 4]);
+}
+// Boundary of a rectangle with pocket circles added (union) or cut away (subtract), sampled as a star polygon.
+function starPolygon(ax, az, circles, mode) {
+  const pts = [], N = 1440;
+  for (let i = 0; i < N; i++) {
+    const a = i / N * TAU, dx = Math.cos(a), dz = Math.sin(a);
+    let d = Math.min(Math.abs(dx) > 1e-9 ? ax / Math.abs(dx) : Infinity, Math.abs(dz) > 1e-9 ? az / Math.abs(dz) : Infinity);
+    for (const c of circles) {
+      const b = dx * c.x + dz * c.z, disc = b * b - (c.x * c.x + c.z * c.z - c.r * c.r);
+      if (disc < 0) continue;
+      if (mode === "union") d = Math.max(d, b + Math.sqrt(disc));
+      else { const tn = b - Math.sqrt(disc); if (tn > 0 && tn < d) d = tn; }
+    }
+    pts.push(new THREE.Vector2(dx * d, dz * d));
+  }
+  return pts;
+}
+// Shapes are drawn in (x, z) and extruded downward from y = 0 after rotateX(+90deg), then lifted to `top`.
+function slab(shape, depth, top, mat) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false, curveSegments: 24 });
+  g.rotateX(Math.PI / 2); g.translate(0, top, 0);
+  const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function buildTableMeshes() {
+  if (tableGroup) { scene.remove(tableGroup); tableGroup.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+  if (lampGroup) scene.remove(lampGroup);
+  const g = new THREE.Group(), hx = T.hx, hz = T.hz, B = CUSHION_W, RW = RAIL_W;
+  const felt = feltTexture(T.spec.felt);
+  felt.repeat.set(T.L * 4, T.W * 4);
+  const clothMat = new THREE.MeshStandardMaterial({ map: felt, roughness: 0.95, metalness: 0 });
+  const cushionMat = new THREE.MeshStandardMaterial({ map: felt, roughness: 0.9, color: 0xd8d8d8 });
+  const woodMat = new THREE.MeshPhysicalMaterial({ map: woodTex, roughness: 0.38, clearcoat: 0.8, clearcoatRoughness: 0.18 });
+  const darkWood = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.6, color: 0x8a7a70 });
+  const holes = T.pockets.map(p => ({ x: p.x, z: p.z, r: p.vis }));
+  // Cloth bed with pocket holes.
+  g.add(slab(new THREE.Shape(starPolygon(hx + B, hz + B, holes.map(h => ({ ...h, r: h.r - 0.003 })), "subtract")), 0.03, 0, clothMat));
+  // Cushions.
+  for (const poly of T.cushions) g.add(slab(new THREE.Shape(poly.map(([x, z]) => new THREE.Vector2(x, z))), 0.04, 0.04, cushionMat));
+  // Wooden rail with pocket cut-outs.
+  const outer = new THREE.Shape([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => new THREE.Vector2(sx * (hx + B + RW), sz * (hz + B + RW))));
+  outer.holes.push(new THREE.Path(starPolygon(hx + B, hz + B, holes, "union")));
+  g.add(slab(outer, 0.11, 0.046, woodMat));
+  // Apron, glow strip and legs.
+  const apron = new THREE.Mesh(new THREE.BoxGeometry(T.L + 2 * (B + RW) - 0.04, 0.17, T.W + 2 * (B + RW) - 0.04), darkWood);
+  apron.position.y = -0.15; apron.castShadow = apron.receiveShadow = true; g.add(apron);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(T.L + 2 * (B + RW) - 0.02, 0.012, T.W + 2 * (B + RW) - 0.02), new THREE.MeshBasicMaterial({ color: new THREE.Color(T.spec.felt).lerp(new THREE.Color(0xffffff), 0.35) }));
+  strip.position.y = -0.235; g.add(strip);
+  const legMat = darkWood, legGeo = new THREE.CylinderGeometry(0.06, 0.045, -0.24 - FLOOR_Y, 16);
+  const legXs = T.L > 2.4 ? [-1, 0, 1] : [-1, 1];
+  for (const lx of legXs) for (const lz of [-1, 1]) {
+    const leg = new THREE.Mesh(legGeo, legMat); leg.position.set(lx * (hx - 0.05), (FLOOR_Y - 0.24) / 2, lz * (hz - 0.03)); leg.castShadow = true; g.add(leg);
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.7, roughness: 0.3 }));
+    foot.position.set(lx * (hx - 0.05), FLOOR_Y + 0.02, lz * (hz - 0.03)); g.add(foot);
+  }
+  // Pockets: dark tube, a floor to land on, and a leather/chrome rim over the rail.
+  const tubeMat = new THREE.MeshStandardMaterial({ color: 0x050507, roughness: 1, side: THREE.DoubleSide });
+  const rimMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, metalness: 0.6, roughness: 0.35 });
+  for (const p of T.pockets) {
+    // Pocket floor sits above the apron so you never see wood through the hole.
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(p.vis, p.vis * 0.92, 0.1, 28, 1, true), tubeMat); tube.position.set(p.x, -0.003, p.z); g.add(tube);
+    const bottom = new THREE.Mesh(new THREE.CircleGeometry(p.vis * 0.92, 24), new THREE.MeshBasicMaterial({ color: 0x020203 })); bottom.rotation.x = -Math.PI / 2; bottom.position.set(p.x, -0.052, p.z); g.add(bottom);
+    const out = p.corner ? Math.atan2(p.sz, p.sx) : Math.atan2(p.sz, 0), span = p.corner ? Math.PI * 1.25 : Math.PI;
+    const rim = new THREE.Mesh(new THREE.RingGeometry(p.vis, p.vis + 0.018, 32, 1, -out - span / 2, span), rimMat);
+    rim.rotation.x = -Math.PI / 2; rim.position.set(p.x, 0.0475, p.z); g.add(rim);
+  }
+  // Diamond sights.
+  const pearl = new THREE.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.25, metalness: 0.2 });
+  const dGeo = new THREE.CircleGeometry(0.007, 4); dGeo.rotateX(-Math.PI / 2);
+  for (let k = 1; k < 8; k++) { if (k === 4) continue; for (const sz of [-1, 1]) { const d = new THREE.Mesh(dGeo, pearl); d.position.set(-hx + k * T.L / 8, 0.0465, sz * (hz + B + RW * 0.5)); g.add(d); } }
+  for (let k = 1; k < 4; k++) for (const sx of [-1, 1]) { const d = new THREE.Mesh(dGeo, pearl); d.position.set(sx * (hx + B + RW * 0.5), 0.0465, -hz + k * T.W / 4); g.add(d); }
+  // Head string and spots.
+  const mark = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+  for (const x of [T.headX, T.footX]) { const s = new THREE.Mesh(new THREE.CircleGeometry(0.006, 16), mark); s.rotation.x = -Math.PI / 2; s.position.set(x, 0.0008, 0); g.add(s); }
+  const headLine = new THREE.Mesh(new THREE.PlaneGeometry(0.0025, T.W - 0.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 }));
+  headLine.rotation.x = -Math.PI / 2; headLine.position.set(T.headX, 0.0007, 0); g.add(headLine);
+  scene.add(g); tableGroup = g;
+  // Lamp hood over the table.
+  lampGroup = new THREE.Group();
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(T.L * 0.72, 0.09, 0.36), new THREE.MeshStandardMaterial({ color: 0x1c2140, metalness: 0.6, roughness: 0.4 }));
+  hood.position.y = 1.22; lampGroup.add(hood);
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(T.L * 0.7, 0.32), new THREE.MeshBasicMaterial({ color: 0xfff4e0, toneMapped: false }));
+  glow.rotation.x = Math.PI / 2; glow.position.y = 1.174; lampGroup.add(glow);
+  for (const sx of [-1, 1]) { const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.6, 6), hood.material); rod.position.set(sx * T.L * 0.3, 2.05, 0); lampGroup.add(rod); }
+  scene.add(lampGroup);
+  spots.forEach((s, i) => { const sx = i ? 1 : -1; s.position.set(sx * T.L * 0.24, 1.16, 0); s.target.position.set(sx * T.L * 0.2, 0, 0); });
+  setKitchenMarker();
+}
+
+// ===================== BALLS =====================
+function ballTexture(id) {
+  return canvasTex(512, 256, (g, w, h) => {
+    if (id === 0) {
+      g.fillStyle = BALL_COLORS[0]; g.fillRect(0, 0, w, h);
+      // Alien "eye" dots make spin easy to see.
+      g.fillStyle = "#1faa5e";
+      for (const [u, v] of [[0, 0.5], [0.25, 0.5], [0.5, 0.5], [0.75, 0.5], [0.125, 0.22], [0.625, 0.22], [0.375, 0.78], [0.875, 0.78]]) {
+        const sx = 1 / Math.max(0.35, Math.sin(v * Math.PI));
+        g.beginPath(); g.ellipse(u * w, v * h, 9 * sx, 9, 0, 0, TAU); g.fill();
+        g.fillStyle = "#0c2a18"; g.beginPath(); g.ellipse(u * w, v * h, 3.5 * sx, 3.5, 0, 0, TAU); g.fill(); g.fillStyle = "#1faa5e";
+      }
+      return;
+    }
+    const col = colorOf(id);
+    if (id <= 8) { g.fillStyle = col; g.fillRect(0, 0, w, h); }
+    else { g.fillStyle = "#f4f1e6"; g.fillRect(0, 0, w, h); g.fillStyle = col; g.fillRect(0, h * 0.27, w, h * 0.46); }
+    for (const u of [0.25, 0.75]) {
+      g.fillStyle = "#f8f6ee"; g.beginPath(); g.arc(u * w, h / 2, 31, 0, TAU); g.fill();
+      g.fillStyle = "#121212"; g.font = `900 ${id > 9 ? 34 : 38}px system-ui, sans-serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(String(id), u * w, h / 2 + 2);
+      if (id === 6 || id === 9) { g.fillRect(u * w - 10, h / 2 + 22, 20, 3); }
+    }
+  });
+}
+const ballGeo = new THREE.SphereGeometry(BALL_R, 48, 32);
+const ballMeshes = {};
+for (let id = 0; id <= 15; id++) {
+  const m = new THREE.Mesh(ballGeo, new THREE.MeshPhysicalMaterial({ map: ballTexture(id), roughness: 0.16, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.05 }));
+  m.castShadow = true; m.receiveShadow = true;
+  m.quaternion.setFromEuler(new THREE.Euler(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU));
+  scene.add(m); ballMeshes[id] = m;
+}
+const falling = []; // pocketed balls animating into the pocket
+
+// ===================== CUE STICK & GUIDES =====================
+function makeCue(def) {
+  const g = new THREE.Group(), parts = [];
+  const seg = (len, r0, r1, mat) => { const geo = new THREE.CylinderGeometry(r1, r0, len, 28); geo.rotateX(Math.PI / 2); geo.translate(0, 0, parts.reduce((s, p) => s + p, 0) + len / 2); parts.push(len); const m = new THREE.Mesh(geo, mat); m.castShadow = true; g.add(m); };
+  const std = (c, extra = {}) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.3, clearcoat: 0.6, ...extra });
+  seg(0.012, 0.0062, 0.0062, std(0x3c7bd6, { roughness: 0.9, clearcoat: 0 }));
+  seg(0.024, 0.0063, 0.0064, std(0xf3efe2));
+  seg(0.68, 0.0065, 0.0098, std(def.shaft));
+  seg(0.022, 0.0104, 0.0104, new THREE.MeshStandardMaterial({ color: 0xd9dde8, metalness: 1, roughness: 0.2 }));
+  seg(0.006, 0.0106, 0.0106, new THREE.MeshBasicMaterial({ color: def.glow, toneMapped: false }));
+  seg(0.32, 0.0106, 0.0124, std(def.body, { metalness: 0.2 }));
+  seg(0.006, 0.0125, 0.0125, new THREE.MeshBasicMaterial({ color: def.glow, toneMapped: false }));
+  seg(0.25, 0.0126, 0.0134, std(def.wrap, { roughness: 0.85, clearcoat: 0 }));
+  seg(0.13, 0.0135, 0.0145, std(def.body, { metalness: 0.2 }));
+  seg(0.006, 0.0146, 0.0146, new THREE.MeshBasicMaterial({ color: def.glow, toneMapped: false }));
+  seg(0.016, 0.0146, 0.0146, std(0x111111, { roughness: 0.8 }));
+  return g;
+}
+let cueMesh = null, cueMeshId = "";
+function setCueMesh(def) {
+  if (cueMeshId === def.id) return;
+  if (cueMesh) scene.remove(cueMesh);
+  cueMesh = makeCue(def); cueMeshId = def.id; scene.add(cueMesh);
+}
+const cpuCue = o => ({ id: "cpu-" + o.id, shaft: "#d9c49d", body: "#2a2f45", wrap: "#0e1018", glow: o.color });
+function stripMesh(color, opacity) {
+  const geo = new THREE.PlaneGeometry(1, 1); geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false }));
+  m.renderOrder = 2; scene.add(m); return m;
+}
+function placeStrip(m, x1, z1, x2, z2, width, y = 0.0015) {
+  const dx = x2 - x1, dz = z2 - z1, len = Math.hypot(dx, dz);
+  m.visible = len > 0.002; m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2); m.scale.set(len, 1, width); m.rotation.y = -Math.atan2(dz, dx);
+}
+const guide = { aim: stripMesh(0xffffff, 0.55), obj: stripMesh(0xffe36b, 0.8), cue: stripMesh(0x4fd1ff, 0.7), bounce: stripMesh(0xffffff, 0.3) };
+const ghost = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false }));
+const ghostRing = new THREE.Mesh(new THREE.RingGeometry(BALL_R * 0.92, BALL_R, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
+ghostRing.rotation.x = -Math.PI / 2; scene.add(ghost, ghostRing);
+const handRing = new THREE.Mesh(new THREE.RingGeometry(BALL_R * 1.5, BALL_R * 1.8, 40), new THREE.MeshBasicMaterial({ color: 0x5dff9b, transparent: true, opacity: 0.8, depthWrite: false }));
+handRing.rotation.x = -Math.PI / 2; scene.add(handRing);
+const kitchen = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x5dff9b, transparent: true, opacity: 0.07, depthWrite: false }));
+kitchen.rotation.x = -Math.PI / 2; scene.add(kitchen);
+function setKitchenMarker() { const w = T.headX + T.hx; kitchen.scale.set(w, T.W, 1); kitchen.position.set(-T.hx + w / 2, 0.001, 0); }
+function hideGuides() { for (const k in guide) guide[k].visible = false; ghost.visible = ghostRing.visible = false; }
+
+// Opponent aliens standing around the table (sprites redrawn from the arcade character art).
+const spectators = [0, 1].map(() => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const tex = new THREE.CanvasTexture(cv); tex.encoding = THREE.sRGBEncoding;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true })); sp.scale.set(0.75, 0.75, 1); scene.add(sp);
+  return { cv, tex, sp };
+});
+const moods = [0, 0, 0];
+function drawSpectator(s, id, t, mood) {
+  const c = s.cv.getContext("2d"); c.clearRect(0, 0, 256, 256);
+  c.save(); c.translate(128, 150 - Math.abs(Math.sin(t * 6)) * 26 * mood); CHARS.byId(id).draw(c, t * (1 + mood), 70, 0); c.restore();
+  s.tex.needsUpdate = true;
+}
+
+// ===================== GAME STATE =====================
+let balls = [], game = null, phase = "menu", aim = 0, power = 0, spinA = 0, spinB = 0;
+let viewMode = "aim", pitch = 0.3, camDist = 0.95;
+let shotEv = null, shotBefore = null, shotTime = 0, shooter = 0, nextBreaker = 0;
+let cpu = null, strikeAnim = null, simAcc = 0;
+const DT = 1 / 1000;
+const ballById = id => balls.find(b => b.id === id);
+const cueBall = () => ballById(0);
+
+function startMatch() {
+  T = buildTable(TABLES[SAVE.table] || TABLES["8"]); buildTableMeshes();
+  players = buildPlayers();
+  setCueMesh(cueDef());
+  renderHud();
+  newRack(nextBreaker % players.length);
+}
+function newRack(breaker) {
+  balls = makeRack(T, SAVE.mode);
+  falling.length = 0;
+  for (const id in ballMeshes) ballMeshes[id].visible = balls.some(b => b.id === +id);
+  const n = players.length;
+  game = { mode: SAVE.mode, players: n, groups: Array(n).fill(null), out: Array(n).fill(false), turn: breaker, over: false, breaker, isBreak: true, ballInHand: true, kitchen: true };
+  aim = 0; spinA = spinB = 0; updateSpinDot(); setPower(0);
+  // Phones in portrait get a higher, farther camera so more of the table fits above the controls.
+  if (camera.aspect < 1) { pitch = 0.5; camDist = 1.15; } else { pitch = 0.3; camDist = 0.95; }
+  closeMenu(); document.body.classList.add("playing"); $("hud").hidden = false;
+  updateHud();
+  toast(breaker === 0 ? "Your break. Drag the cue ball behind the line if you like." : `${players[breaker].name} breaks.`, "");
+  startTurn();
+}
+function startTurn() {
+  if (phase === "paused") { pausedFrom = "pending"; return; } // the turn starts when the player resumes
+  updateHud(); hideGuides();
+  const p = players[game.turn];
+  document.body.classList.toggle("cpu", p.cpu);
+  if (!p.cpu) {
+    phase = "aim"; setCueMesh(cueDef()); pointAtBestTarget();
+  } else {
+    phase = "cpu"; setCueMesh(cpuCue(p.o));
+    if (game.ballInHand && !game.isBreak) placeCueBall(T, balls, game, game.turn, p.o.level, game.kitchen);
+    cpu = { gen: planShot(T, balls, game, game.turn, p.o.level, p.o.cpuSpeed), plan: null, t: 0, from: aim, who: p };
+    if (!game.isBreak) toast(`${p.name} is lining up…`, "");
+  }
+}
+function pointAtBestTarget() {
+  const c = cueBall(); if (!c) return;
+  if (game.isBreak) { const apex = balls.filter(b => b.id).sort((p, q) => p.x - q.x)[0]; aim = Math.atan2(apex.z - c.z, apex.x - c.x); return; }
+  const tg = legalTargets(game, balls, 0).map(ballById).filter(Boolean);
+  const cands = potCandidates(T, balls, tg.map(b => b.id), c.x, c.z);
+  if (cands.length) aim = cands[0].angle;
+  else if (tg.length) { const b = tg.sort((p, q) => Math.hypot(p.x - c.x, p.z - c.z) - Math.hypot(q.x - c.x, q.z - c.z))[0]; aim = Math.atan2(b.z - c.z, b.x - c.x); }
+}
+function gauss1() { return Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(TAU * Math.random()); }
+function playerShoot(p) {
+  if (phase !== "aim" || p < 0.02) return;
+  const c = cueDef(), max = cueMaxSpeed(c), shaky = (5 - c.control) * p * p;
+  const speed = (0.25 + p * (max - 0.25)) * (1 + gauss1() * shaky * 0.012);
+  const angle = aim + gauss1() * shaky * 0.06 * Math.PI / 180;
+  beginStrike({ angle, speed, a: spinA * cueMaxTip(c), b: spinB * cueMaxTip(c) }, p);
+}
+function beginStrike(shot, pull) { phase = "strike"; strikeAnim = { shot, t: 0, pull }; hideGuides(); handRing.visible = false; }
+function launch(shot) {
+  shotBefore = cloneBalls(balls); shooter = game.turn;
+  strike(cueBall(), shot.angle, shot.speed, shot.a, shot.b);
+  shotEv = newEvents(); shotTime = 0; simAcc = 0; phase = "shot"; SFX.cue(shot.speed);
+  setPower(0);
+}
+const hooks = {
+  sound(type, v) { if (soundBudget-- > 0) SFX[type](v); },
+  pot(b, p) { const pk = T.pockets[p]; falling.push({ id: b.id, x: b.x, z: b.z, px: pk.x, pz: pk.z, t: 0 }); SFX.pocket(); },
+};
+function endShot() {
+  const ev = shotEv, j = judgeShot(game, shotBefore, balls, ev, shooter);
+  const who = players[shooter];
+  for (const id of j.respot) { ballMeshes[id].visible = true; const i = falling.findIndex(f => f.id === id); if (i >= 0) falling.splice(i, 1); }
+  if (j.win !== null) { applyResult(T, game, balls, j, shooter); updateHud(); return gameOver(j.win, j.reason); }
+  applyResult(T, game, balls, j, shooter);
+  const c = cueBall();
+  if (!c.on) { const s = findFreeSpot(T, balls, false); Object.assign(c, { x: s.x, z: s.z, on: true, moving: false, vx: 0, vz: 0, wx: 0, wy: 0, wz: 0 }); ballMeshes[0].visible = true; const i = falling.findIndex(f => f.id === 0); if (i >= 0) falling.splice(i, 1); }
+  const next = players[game.turn], nextName = next.cpu ? next.name : "You";
+  const outNames = j.out.map(p => players[p].name);
+  if (j.foul) {
+    SFX.foul();
+    const back = game.mode === "cut" && j.respot.length ? ` ${j.respot.length === 1 ? "A ball goes" : "Balls go"} back on the table.` : "";
+    toast(`Foul: ${j.reason}.${back} ${nextName} ${next.cpu ? "has" : "have"} ball in hand.`, "foul");
+  }
+  else if (outNames.length) toast(`${outNames.join(" and ")} ${outNames.length > 1 ? "are" : "is"} out!${j.continueTurn ? " Shoot again." : ""}`, "good");
+  else if (j.assign) toast(`${who.cpu ? who.name + " is" : "You are"} ${j.assign}.${j.continueTurn ? " Shoot again." : ""}`, "good");
+  else if (j.continueTurn) toast(!who.cpu ? "Nice shot. Go again." : `${who.name}: “${who.o.taunt[Math.floor(Math.random() * 3)]}”`, "good");
+  else toast(next.cpu ? `${next.name}'s turn.` : "Your turn.", "");
+  if (who.cpu && j.continueTurn) moods[players.indexOf(who)] = 1;
+  phase = "wait"; setTimeout(startTurn, 700);
+}
+function gameOver(winner, reason) {
+  phase = "over"; game.over = true; document.body.classList.remove("cpu");
+  const r = rec(recKey()); if (winner === 0) r.w++; else r.l++; persist();
+  nextBreaker = game.breaker + 1;
+  winner === 0 ? SFX.win() : SFX.lose(); if (winner > 0) moods[winner] = 1;
+  updateHud();
+  setTimeout(() => resultMenu(winner, reason), 900);
+}
+
+// ===================== HUD =====================
+let toastTimer = 0;
+function toast(msg, kind) { const t = $("toast"); t.textContent = msg; t.className = "show " + (kind || ""); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", 3400); }
+const dot = id => `<i class="${id > 8 ? "st" : ""}" style="--c:${colorOf(id)}"></i>`;
+function playerStatus(i) {
+  const on = id => ballById(id)?.on;
+  if (game.mode === "nine") { const lo = lowestBall(balls); return { label: lo ? `Next ball: ${lo}` : "—", dots: lo ? dot(lo) + (lo !== 9 ? dot(9) : "") : "" }; }
+  if (game.mode === "cut") {
+    const ids = [1, 2, 3, 4, 5].map(k => k + i * 5), left = ids.filter(on);
+    return { label: game.out[i] ? "Out" : `Balls ${CUT_LABELS[i]} · ${left.length} left`, dots: left.map(dot).join("") };
+  }
+  const g = game.groups[i];
+  if (!g) return { label: "Open table", dots: "" };
+  const ids = g === "solids" ? [1, 2, 3, 4, 5, 6, 7] : [9, 10, 11, 12, 13, 14, 15], left = ids.filter(on);
+  return { label: g[0].toUpperCase() + g.slice(1), dots: (left.length ? left : [8]).map(dot).join("") };
+}
+function renderHud() {
+  const hud = $("hud");
+  hud.style.setProperty("--np", players.length);
+  hud.innerHTML = players.map((p, i) => `<div class="pl" id="pl${i}" style="--pc:${p.color}">${p.cpu ? `<canvas class="face" data-char="${p.o.id}" width="68" height="68"></canvas>` : `<span class="youface">YOU</span>`}<small>${p.cpu ? `${p.name} · ${p.o.label}` : "You"}</small><strong id="plLabel${i}"></strong><span class="rack" id="plRack${i}"></span></div>`).join("")
+    + `<div class="rec"><small>Record</small><strong id="record">0–0</strong></div><button id="pauseBtn" type="button">Pause</button>`;
+  $("pauseBtn").addEventListener("click", () => pauseMenu());
+}
+function updateHud() {
+  if (!game) return;
+  players.forEach((p, i) => {
+    const s = playerStatus(i);
+    $(`plLabel${i}`).textContent = s.label; $(`plRack${i}`).innerHTML = s.dots;
+    $(`pl${i}`).classList.toggle("turn", !game.over && game.turn === i);
+    $(`pl${i}`).classList.toggle("out", !!game.out[i]);
+  });
+  const r = rec(recKey()); $("record").textContent = `${r.w}–${r.l}`;
+}
+function drawFace(cv, id, t, size = 0.32) {
+  const c = cv.getContext("2d"), w = cv.width, h = cv.height; c.clearRect(0, 0, w, h);
+  c.save(); c.translate(w / 2, h * 0.58); CHARS.byId(id).draw(c, t, w * size, 0); c.restore();
+}
+// Side-on picture of a cue for the cue picker: butt on the left, tip on the right.
+function drawCuePic(cv, def) {
+  const c = cv.getContext("2d"), w = cv.width, h = cv.height, mid = h / 2; c.clearRect(0, 0, w, h);
+  const parts = [ // [fraction of length, radius at start, radius at end, fill, kind]
+    [0.012, 0.92, 0.92, "#151515"], [0.09, 0.9, 0.86, def.body, "sleeve"], [0.17, 0.85, 0.8, def.wrap, "wrap"], [0.22, 0.79, 0.68, def.body, "forearm"],
+    [0.016, 0.67, 0.67, "#d9dde8", "joint"], [0.45, 0.62, 0.42, def.shaft, "shaft"], [0.016, 0.4, 0.4, "#f3efe2"], [0.01, 0.39, 0.39, "#3c7bd6"],
+  ];
+  const R = h * 0.3; let x = w * 0.02; const L = w * 0.96;
+  for (const [f, r0, r1, fill, kind] of parts) {
+    const len = f * L, a = r0 * R, b = r1 * R;
+    const grad = c.createLinearGradient(0, mid - a, 0, mid + a);
+    grad.addColorStop(0, "#ffffff88"); grad.addColorStop(0.18, fill); grad.addColorStop(0.75, fill); grad.addColorStop(1, "#00000099");
+    c.fillStyle = fill; c.beginPath(); c.moveTo(x, mid - a); c.lineTo(x + len, mid - b); c.lineTo(x + len, mid + b); c.lineTo(x, mid + a); c.closePath(); c.fill();
+    c.fillStyle = grad; c.fill();
+    c.save(); c.clip();
+    if (kind === "wrap") { c.strokeStyle = "#ffffff22"; c.lineWidth = 1; for (let k = -h; k < len + h; k += 4) { c.beginPath(); c.moveTo(x + k, mid - a); c.lineTo(x + k + h * 0.6, mid + a); c.stroke(); } }
+    if (kind === "forearm") { // inlaid points in the glow colour
+      c.fillStyle = def.glow; c.shadowColor = def.glow; c.shadowBlur = 6;
+      for (const s of [-1, 1]) { c.beginPath(); c.moveTo(x + len, mid + s * a * 0.15); c.lineTo(x + len * 0.25, mid + s * a * 0.08); c.lineTo(x + len, mid + s * a * 0.85); c.fill(); }
+      c.fillStyle = "#ffffffaa"; c.beginPath(); c.ellipse(x + len * 0.12, mid, a * 0.28, a * 0.28, 0, 0, TAU); c.fill();
+    }
+    if (kind === "sleeve") { c.fillStyle = def.glow; c.shadowColor = def.glow; c.shadowBlur = 6; c.fillRect(x + len * 0.15, mid - a, 2, a * 2); c.fillRect(x + len * 0.85, mid - a, 2, a * 2); }
+    c.restore();
+    if (kind === "joint" || kind === "sleeve") { c.fillStyle = def.glow; c.shadowColor = def.glow; c.shadowBlur = 8; c.fillRect(x - 1, mid - a, 2, a * 2); c.shadowBlur = 0; }
+    x += len;
+  }
+}
+
+// ===================== INPUT =====================
+const raycaster = new THREE.Raycaster(), tablePlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -BALL_R);
+function tablePoint(e) {
+  const r = canvas.getBoundingClientRect();
+  raycaster.setFromCamera({ x: (e.clientX - r.left) / r.width * 2 - 1, y: -(e.clientY - r.top) / r.height * 2 + 1 }, camera);
+  const p = new THREE.Vector3(); return raycaster.ray.intersectPlane(tablePlane, p) ? p : null;
+}
+let drag = null;
+canvas.addEventListener("pointerdown", e => {
+  if (phase !== "aim") return;
+  audio();
+  canvas.setPointerCapture(e.pointerId);
+  const p = tablePoint(e), c = cueBall();
+  const moveBall = game.ballInHand && p && Math.hypot(p.x - c.x, p.z - c.z) < 0.09;
+  drag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, moveBall };
+});
+canvas.addEventListener("pointermove", e => {
+  if (!drag || phase !== "aim") return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+  if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) drag.moved = true;
+  if (drag.moveBall) {
+    const p = tablePoint(e); if (!p) return;
+    const x = Math.max(-T.hx + BALL_R + 0.003, Math.min(game.kitchen ? T.headX : T.hx - BALL_R - 0.003, p.x)), z = Math.max(-T.hz + BALL_R + 0.003, Math.min(T.hz - BALL_R - 0.003, p.z));
+    if (validCueSpot(T, balls, x, z, game.kitchen)) { const c = cueBall(); c.x = x; c.z = z; }
+    return;
+  }
+  if (viewMode === "top") { const p = tablePoint(e), c = cueBall(); if (p && Math.hypot(p.x - c.x, p.z - c.z) > 0.02) aim = Math.atan2(p.z - c.z, p.x - c.x); }
+  else { aim += dx * 0.0032 * (e.shiftKey ? 0.2 : 1); pitch = Math.max(0.08, Math.min(1.35, pitch + dy * 0.004)); }
+});
+canvas.addEventListener("pointerup", e => {
+  if (!drag) return;
+  if (!drag.moved && phase === "aim" && !drag.moveBall) {
+    const p = tablePoint(e), c = cueBall();
+    if (p) {
+      let best = null, bd = BALL_R * 2.2;
+      for (const b of balls) if (b.on && b.id !== 0) { const d = Math.hypot(b.x - p.x, b.z - p.z); if (d < bd) { bd = d; best = b; } }
+      if (best) aim = Math.atan2(best.z - c.z, best.x - c.x);
+      else if (viewMode === "top") aim = Math.atan2(p.z - c.z, p.x - c.x);
+    }
+  }
+  drag = null;
+});
+canvas.addEventListener("wheel", e => { camDist = Math.max(0.45, Math.min(2.2, camDist * (1 + Math.sign(e.deltaY) * 0.08))); e.preventDefault(); }, { passive: false });
+
+// Power bar.
+const powerEl = $("power");
+function setPower(p) { power = Math.max(0, Math.min(1, p)); $("powerFill").style.height = `${power * 100}%`; $("powerPct").textContent = `${Math.round(power * 100)}%`; }
+let powerDrag = null;
+powerEl.addEventListener("pointerdown", e => { if (phase !== "aim") return; audio(); powerEl.setPointerCapture(e.pointerId); powerDrag = { y: e.clientY, start: power }; });
+powerEl.addEventListener("pointermove", e => { if (!powerDrag) return; const h = powerEl.querySelector(".track").getBoundingClientRect().height; setPower((e.clientY - powerDrag.y) / h); });
+powerEl.addEventListener("pointerup", () => { if (!powerDrag) return; powerDrag = null; if (power > 0.02) playerShoot(power); else setPower(0); });
+powerEl.addEventListener("pointercancel", () => { powerDrag = null; setPower(0); });
+
+// Spin pad.
+const spinEl = $("spin");
+function updateSpinDot() {
+  $("spinDot").style.left = `${50 + spinA * 38}%`; $("spinDot").style.top = `${50 - spinB * 38}%`;
+  const v = spinB > 0.25 ? "Follow" : spinB < -0.25 ? "Draw" : "", s = spinA > 0.25 ? "Right" : spinA < -0.25 ? "Left" : "";
+  $("spinLbl").textContent = [v, s].filter(Boolean).join(" · ") || "Center";
+}
+function spinFrom(e) {
+  const r = spinEl.getBoundingClientRect();
+  let a = ((e.clientX - r.left) / r.width - 0.5) / 0.38, b = -((e.clientY - r.top) / r.height - 0.5) / 0.38;
+  const m = Math.hypot(a, b); if (m > 1) { a /= m; b /= m; }
+  spinA = Math.abs(a) < 0.08 ? 0 : a; spinB = Math.abs(b) < 0.08 ? 0 : b; updateSpinDot();
+}
+spinEl.addEventListener("pointerdown", e => { if (phase !== "aim" && phase !== "wait") return; spinEl.setPointerCapture(e.pointerId); spinFrom(e); spinEl.dataset.drag = "1"; });
+spinEl.addEventListener("pointermove", e => { if (spinEl.dataset.drag) spinFrom(e); });
+spinEl.addEventListener("pointerup", () => { delete spinEl.dataset.drag; });
+spinEl.addEventListener("dblclick", () => { spinA = spinB = 0; updateSpinDot(); });
+
+// Fine aim (hold to repeat) and view toggle.
+let fineDir = 0;
+for (const [id, d] of [["aimL", 1], ["aimR", -1]]) {
+  const b = $(id);
+  b.addEventListener("pointerdown", e => { b.setPointerCapture(e.pointerId); fineDir = d; fineHeld = 0; });
+  for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => { fineDir = 0; });
+}
+let fineHeld = 0;
+$("viewBtn").addEventListener("click", () => { viewMode = viewMode === "top" ? "aim" : "top"; $("viewBtn").textContent = viewMode === "top" ? "3D view" : "Top view"; });
+
+// Keyboard.
+let spaceHeld = false;
+window.addEventListener("keydown", e => {
+  if (phase === "menu" || !game) return;
+  if (e.key === "Escape" || e.key === "p") { if (phase === "paused" && !helpReturn) resume(); else if (phase !== "paused") pauseMenu(); return; }
+  if (phase !== "aim") return;
+  const k = e.key;
+  if (k === "ArrowLeft") aim += (e.shiftKey ? 0.0006 : 0.012);
+  else if (k === "ArrowRight") aim -= (e.shiftKey ? 0.0006 : 0.012);
+  else if (k === "ArrowUp") pitch = Math.min(1.35, pitch + 0.05);
+  else if (k === "ArrowDown") pitch = Math.max(0.08, pitch - 0.05);
+  else if (k === "v") $("viewBtn").click();
+  else if (k === " ") { if (!spaceHeld) { spaceHeld = true; setPower(0); } }
+  else return;
+  e.preventDefault();
+});
+window.addEventListener("keyup", e => { if (e.key === " " && spaceHeld) { spaceHeld = false; if (phase === "aim") playerShoot(power); } });
+
+// ===================== MENUS =====================
+const overlay = $("overlay"), panel = $("panel");
+let menuTimer = 0;
+function showMenu(html) {
+  panel.innerHTML = html; overlay.hidden = false;
+  if (game && !game.over && phase !== "menu") { if (phase !== "paused") pausedFrom = phase; phase = "paused"; }
+  document.body.classList.remove("playing");
+  panel.querySelector("button.primary, button")?.focus({ preventScroll: true });
+}
+let pausedFrom = null;
+function closeMenu() { overlay.hidden = true; }
+const soundBtn = () => `<button data-act="sound" aria-pressed="${SAVE.sound}">Sound: ${SAVE.sound ? "On" : "Off"}</button>`;
+const heroSvg = `<svg class="arcade-hero" viewBox="0 0 360 120" aria-hidden="true"><defs><radialGradient id="hf" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#3a7fe0"/><stop offset="1" stop-color="#173c7a"/></radialGradient></defs>
+  <rect x="40" y="18" width="280" height="88" rx="14" fill="#5a2e17" stroke="#8a5a34" stroke-width="2"/><rect x="54" y="30" width="252" height="64" rx="4" fill="url(#hf)"/>
+  <g fill="#05060c"><circle cx="56" cy="32" r="7"/><circle cx="180" cy="29" r="6.5"/><circle cx="304" cy="32" r="7"/><circle cx="56" cy="92" r="7"/><circle cx="180" cy="95" r="6.5"/><circle cx="304" cy="92" r="7"/></g>
+  <g stroke="#0006" stroke-width=".8"><circle cx="232" cy="62" r="5.5" fill="#f2c200"/><circle cx="241.5" cy="56.5" r="5.5" fill="#1d44c8"/><circle cx="241.5" cy="67.5" r="5.5" fill="#d4202c"/><circle cx="251" cy="51" r="5.5" fill="#5b2a90"/><circle cx="251" cy="62" r="5.5" fill="#141414"/><circle cx="251" cy="73" r="5.5" fill="#f06b12"/><circle cx="260.5" cy="45.5" r="5.5" fill="#0e8044"/><circle cx="260.5" cy="56.5" r="5.5" fill="#7c1b26"/><circle cx="260.5" cy="67.5" r="5.5" fill="#f2c200"/><circle cx="260.5" cy="78.5" r="5.5" fill="#1d44c8"/><circle cx="118" cy="62" r="5.5" fill="#f4f1e6"/></g>
+  <path d="M112 62 L18 82" stroke="#e9d3a6" stroke-width="3.5" stroke-linecap="round"/><path d="M56 74 L18 82" stroke="#3b6fd8" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M124 62 H222" stroke="#fff" stroke-width="1" stroke-dasharray="4 4" opacity=".6"/></svg>`;
+function mainMenu() {
+  phase = "menu"; game = null; document.body.classList.remove("playing", "cpu"); $("hud").hidden = true; hideGuides(); handRing.visible = false;
+  showMenu(`${heroSvg}<p class="kicker">Alien Arcade</p><h1>Alien Pool</h1>
+    <p>8-ball, 9-ball, or three-way cut-throat against alien hustlers.</p>
+    <p class="kicker">Choose your opponent</p>
+    <div class="chars">${OPPONENTS.map(o => `<button class="charBtn ${o.id === SAVE.opp ? "on" : ""}" data-act="opp" data-id="${o.id}" aria-pressed="${o.id === SAVE.opp}"><canvas data-char="${o.id}" width="160" height="160"></canvas>${o.name}<small>${o.label}</small></button>`).join("")}</div>
+    <div class="actions"><button data-act="help">How to play</button>${soundBtn()}</div>${ARCADE_LINK}`);
+}
+const guideBtn = () => `<button data-act="guide" aria-pressed="${SAVE.guide}">Aim guide: ${SAVE.guide ? "On" : "Off"}</button>`;
+function setupMenu() {
+  const o = opp(), r = rec(recKey()), cut = SAVE.mode === "cut", o2 = opp2();
+  showMenu(`<p class="kicker">Vs ${cut ? `${o.name} &amp; ${o2.name}` : `${o.name} · ${o.label}`} · Record ${r.w}–${r.l}</p><h2>Match setup</h2>
+    <p class="kicker">Game</p>
+    <div class="modes">${MODES.map(m => `<button data-act="mode" data-id="${m.id}" aria-pressed="${m.id === SAVE.mode}">${m.name}<small>${m.sub}</small></button>`).join("")}</div>
+    ${cut ? `<p class="kicker">Second opponent</p><div class="chars two">${OPPONENTS.filter(x => x.id !== o.id).map(x => `<button class="charBtn ${x.id === o2.id ? "on" : ""}" data-act="opp2" data-id="${x.id}" aria-pressed="${x.id === o2.id}"><canvas data-char="${x.id}" width="120" height="120"></canvas>${x.name}<small>${x.label}</small></button>`).join("")}</div>` : ""}
+    <p class="kicker">Table size</p>
+    <div class="tables">${Object.values(TABLES).map(t => `<button data-act="table" data-id="${t.id}" aria-pressed="${t.id === SAVE.table}"><i class="swatch" style="--felt:${t.felt}"></i>${t.name}<small>${t.sub}</small></button>`).join("")}</div>
+    <p class="kicker">Cue · ${cueDef().name}</p>
+    <canvas class="cuehero" data-cue="${cueDef().id}" width="800" height="84" aria-label="${cueDef().name}"></canvas>
+    <div class="cues">${CUES.map(c => `<button data-act="cue" data-id="${c.id}" aria-pressed="${c.id === SAVE.cue}"><canvas class="cuepic" data-cue="${c.id}" width="360" height="44"></canvas><b>${c.name}</b><small>${c.desc}</small>
+      ${["power", "aim", "spin", "control"].map(k => `<span class="stat" style="--sc:${c.glow}">${k[0].toUpperCase() + k.slice(1)}<span>${[1, 2, 3, 4, 5].map(i => `<i class="${i <= c[k] ? "on" : ""}"></i>`).join("")}</span></span>`).join("")}</button>`).join("")}</div>
+    <div class="actions">${guideBtn()}${soundBtn()}</div>
+    <button class="primary" data-act="start">Rack 'em ▶</button>
+    <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
+  panel.querySelectorAll("canvas[data-cue]").forEach(cv => drawCuePic(cv, CUES.find(c => c.id === cv.dataset.cue)));
+}
+function pauseMenu() {
+  if (!game || game.over || phase === "menu") return;
+  showMenu(`<p class="kicker">Alien Pool · ${MODES.find(m => m.id === game.mode).name}</p><h2>Paused</h2>
+    <button class="primary" data-act="resume">Resume</button>
+    <div class="actions"><button data-act="restart">Restart rack</button><button data-act="help">How to play</button>${guideBtn()}${soundBtn()}<button data-act="setup">Match setup</button></div>
+    <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
+}
+function resultMenu(winner, reason) {
+  lastResult = [winner, reason];
+  const w = players[winner], r = rec(recKey());
+  const why = winner === 0 ? reason : game.mode === "eight" && reason !== "Sank the 8 ball" ? `You: ${reason.toLowerCase()}.` : `${w.name}: ${reason.toLowerCase()}.`;
+  showMenu(`${w.cpu ? `<canvas class="result-face" data-char="${w.o.id}" width="220" height="220"></canvas>` : ""}<p class="kicker">Rack over · ${MODES.find(m => m.id === game.mode).name} · Record ${r.w}–${r.l}</p>
+    <h2>${winner === 0 ? "You win!" : `${w.name} wins`}</h2><p>${why}</p>
+    <button class="primary" data-act="again">Play again</button>
+    <div class="actions"><button data-act="setup">Match setup</button><button data-act="help">How to play</button></div>
+    <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
+}
+let helpReturn = null;
+function helpMenu(page) {
+  const p = HOWTO[page], last = page === HOWTO.length - 1;
+  showMenu(`<p class="kicker">How to play · ${page + 1} of ${HOWTO.length}</p><h2>${p.title}</h2>${guideArt(p.art)}<p>${p.text}</p>
+    <div class="actions">${page ? `<button data-act="help" data-page="${page - 1}">◀ Back</button>` : `<button data-act="helpdone">Back</button>`}
+    ${last ? `<button class="primary" data-act="helpdone">Done</button>` : `<button class="primary" data-act="help" data-page="${page + 1}">Next ▶</button>`}</div>`);
+}
+function guideArt(kind) {
+  const felt = `<rect x="20" y="12" width="320" height="106" rx="10" fill="#1f5fa8" stroke="#5a2e17" stroke-width="8"/>`;
+  const ball = (x, y, c, s) => `<circle cx="${x}" cy="${y}" r="9" fill="${c}" stroke="#0006"/>${s ? `<rect x="${x - 9}" y="${y - 3.5}" width="18" height="7" fill="${s}"/>` : ""}`;
+  if (kind === "aim") return `<svg class="guide" viewBox="0 0 360 130">${felt}${ball(90, 65, "#f4f1e6")}${ball(250, 50, "#f2c200")}<path d="M100 63 L238 51" stroke="#fff" stroke-dasharray="5 4"/><circle cx="240" cy="51" r="9" fill="none" stroke="#fff" opacity=".7"/><path d="M258 48 L320 36" stroke="#ffe36b" stroke-width="2"/><path d="M40 105 q30 -18 60 0" fill="none" stroke="#5dff9b" stroke-width="3" marker-end="url(#ar)"/><text x="70" y="96" fill="#c9ffe0" font-size="11" font-weight="800" text-anchor="middle">drag</text></svg>`;
+  if (kind === "power") return `<svg class="guide" viewBox="0 0 360 130">${felt}${ball(150, 65, "#f4f1e6")}<path d="M138 68 L40 92" stroke="#e9d3a6" stroke-width="5" stroke-linecap="round"/><rect x="300" y="18" width="26" height="94" rx="10" fill="#0d1230" stroke="#3a4680"/><rect x="309" y="24" width="8" height="54" rx="4" fill="#ffd25d"/><path d="M290 30 v40" stroke="#5dff9b" stroke-width="3"/><path d="M284 64 l6 8 l6 -8" fill="none" stroke="#5dff9b" stroke-width="3"/></svg>`;
+  if (kind === "spin") return `<svg class="guide" viewBox="0 0 360 130"><rect width="360" height="130" fill="#0b1231"/><circle cx="90" cy="65" r="44" fill="#eceef5"/><circle cx="90" cy="35" r="7" fill="#ff3d6e" stroke="#fff" stroke-width="2"/><circle cx="90" cy="96" r="7" fill="#ff3d6e" opacity=".45"/><text x="90" y="20" fill="#c9ffe0" font-size="11" font-weight="800" text-anchor="middle">follow</text><text x="90" y="125" fill="#ffd0d8" font-size="11" font-weight="800" text-anchor="middle">draw</text>
+    <circle cx="200" cy="65" r="9" fill="#f4f1e6"/><circle cx="270" cy="65" r="9" fill="#f2c200"/><path d="M262 60 q20 -40 70 -40" fill="none" stroke="#5dff9b" stroke-width="2" stroke-dasharray="4 3"/><path d="M262 70 q-20 30 -70 40" fill="none" stroke="#ff8bb0" stroke-width="2" stroke-dasharray="4 3"/></svg>`;
+  if (kind === "nine") { const rows = [[1], [2, 3], [4, 9, 5], [6, 7], [8]]; return `<svg class="guide" viewBox="0 0 360 130">${felt}${rows.map((r, i) => r.map((id, k) => ball(150 + i * 17, 65 + (k - (r.length - 1) / 2) * 20, id === 9 ? "#f4f1e6" : colorOf(id), id === 9 ? colorOf(9) : null)).join("")).join("")}${ball(70, 65, "#f4f1e6")}<path d="M80 65 H138" stroke="#fff" stroke-dasharray="4 4"/><text x="150" y="40" fill="#fff" font-size="11" font-weight="800" text-anchor="middle">1 first</text><text x="185" y="112" fill="#fff" font-size="11" font-weight="800" text-anchor="middle">9 wins</text></svg>`; }
+  if (kind === "cut") { const grp = (ids, y, label, c) => ids.map((id, i) => ball(70 + i * 22, y, id > 8 ? "#f4f1e6" : colorOf(id), id > 8 ? colorOf(id) : null)).join("") + `<text x="200" y="${y + 4}" fill="${c}" font-size="12" font-weight="800">${label}</text>`; return `<svg class="guide" viewBox="0 0 360 130">${felt}${grp([1, 2, 3, 4, 5], 38, "You · 1–5", "#5dff9b")}${grp([6, 7, 8, 9, 10], 65, "Alien 1 · 6–10", "#7ab8ff")}${grp([11, 12, 13, 14, 15], 92, "Alien 2 · 11–15", "#ffe35d")}</svg>`; }
+  return `<svg class="guide" viewBox="0 0 360 130">${felt}${[1, 2, 3, 4, 5, 6, 7].map((id, i) => ball(60 + i * 22, 45, colorOf(id))).join("")}${[9, 10, 11, 12, 13, 14, 15].map((id, i) => ball(60 + i * 22, 85, "#f4f1e6", colorOf(id))).join("")}${ball(240 + 50, 65, "#141414")}<text x="200" y="49" fill="#fff" font-size="11" font-weight="800">solids</text><text x="200" y="89" fill="#fff" font-size="11" font-weight="800">stripes</text><text x="290" y="100" fill="#fff" font-size="11" font-weight="800" text-anchor="middle">last</text></svg>`;
+}
+panel.addEventListener("click", e => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  audio();
+  const act = b.dataset.act;
+  if (act === "opp") { SAVE.opp = b.dataset.id; persist(); setupMenu(); }
+  else if (act === "table") { SAVE.table = b.dataset.id; persist(); setupMenu(); }
+  else if (act === "cue") { SAVE.cue = b.dataset.id; persist(); setupMenu(); }
+  else if (act === "mode") { SAVE.mode = b.dataset.id; persist(); setupMenu(); }
+  else if (act === "opp2") { SAVE.opp2 = b.dataset.id; persist(); setupMenu(); }
+  else if (act === "guide") { SAVE.guide = !SAVE.guide; persist(); b.textContent = `Aim guide: ${SAVE.guide ? "On" : "Off"}`; b.setAttribute("aria-pressed", SAVE.guide); }
+  else if (act === "start") { nextBreaker = 0; startMatch(); }
+  else if (act === "again") startMatch();
+  else if (act === "restart") newRack(game.breaker);
+  else if (act === "resume") resume();
+  else if (act === "setup") setupMenu();
+  else if (act === "menu") mainMenu();
+  else if (act === "sound") { SAVE.sound = !SAVE.sound; persist(); b.textContent = `Sound: ${SAVE.sound ? "On" : "Off"}`; b.setAttribute("aria-pressed", SAVE.sound); }
+  else if (act === "help") { if (!helpReturn) helpReturn = game && !game.over ? "pause" : game && game.over ? "result" : "main"; helpMenu(+(b.dataset.page || 0)); }
+  else if (act === "helpdone") { const r = helpReturn; helpReturn = null; r === "pause" ? pauseMenu() : r === "result" ? resultMenu(lastResult[0], lastResult[1]) : mainMenu(); }
+});
+let lastResult = [0, ""];
+function resume() {
+  closeMenu(); document.body.classList.add("playing");
+  const from = pausedFrom; pausedFrom = null;
+  if (from === "pending") startTurn(); else phase = from || "aim";
+}
+
+// ===================== CAMERA =====================
+const camPos = new THREE.Vector3(-3, 1.6, 0), camLook = new THREE.Vector3(), camUp = new THREE.Vector3(0, 1, 0);
+const wantPos = new THREE.Vector3(), wantLook = new THREE.Vector3(), wantUp = new THREE.Vector3();
+function updateCamera(dt, t) {
+  const c = cueBall(), dx = Math.cos(aim), dz = Math.sin(aim);
+  if (phase === "menu" || !game) {
+    const a = t * 0.08; wantPos.set(Math.cos(a) * 3.1, 1.35, Math.sin(a) * 2.2); wantLook.set(0, -0.1, 0); wantUp.set(0, 1, 0);
+  } else if (viewMode === "top") {
+    const portrait = camera.aspect < 1, fv = camera.fov * Math.PI / 180, fh = 2 * Math.atan(Math.tan(fv / 2) * camera.aspect);
+    const halfLong = T.hx + 0.22, halfShort = T.hz + 0.22;
+    const h = portrait ? Math.max(halfLong / Math.tan(fv / 2), halfShort / Math.tan(fh / 2)) : Math.max(halfLong / Math.tan(fh / 2), halfShort / Math.tan(fv / 2));
+    wantPos.set(0, h * 1.04, 0.0001); wantLook.set(0, 0, 0); portrait ? wantUp.set(1, 0, 0) : wantUp.set(0, 0, -1);
+  } else if (phase === "shot" || phase === "wait" || phase === "over") {
+    const back = shotDir; wantLook.set(back[0] * T.L * 0.08, 0, back[1] * T.L * 0.08);
+    wantPos.set(-back[0] * T.L * 0.62, T.L * 0.62, -back[1] * T.L * 0.62 * 0.7); wantUp.set(0, 1, 0);
+  } else {
+    const d = camDist * (game.ballInHand && phase === "aim" ? 1.25 : 1);
+    wantLook.set(c.x + dx * 0.25 * Math.cos(pitch), BALL_R, c.z + dz * 0.25 * Math.cos(pitch));
+    wantPos.set(c.x - dx * d * Math.cos(pitch), BALL_R + 0.05 + d * Math.sin(pitch), c.z - dz * d * Math.cos(pitch)); wantUp.set(0, 1, 0);
+  }
+  const k = 1 - Math.exp(-dt * (phase === "aim" || phase === "cpu" || phase === "strike" ? 9 : 3.2));
+  camPos.lerp(wantPos, k); camLook.lerp(wantLook, k); camUp.lerp(wantUp, k).normalize();
+  camera.position.copy(camPos); camera.up.copy(camUp); camera.lookAt(camLook);
+  if (lampGroup) lampGroup.visible = camPos.y < 1.05; // the lamp hood would block an overhead camera
+}
+let shotDir = [1, 0];
+
+// ===================== AIM GUIDE =====================
+function firstContact(cx, cz, dx, dz) {
+  let best = { t: Infinity, ball: null };
+  for (const b of balls) {
+    if (!b.on || b.id === 0) continue;
+    const ox = b.x - cx, oz = b.z - cz, along = ox * dx + oz * dz; if (along <= 0) continue;
+    const perp2 = ox * ox + oz * oz - along * along, r2 = 4 * BALL_R * BALL_R; if (perp2 > r2) continue;
+    const t = along - Math.sqrt(r2 - perp2); if (t < best.t) best = { t, ball: b };
+  }
+  const lx = T.hx - BALL_R, lz = T.hz - BALL_R;
+  const tx = dx > 0 ? (lx - cx) / dx : dx < 0 ? (-lx - cx) / dx : Infinity, tz = dz > 0 ? (lz - cz) / dz : dz < 0 ? (-lz - cz) / dz : Infinity;
+  const tw = Math.min(tx, tz);
+  if (tw < best.t) return { t: tw, ball: null, wall: tx < tz ? "x" : "z" };
+  return best;
+}
+function updateGuides() {
+  const show = SAVE.guide && (phase === "aim" || (phase === "cpu" && cpu && cpu.plan));
+  if (!show) { hideGuides(); return; }
+  const c = cueBall(), dx = Math.cos(aim), dz = Math.sin(aim), fc = firstContact(c.x, c.z, dx, dz);
+  const gx = c.x + dx * fc.t, gz = c.z + dz * fc.t, mine = phase === "aim", def = cueDef();
+  placeStrip(guide.aim, c.x + dx * BALL_R, c.z + dz * BALL_R, gx - dx * BALL_R * (fc.ball ? 1 : 0), gz - dz * BALL_R * (fc.ball ? 1 : 0), 0.004);
+  ghost.visible = ghostRing.visible = true; ghost.position.set(gx, BALL_R, gz); ghostRing.position.set(gx, 0.0012, gz);
+  guide.obj.visible = guide.cue.visible = guide.bounce.visible = false;
+  if (!mine) return;
+  if (fc.ball) {
+    let nx = fc.ball.x - gx, nz = fc.ball.z - gz; const n = Math.hypot(nx, nz); nx /= n; nz /= n;
+    const L = cueGuide(def);
+    placeStrip(guide.obj, fc.ball.x, fc.ball.z, fc.ball.x + nx * L, fc.ball.z + nz * L, 0.005);
+    guide.obj.material.color.set(fc.ball.id === 8 ? 0xffffff : colorOf(fc.ball.id === 0 ? 1 : fc.ball.id)).lerp(new THREE.Color(0xffffff), 0.35);
+    if (def.aim >= 3) {
+      let tx = dx - (dx * nx + dz * nz) * nx, tz = dz - (dx * nx + dz * nz) * nz; const tl = Math.hypot(tx, tz);
+      if (tl > 0.05) placeStrip(guide.cue, gx, gz, gx + tx / tl * 0.22, gz + tz / tl * 0.22, 0.003);
+    }
+  } else if (def.aim >= 4) {
+    const rx = fc.wall === "x" ? -dx : dx, rz = fc.wall === "z" ? -dz : dz;
+    placeStrip(guide.bounce, gx, gz, gx + rx * 0.35, gz + rz * 0.35, 0.003);
+  }
+}
+
+// ===================== MAIN LOOP =====================
+let last = performance.now(), tAll = 0, faceTimer = 0;
+function syncBalls(frameDt) {
+  for (const b of balls) {
+    const m = ballMeshes[b.id];
+    if (b.on) {
+      m.visible = true; m.position.set(b.x, BALL_R, b.z);
+      const w = Math.hypot(b.wx, b.wy, b.wz);
+      if (w > 1e-6) { _axis.set(b.wx / w, b.wy / w, b.wz / w); _q.setFromAxisAngle(_axis, w * frameDt); m.quaternion.premultiply(_q); }
+    }
+  }
+  for (let i = falling.length - 1; i >= 0; i--) {
+    const f = falling[i], m = ballMeshes[f.id]; f.t += frameDt;
+    const k = Math.min(1, f.t / 0.32);
+    m.position.set(f.x + (f.px - f.x) * Math.min(1, k * 1.6), BALL_R - 0.075 * k * k, f.z + (f.pz - f.z) * Math.min(1, k * 1.6));
+    if (k >= 1) { m.visible = false; falling.splice(i, 1); }
+  }
+}
+const _axis = new THREE.Vector3(), _q = new THREE.Quaternion();
+function placeCue(t) {
+  if (!cueMesh || !game) { if (cueMesh) cueMesh.visible = false; return; }
+  const c = cueBall();
+  const visible = c.on && (phase === "aim" || phase === "cpu" || phase === "strike");
+  cueMesh.visible = visible; if (!visible) return;
+  let pull = 0.012 + power * 0.26, ang = aim;
+  if (phase === "strike") { const s = strikeAnim, k = Math.min(1, s.t / 0.11); pull = (0.012 + s.pull * 0.26) * (1 - k * k) - 0.004; ang = s.shot.angle; }
+  if (phase === "cpu" && cpu && cpu.pull != null) pull = 0.012 + cpu.pull * 0.26;
+  const dx = Math.cos(ang), dz = Math.sin(ang), elev = 0.09 + (viewMode === "top" ? 0 : 0.02);
+  const sa = phase === "aim" ? spinA * cueMaxTip(cueDef()) : phase === "strike" ? strikeAnim.shot.a : 0;
+  const sb = phase === "aim" ? spinB * cueMaxTip(cueDef()) : phase === "strike" ? strikeAnim.shot.b : 0;
+  const px = c.x - dx * (BALL_R + pull) + -dz * sa * BALL_R, pz = c.z - dz * (BALL_R + pull) + dx * sa * BALL_R;
+  cueMesh.position.set(px, BALL_R + sb * BALL_R + Math.sin(elev) * (BALL_R * 0.2), pz);
+  cueMesh.lookAt(px - dx * Math.cos(elev), cueMesh.position.y + Math.sin(elev), pz - dz * Math.cos(elev));
+}
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; tAll += dt;
+  soundBudget = 6;
+  if (fineDir && phase === "aim") { fineHeld += dt; aim += fineDir * (fineHeld > 0.6 ? 0.004 : 0.0009) * dt * 60; }
+  if (spaceHeld && phase === "aim") setPower(Math.min(1, power + dt * 0.75));
+  if (phase === "strike") { strikeAnim.t += dt; if (strikeAnim.t >= 0.11) launch(strikeAnim.shot); }
+  if (phase === "shot") {
+    simAcc += dt; shotTime += dt;
+    let steps = Math.min(80, Math.round(simAcc / DT)); simAcc -= steps * DT;
+    const st = { table: T, balls };
+    while (steps-- > 0) stepTable(st, DT, shotEv, hooks);
+    if (!anyMoving(balls) && !falling.length || shotTime > 30) { balls.forEach(b => { b.vx = b.vz = b.wx = b.wy = b.wz = 0; b.moving = false; }); endShot(); }
+  }
+  if (phase === "cpu" && cpu) runCpu(dt);
+  if (phase === "strike" || phase === "shot") shotDir = [Math.cos(strikeAnim ? strikeAnim.shot.angle : aim), Math.sin(strikeAnim ? strikeAnim.shot.angle : aim)];
+  syncBalls(dt);
+  updateGuides();
+  placeCue(tAll);
+  const c = game && cueBall();
+  handRing.visible = !!(game && phase === "aim" && game.ballInHand && c && c.on);
+  if (handRing.visible) { handRing.position.set(c.x, 0.0015, c.z); handRing.material.opacity = 0.55 + 0.3 * Math.sin(tAll * 5); }
+  kitchen.visible = !!(game && game.kitchen && game.turn === 0 && phase === "aim");
+  // Alien opponents stand by the table; they bounce while it's their shot and when they score.
+  for (let i = 0; i < 3; i++) { moods[i] = Math.max(0, moods[i] - dt * 0.35); if (game && game.turn === i && phase === "cpu") moods[i] = Math.max(moods[i], 0.25); }
+  const edge = CUSHION_W + RAIL_W + 0.42;
+  spectators[0].sp.position.set(T.hx + edge, FLOOR_Y + 0.5, -T.hz * 0.45);
+  spectators[1].sp.position.set(-T.hx - edge, FLOOR_Y + 0.5, T.hz * 0.45);
+  spectators[1].sp.visible = !!(game && players[2]);
+  faceTimer += dt;
+  if (faceTimer > 1 / 24) {
+    faceTimer = 0;
+    drawSpectator(spectators[0], game ? players[1].o.id : opp().id, tAll, moods[1]);
+    if (game && players[2]) drawSpectator(spectators[1], players[2].o.id, tAll + 1, moods[2]);
+    $("hud").querySelectorAll("canvas[data-char]").forEach(cv => drawFace(cv, cv.dataset.char, tAll));
+    panel.querySelectorAll("canvas[data-char]").forEach(cv => drawFace(cv, cv.dataset.char, tAll + cv.dataset.char.length, cv.classList.contains("result-face") ? 0.3 : 0.3));
+  }
+  updateCamera(dt, tAll);
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+function runCpu(dt) {
+  cpu.t += dt;
+  if (!cpu.plan) {
+    const t0 = performance.now();
+    while (performance.now() - t0 < 9) { const r = cpu.gen.next(); if (r.done) { cpu.plan = r.value; cpu.from = aim; cpu.aimT = 0; break; } }
+    return;
+  }
+  cpu.aimT += dt;
+  let diff = cpu.plan.angle - cpu.from; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+  const k = Math.min(1, cpu.aimT / 1.0), e = k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+  aim = cpu.from + diff * e;
+  const top = cpu.who.o.cpuSpeed;
+  if (cpu.aimT > 1.25) { cpu.pull = Math.min(1, (cpu.aimT - 1.25) / 0.6) * Math.min(1, cpu.plan.speed / top); }
+  if (cpu.aimT > 2.05 && cpu.t > 1.6) { const plan = cpu.plan; cpu = null; aim = plan.angle; beginStrike(plan, Math.min(1, plan.speed / top)); }
+}
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h;
+  camera.fov = w < h ? 62 : 46; camera.updateProjectionMatrix();
+}
+window.addEventListener("resize", resize);
+resize();
+buildTableMeshes();
+balls = makeRack(T);
+syncBalls(0);
+mainMenu();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
