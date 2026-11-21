@@ -1017,7 +1017,7 @@ const room = new THREE.Group(); scene.add(room);
 
 // ===================== TABLE MESHES =====================
 let T = buildTable(TABLES[SAVE.table] || TABLES["8"]);
-let tableGroup = null, lampGroup = null;
+let tableGroup = null, lampGroup = null, headLineMesh = null;
 const woodTex = canvasTex(1024, 128, (g, w, h) => {
   const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, "#4a2614"); grad.addColorStop(0.5, "#5e3119"); grad.addColorStop(1, "#3d1e10");
   g.fillStyle = grad; g.fillRect(0, 0, w, h);
@@ -1109,17 +1109,14 @@ function buildTableMeshes() {
   const mark = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
   for (const x of [T.headX, T.footX]) { const s = new THREE.Mesh(new THREE.CircleGeometry(0.006, 16), mark); s.rotation.x = -Math.PI / 2; s.position.set(x, 0.0008, 0); g.add(s); }
   const headLine = new THREE.Mesh(new THREE.PlaneGeometry(0.0025, T.W - 0.02), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 }));
-  headLine.rotation.x = -Math.PI / 2; headLine.position.set(T.headX, 0.0007, 0); g.add(headLine);
+  headLine.rotation.x = -Math.PI / 2; headLine.position.set(T.headX, 0.0007, 0); g.add(headLine); headLineMesh = headLine; // shown only with the break-area marker
   scene.add(g); tableGroup = g;
   // Lamp hood over the table.
   lampGroup = new THREE.Group();
-  // The hood is built from downward-facing surfaces only, so it shows from below but can never block a camera looking down.
+  // The hood is a single downward-facing panel: it shows from below but can never block a camera looking down.
   const hoodMat = new THREE.MeshStandardMaterial({ color: 0x1c2140, metalness: 0.6, roughness: 0.4 });
-  const hood = new THREE.Mesh(new THREE.PlaneGeometry(T.L * 0.74, 0.38), hoodMat);
+  const hood = new THREE.Mesh(new THREE.PlaneGeometry(T.L * 0.76, 0.42), hoodMat);
   hood.rotation.x = Math.PI / 2; hood.position.y = 1.19; lampGroup.add(hood);
-  // Hood edges face inward, so from outside the lamp they're invisible too.
-  for (const sz of [-1, 1]) { const skirt = new THREE.Mesh(new THREE.PlaneGeometry(T.L * 0.74, 0.07), hoodMat); skirt.position.set(0, 1.21, sz * 0.19); skirt.rotation.y = sz > 0 ? Math.PI : 0; lampGroup.add(skirt); }
-  for (const sx of [-1, 1]) { const skirt = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.07), hoodMat); skirt.position.set(sx * T.L * 0.37, 1.21, 0); skirt.rotation.y = -sx * Math.PI / 2; lampGroup.add(skirt); }
   const glow = new THREE.Mesh(new THREE.PlaneGeometry(T.L * 0.7, 0.32), new THREE.MeshBasicMaterial({ color: 0xfff4e0, toneMapped: false }));
   glow.rotation.x = Math.PI / 2; glow.position.y = 1.174; lampGroup.add(glow);
   scene.add(lampGroup);
@@ -1753,6 +1750,7 @@ function frame(now) {
   handRing.visible = !!(game && phase === "aim" && game.ballInHand && c && c.on);
   if (handRing.visible) { handRing.position.set(c.x, 0.0015, c.z); handRing.material.opacity = 0.55 + 0.3 * Math.sin(tAll * 5); }
   kitchen.visible = !!(game && game.kitchen && game.turn === 0 && phase === "aim");
+  if (headLineMesh) headLineMesh.visible = kitchen.visible;
   // Alien opponents stand by the table; they bounce while it's their shot and when they score.
   for (let i = 0; i < 3; i++) { moods[i] = Math.max(0, moods[i] - dt * 0.35); if (game && game.turn === i && phase === "cpu") moods[i] = Math.max(moods[i], 0.25); }
   // Aliens sit on stools out past the table's corners, so they watch from the side instead of blocking your line of aim.
