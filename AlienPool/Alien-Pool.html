@@ -261,6 +261,20 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
   padding: 8px 14px; border-radius: 12px; background: #0d1230e8; border: 1px solid #3a4680; font-weight: 800; font-size: 15px; text-align: center; pointer-events: none;
   opacity: 0; transition: opacity .25s; }
 #toast.show { opacity: 1; }
+/* balls sunk on the current shot */
+#potTray { position: fixed; z-index: 2; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 108px); transform: translate(-50%, -6px); display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px; border-radius: 14px; background: #0d1230ee; border: 1px solid #3a4680; pointer-events: none; opacity: 0; transition: opacity .25s, transform .25s; max-width: 92vw; }
+#potTray.show { opacity: 1; transform: translate(-50%, 0); }
+#potTray small { color: var(--dim); font: 800 11px system-ui; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+#potBalls { display: flex; flex-wrap: wrap; gap: 6px; }
+#potBalls .pb { position: relative; width: 32px; height: 32px; border-radius: 50%; background: var(--c); display: grid; place-items: center; box-shadow: inset -4px -5px 8px #0007, 0 2px 6px #0008; animation: potIn .35s ease-out; }
+#potBalls .pb.st { background: linear-gradient(#f4f1e6 0 24%, var(--c) 24% 76%, #f4f1e6 76%); }
+#potBalls .pb b { width: 17px; height: 17px; border-radius: 50%; background: #f8f6ee; color: #10131f; font: 900 10px/17px system-ui; text-align: center; }
+#potBalls .pb.cue { background: #f4f1e6; } #potBalls .pb.cue b { display: none; }
+#potBalls .pb i { position: absolute; bottom: -12px; left: 50%; transform: translateX(-50%); font: 800 9px system-ui; font-style: normal; white-space: nowrap; color: #ffb3c2; }
+#potBalls .pb i.ok { color: #c9ffe0; }
+#potBalls:has(i) { padding-bottom: 10px; }
+@keyframes potIn { from { transform: scale(.2) translateY(-14px); opacity: 0; } }
 #toast.foul { border-color: #ff5d7a; color: #ffd0d8; }
 #toast.good { border-color: var(--good); color: #c9ffe0; }
 #turnBanner { position: fixed; z-index: 3; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(.9); display: flex; align-items: center; gap: 12px;
@@ -346,6 +360,7 @@ body.playing.cpu .ctl.mine { opacity: .35; pointer-events: none; }
 <canvas id="view" aria-label="3D pool table"></canvas>
 <div class="hud" id="hud" hidden></div>
 <div id="toast" role="status"></div>
+<div id="potTray" aria-live="polite"><small id="potHead">Sunk</small><span id="potBalls"></span></div>
 <div id="callPanel" role="status"><span id="callTxt"></span></div>
 <div class="ctl mine" id="spin" aria-label="Cue tip position: drag to set spin"><span id="spinDot"></span><span id="spinLbl">Center</span></div>
 <div class="ctl" id="aimRow">
@@ -1346,6 +1361,7 @@ function newRack(breaker) {
   // Phones in portrait get a higher, farther camera so more of the table fits above the controls.
   if (camera.aspect < 1) { pitch = 0.5; camDist = 1.15; } else { pitch = 0.3; camDist = 0.95; }
   // A new rack always starts live, even when it was started from the Pause menu.
+  potTray.reset();
   phase = "rack"; pausedFrom = null; cpu = null; strikeAnim = null; drag = null; powerDrag = null; spaceHeld = false;
   closeMenu(); document.body.classList.add("playing"); $("hud").hidden = false;
   updateHud();
@@ -1392,14 +1408,16 @@ function launch(shot) {
   shotBefore = cloneBalls(balls); shooter = game.turn;
   strike(cueBall(), shot.angle, shot.speed, shot.a, shot.b);
   shotEv = newEvents(); shotTime = 0; simAcc = 0; phase = "shot"; SFX.cue(shot.speed);
+  potTray.reset();
   setPower(0);
 }
 const hooks = {
   sound(type, v) { if (soundBudget-- > 0) SFX[type](v); },
-  pot(b, p) { const pk = T.pockets[p]; falling.push({ id: b.id, x: b.x, z: b.z, px: pk.x, pz: pk.z, t: 0 }); SFX.pocket(); },
+  pot(b, p) { potTray.add(b.id); const pk = T.pockets[p]; falling.push({ id: b.id, x: b.x, z: b.z, px: pk.x, pz: pk.z, t: 0 }); SFX.pocket(); },
 };
 function endShot() {
   const ev = shotEv, j = judgeShot(game, shotBefore, balls, ev, shooter);
+  potTray.finish(j, shooter);
   const who = players[shooter], calledWas = game.callShot && !game.isBreak ? game.called : null;
   for (const id of j.respot) { ballMeshes[id].visible = true; const i = falling.findIndex(f => f.id === id); if (i >= 0) falling.splice(i, 1); }
   if (j.win !== null) { applyResult(T, game, balls, j, shooter); updateHud(); return gameOver(j.win, j.reason); }
@@ -1434,6 +1452,31 @@ function gameOver(winner, reason) {
 }
 
 // ===================== HUD =====================
+// Tray that fills with each ball as it drops, then labels what counted once the shot is judged.
+const potTray = (() => {
+  const el = $("potTray"), list = $("potBalls"), head = $("potHead"); let ids = [], timer = 0;
+  const icon = id => `<span class="pb ${id === 0 ? "cue" : id > 8 ? "st" : ""}" data-id="${id}" style="--c:${id ? colorOf(id) : "#f4f1e6"}"><b>${id || ""}</b></span>`;
+  return {
+    reset() { ids = []; list.innerHTML = ""; el.classList.remove("show"); clearTimeout(timer); },
+    add(id) {
+      if (ids.includes(id)) return; ids.push(id); clearTimeout(timer);
+      head.textContent = `${players[game.turn].cpu ? players[game.turn].name : "You"} · sunk`;
+      list.insertAdjacentHTML("beforeend", icon(id)); el.classList.add("show");
+    },
+    finish(j, by) {
+      if (!ids.length) return;
+      for (const node of list.children) {
+        const id = +node.dataset.id; let tag = "", ok = false;
+        if (id === 0) tag = "scratch";
+        else if (j.respot.includes(id)) tag = "back up";
+        else if (game.mode === "cut") { const o = cutGroupOf(id); ok = o !== by; tag = o === by ? "own ball" : players[o].cpu ? players[o].name : "yours"; }
+        if (tag) node.insertAdjacentHTML("beforeend", `<i class="${ok ? "ok" : ""}">${tag}</i>`);
+      }
+      head.textContent = `${players[by].cpu ? players[by].name : "You"} sunk ${ids.filter(Boolean).length || "the cue ball"}${ids.filter(Boolean).length ? (ids.filter(Boolean).length === 1 ? " ball" : " balls") : ""}`;
+      timer = setTimeout(() => el.classList.remove("show"), 3200);
+    },
+  };
+})();
 // Big "whose shot" banner at the start of every turn (only when the shooter changes, or after a foul).
 const banner = document.createElement("div"); banner.id = "turnBanner"; document.body.append(banner);
 let bannerTimer = 0, lastShooter = -1;
