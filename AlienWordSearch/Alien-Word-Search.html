@@ -290,6 +290,29 @@ body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opa
 #panel.arcade-panel .arcade-footer > * { flex: 1 1 135px; margin: 0; width: auto; }
 #panel.arcade-panel .arcade-footer > a.arcade { flex-basis: 100%; }
 @media (max-width: 400px) { #panel.arcade-panel .arcade-stages { grid-template-columns: 1fr; } }
+#panel.arcade-panel button.charBtn > span { display: block; }
+/* Small or short screens: drop the banner art and use slim alien buttons so the stages stay reachable. */
+@media (max-height: 820px), (max-width: 420px) {
+  #panel canvas.hero { display: none; }
+  #panel.arcade-panel h1 { font-size: clamp(26px, 7.5vw, 34px); margin: 2px 0; }
+  #panel.arcade-panel .chars { gap: 6px; margin: 4px 0 6px; }
+  #panel.arcade-panel button.charBtn { display: flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 6px; text-align: left; font-size: 14px; }
+  #panel.arcade-panel button.charBtn canvas { width: 38px; flex: 0 0 38px; margin: 0; }
+  #panel.arcade-panel button.charBtn small { display: block; font-size: 11px; }
+  #panel.arcade-panel button.arcade-stage { min-height: 50px; padding: 6px 8px; }
+  #panel.arcade-panel .arcade-planet { width: 32px; height: 32px; flex-basis: 32px; }
+  #panel.arcade-panel .arcade-planet::after { width: 20px; height: 20px; }
+}
+@media (max-height: 700px) { #panel.arcade-panel p.blurb { display: none; } }
+@media (max-width: 360px) { #panel.arcade-panel button.charBtn canvas { width: 30px; flex-basis: 30px; } #panel.arcade-panel button.charBtn { font-size: 13px; gap: 4px; } }
+/* Phones held sideways: aliens on the left, stages on the right. */
+@media (max-height: 520px) and (min-aspect-ratio: 5/4) {
+  #panel.arcade-panel:has(.mm) { width: min(100%, 780px); }
+  #panel .mm { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+  #panel .mm-b .arcade-stages { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 4px; }
+  #panel.arcade-panel .chars { grid-template-columns: 1fr; }
+  #panel.arcade-panel button.charBtn { min-height: 44px; }
+}
 </style>
 </head>
 <body>
@@ -739,17 +762,17 @@ function mainMenu() {
   if (phase === "play") phase = "paused";
   const a = SAVE.alien, d = DIFF[a], total = SAVE.stars[a].reduce((x, y) => x + y, 0);
   const canResume = started && phase === "paused" && alien === a;
-  showMenu(`<canvas class="hero" data-hero="1" width="640" height="220"></canvas>
+  showMenu(`<div class="mm"><div class="mm-a"><canvas class="hero" data-hero="1" width="640" height="220"></canvas>
     <p class="kicker">Alien Arcade</p><h1>Alien Word Search</h1>
-    <p>Find every hidden word before the star timer runs out. ${STAGES.length} worlds, ${TOTAL_LEVELS} puzzles for each alien.</p>
+    <p class="blurb">Find every hidden word before the star timer runs out. ${STAGES.length} worlds, ${TOTAL_LEVELS} puzzles for each alien.</p>
     ${canResume ? `<button class="primary" data-act="resume">Resume level ${puzzle.stage + 1}-${level % LEVELS_PER_STAGE + 1}</button>` : ""}
     <p class="kicker">Choose your alien</p>
-    <div class="chars">${ALIENS.map(id => `<button class="charBtn" data-act="alien" data-id="${id}" aria-pressed="${id === a}"><canvas data-char="${id}" width="160" height="160"></canvas>${alienName(id)}<small>${DIFF[id].label}</small></button>`).join("")}</div>
-    <p class="kicker">${alienName(a)} · ${d.label} · ${d.dirText} · ${total}/${TOTAL_LEVELS * 3} ★</p>
+    <div class="chars">${ALIENS.map(id => `<button class="charBtn" data-act="alien" data-id="${id}" aria-pressed="${id === a}"><canvas data-char="${id}" width="160" height="160"></canvas><span>${alienName(id)}<small>${DIFF[id].label}</small></span></button>`).join("")}</div></div>
+    <div class="mm-b"><p class="kicker">${alienName(a)} · ${d.label} · ${d.dirText} · ${total}/${TOTAL_LEVELS * 3} ★</p>
     <div class="arcade-stages">${STAGES.map((s, i) => {
       const first = i * LEVELS_PER_STAGE, open = unlocked(a, first);
       return `<button class="arcade-stage" data-act="stage" data-id="${i}" ${open ? "" : "disabled"}><span class="arcade-planet" data-world="${i}" aria-hidden="true"></span><span>${i + 1} · ${s.name}<small>${open ? `${s.theme} · ${stageStars(a, i)}/${LEVELS_PER_STAGE * 3} ★` : "🔒 Clear the previous stage"}</small></span></button>`;
-    }).join("")}</div>
+    }).join("")}</div></div></div>
     <div class="actions"><button data-act="help">How to Play</button>${soundBtn()}</div>
     <div class="arcade-footer">${ARCADE_LINK}</div>`);
 }
