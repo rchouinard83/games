@@ -83,9 +83,11 @@ const ROOT = (() => {
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien Word Search", tag: "Word puzzle", isNew: true, color: "#8fe9dc", href: "AlienWordSearch/Alien-Word-Search.html", art: artWordSearch,
+    desc: "Find the hidden words across 8 worlds and 120 levels. Blip keeps it easy, Jelly adds diagonals, and Runner hides words in any direction." },
   { name: "Alien Pool", tag: "3D billiards", isNew: true, color: "#4fd1ff", href: "AlienPool/Alien-Pool.html", art: artPool,
     desc: "3D 8-ball, 9-ball, or three-way cut-throat against Blip, Jelly, and Runner on a 7 ft, 8 ft, or Olympic 9 ft table. Pick your cue and use spin." },
-  { name: "Alien City Run 3D", tag: "3D runner", isNew: true, color: "#c77dff", href: "AlienCityRun/Alien-City-Run-3D.html", art: artCityRun,
+  { name: "Alien City Run 3D", tag: "3D runner", color: "#c77dff", href: "AlienCityRun/Alien-City-Run-3D.html", art: artCityRun,
     desc: "Run through Living Canopy, Crystal Badlands, and Tidal Reef. Jump between rooftops, roll under low gates, and follow coin trails." },
   { name: "Alien Tunnel Run", tag: "Tunnel runner", color: "#88f7dc", href: "AlienTunnelRun/Alien-Tunnel-Run.html", art: artTunnelRun,
     desc: "Steer around a neon tunnel, dodge barriers, and collect coins as each section gets faster." },
@@ -383,6 +385,22 @@ function artLob(c, w, h, t) { // goo arcs over a tall tower, bent by the wind, a
     const r = Math.min(1, (T - 1.8) * 3) * 22; c.fillStyle = "rgba(255,210,93,0.6)"; c.beginPath(); c.arc(x1, y1 - 4, r, 0, TAU); c.fill();
     c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("SPLAT!", w * 0.62, h * 0.24);
   }
+}
+function artWordSearch(c, w, h, t) { // a letter grid; highlight bands sweep over hidden words while an alien cheers
+  sky(c, w, h, "#18204a", "#070915", 53);
+  const cols = 9, rows = 5, cs = Math.min(w * 0.8 / cols, h * 0.78 / rows), gx = w / 2 - cols * cs / 2, gy = h * 0.55 - rows * cs / 2;
+  c.fillStyle = "#0d1230"; c.strokeStyle = "#8fe9dc66"; c.lineWidth = 2; c.beginPath(); c.roundRect(gx - 8, gy - 8, cols * cs + 16, rows * cs + 16, 10); c.fill(); c.stroke();
+  const L = "COMETXQAPLANETZORBITRSTARWKALIENJMOONVBGALAXYUFOHN";
+  const words = [[0, 0, 1, 0, 5, "#5dff9b"], [1, 1, 1, 1, 4, "#4fd1ff"], [8, 0, 0, 1, 5, "#ffd25d"], [2, 4, 1, 0, 5, "#ff8bd0"]];
+  const T = t % 6, shown = Math.min(words.length, Math.floor(T / 1.2) + 1);
+  c.lineCap = "round"; c.lineWidth = cs * 0.72;
+  words.slice(0, shown).forEach(([x, y, dx, dy, n, col], i) => {
+    const k = i === shown - 1 ? Math.min(1, (T - i * 1.2) / 0.6) : 1;
+    c.strokeStyle = col + "88"; c.beginPath(); c.moveTo(gx + (x + 0.5) * cs, gy + (y + 0.5) * cs); c.lineTo(gx + (x + 0.5 + dx * (n - 1) * k) * cs, gy + (y + 0.5 + dy * (n - 1) * k) * cs); c.stroke();
+  });
+  c.fillStyle = "#e8ecff"; c.font = `800 ${cs * 0.55}px system-ui`; c.textAlign = "center"; c.textBaseline = "middle";
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) c.fillText(L[(y * cols + x) % L.length], gx + (x + 0.5) * cs, gy + (y + 0.52) * cs);
+  eyeAlien(c, w * 0.88, h * 0.15 - Math.abs(Math.sin(t * 4)) * h * 0.04, Math.min(w, h) * 0.08, "#8fe9dc", t);
 }
 function artPool(c, w, h, t) { // the cue ball breaks the rack and a ball drops while an alien watches
   sky(c, w, h, "#16224a", "#070915", 29);
