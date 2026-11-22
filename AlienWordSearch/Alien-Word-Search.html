@@ -426,9 +426,10 @@ const LEVELS_PER_STAGE = 15, TOTAL_LEVELS = STAGES.length * LEVELS_PER_STAGE;
 const DIR8 = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]];
 // Grid size and word count ramp up across the 15 levels of a stage. par = seconds per word for 3 stars.
 const DIFF = {
-  blip:   { label: "Easy",   size: [8, 10],  words: [6, 8],   maxLen: 6,  dirs: DIR8.slice(0, 2), par: 16, hints: 3, overlap: 0.1, dirText: "→ ↓ only" },
-  jelly:  { label: "Medium", size: [10, 12], words: [8, 11],  maxLen: 8,  dirs: DIR8.slice(0, 4), par: 14, hints: 2, overlap: 0.4, dirText: "→ ↓ ↘ ↗" },
-  runner: { label: "Hard",   size: [12, 14], words: [10, 14], maxLen: 12, dirs: DIR8,             par: 12, hints: 1, overlap: 0.75, dirText: "Any way, even backwards" },
+// minDiag / minBack: every level has at least this many diagonal / backwards words.
+  blip:   { label: "Easy",   size: [8, 10],  words: [6, 8],   maxLen: 6,  dirs: DIR8.slice(0, 3), after: DIR8.slice(0, 2), minDiag: 1, minBack: 0, par: 16, hints: 3, overlap: 0.1, dirText: "→ ↓ ↘" },
+  jelly:  { label: "Medium", size: [10, 12], words: [8, 11],  maxLen: 8,  dirs: DIR8.slice(0, 4), minDiag: 3, minBack: 0, par: 14, hints: 2, overlap: 0.4, dirText: "→ ↓ ↘ ↗" },
+  runner: { label: "Hard",   size: [12, 14], words: [10, 14], maxLen: 12, dirs: DIR8,             minDiag: 4, minBack: 4, par: 12, hints: 1, overlap: 0.75, dirText: "Any way, even backwards" },
 };
 const ALIENS = ["blip", "jelly", "runner"];
 // Never let random filler spell these, in any direction.
@@ -503,10 +504,14 @@ function makePuzzle(alien, index) {
     const chosen = words.slice().sort((a, b) => b.length - a.length);
     const grid = Array(N * N).fill(null), placed = [];
     let ok = true;
+    let nDiag = 0, nBack = 0;
+    const isDiag = ([dx, dy]) => dx !== 0 && dy !== 0, isBack = ([dx, dy]) => dx < 0 || (dx === 0 && dy < 0);
     for (const w of chosen) {
       const fits = [];
+      // Fill the diagonal and backwards quotas first, then any allowed direction.
+      const need = nDiag < d.minDiag && nBack < d.minBack ? d.dirs.filter(v => isDiag(v) && isBack(v)) : nDiag < d.minDiag ? d.dirs.filter(isDiag) : nBack < d.minBack ? d.dirs.filter(isBack) : d.after || d.dirs;
       for (let k = 0; k < 400 && fits.length < 24; k++) {
-        const [dx, dy] = d.dirs[Math.floor(rand() * d.dirs.length)];
+        const set = k < 300 ? need : d.after || d.dirs, [dx, dy] = set[Math.floor(rand() * set.length)];
         const x = Math.floor(rand() * N), y = Math.floor(rand() * N), ex = x + dx * (w.length - 1), ey = y + dy * (w.length - 1);
         if (ex < 0 || ey < 0 || ex >= N || ey >= N) continue;
         let over = 0, good = true;
@@ -518,8 +523,9 @@ function makePuzzle(alien, index) {
       const f = rand() < d.overlap ? fits.sort((p, q) => q.over - p.over)[0] : fits.find(p => p.over === 0) || fits[0];
       for (let i = 0; i < w.length; i++) grid[(f.y + f.dy * i) * N + f.x + f.dx * i] = w[i];
       placed.push({ word: w, x: f.x, y: f.y, dx: f.dx, dy: f.dy });
+      if (isDiag([f.dx, f.dy])) nDiag++; if (isBack([f.dx, f.dy])) nBack++;
     }
-    if (!ok) continue;
+    if (!ok || nDiag < d.minDiag || nBack < d.minBack) continue;
     // Filler: Easy uses everyday letters; harder aliens reuse letters from the hidden words as decoys.
     const decoy = chosen.join(""), mix = alien === "blip" ? 0 : alien === "jelly" ? 0.35 : 0.6;
     for (let f = 0; f < 12; f++) {
@@ -781,7 +787,7 @@ function resultMenu(earned, newBest) {
 const HELP = [
   { title: "Find the words", text: "Every level hides a list of words in the grid. Found words get a colored band and are crossed off the list.", art: "find" },
   { title: "Drag across", text: "Press on the first letter and drag to the last one, in a straight line. Or tap the first letter, then tap the last.", art: "drag" },
-  { title: "Pick your alien", text: "Blip (Easy): small grids, words only run → and ↓. Jelly (Medium): bigger grids with diagonals. Runner (Hard): the biggest grids, any direction, even backwards, and lookalike letters.", art: "aliens" },
+  { title: "Pick your alien", text: "Blip (Easy): small grids, words run →, ↓ and ↘. Jelly (Medium): bigger grids with diagonals. Runner (Hard): the biggest grids, any direction, even backwards, and lookalike letters.", art: "aliens" },
   { title: "Stars & hints", text: "Find everything under the star time for 3 ★, within double it for 2 ★. A hint flashes a word's first letter but costs a star. One star unlocks the next level.", art: "stars" },
 ];
 let helpPage = 0, helpFrom = "main";
@@ -795,7 +801,7 @@ function helpArt(kind) {
   const grid = rows => rows.map((r, j) => [...r].map((ch, i) => L(40 + i * 26, 30 + j * 26, ch)).join("")).join("");
   if (kind === "find") return `<svg class="guide" viewBox="0 0 360 120"><line x1="40" y1="24" x2="144" y2="24" stroke="#5dff9b" stroke-width="20" stroke-linecap="round" opacity=".45"/>${grid(["COMETQ", "XRAYLN", "PORBIT", "ESTARK"])}<text x="230" y="40" fill="#9aa3cf" font-size="15" font-weight="800" text-decoration="line-through">COMET</text><text x="230" y="64" fill="#fff" font-size="15" font-weight="800">ORBIT</text><text x="230" y="88" fill="#fff" font-size="15" font-weight="800">STAR</text></svg>`;
   if (kind === "drag") return `<svg class="guide" viewBox="0 0 360 120"><line x1="66" y1="50" x2="170" y2="50" stroke="#ffe36b" stroke-width="20" stroke-linecap="round" opacity=".5"/>${grid(["KQWZPL", "XORBIT", "MNVSTE", "ESTARK"])}<circle cx="170" cy="50" r="7" fill="#fff"/><path d="M178 60 l10 22 l4 -9 l9 -2 z" fill="#fff"/><text x="290" y="54" fill="#c9ffe0" font-size="13" font-weight="800" text-anchor="middle">drag →</text></svg>`;
-  if (kind === "aliens") return `<svg class="guide" viewBox="0 0 360 120"><text x="60" y="30" fill="#5dff9b" font-size="13" font-weight="800" text-anchor="middle">Blip</text><text x="60" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓</text><text x="180" y="30" fill="#7ab8ff" font-size="13" font-weight="800" text-anchor="middle">Jelly</text><text x="180" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓ ↘ ↗</text><text x="300" y="30" fill="#ffe35d" font-size="13" font-weight="800" text-anchor="middle">Runner</text><text x="300" y="62" fill="#fff" font-size="20" text-anchor="middle">→ ← ↑ ↓</text><text x="300" y="88" fill="#fff" font-size="20" text-anchor="middle">↘ ↖ ↗ ↙</text></svg>`;
+  if (kind === "aliens") return `<svg class="guide" viewBox="0 0 360 120"><text x="60" y="30" fill="#5dff9b" font-size="13" font-weight="800" text-anchor="middle">Blip</text><text x="60" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓ ↘</text><text x="180" y="30" fill="#7ab8ff" font-size="13" font-weight="800" text-anchor="middle">Jelly</text><text x="180" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓ ↘ ↗</text><text x="300" y="30" fill="#ffe35d" font-size="13" font-weight="800" text-anchor="middle">Runner</text><text x="300" y="62" fill="#fff" font-size="20" text-anchor="middle">→ ← ↑ ↓</text><text x="300" y="88" fill="#fff" font-size="20" text-anchor="middle">↘ ↖ ↗ ↙</text></svg>`;
   return `<svg class="guide" viewBox="0 0 360 120"><text x="180" y="58" fill="#ffd25d" font-size="40" text-anchor="middle" letter-spacing="8">★★★</text><text x="180" y="92" fill="#c3cdee" font-size="13" font-weight="800" text-anchor="middle">beat the star time · hints cost ★</text></svg>`;
 }
 panel.addEventListener("click", e => {
