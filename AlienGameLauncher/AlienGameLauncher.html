@@ -83,9 +83,11 @@ const ROOT = (() => {
 const GAMES = [
   { name: "Alien Defense", tag: "Tower defense", color: "#5dff9b", href: "AlienDefense/Alien-Defense.html", art: artDefense,
     desc: "Build a maze of towers across four worlds and stop the invading aliens before they reach your base." },
+  { name: "Alien Starhop", tag: "Platformer", isNew: true, color: "#ffd25d", href: "AlienStarhop/Alien-Starhop.html", art: artStarhop,
+    desc: "Run, double jump, wall-kick and dash across 4 worlds and 40 levels. Free caged buddies, find Star Shards, escape the goo and beat the Armada's bosses." },
   { name: "Alien Word Search", tag: "Word puzzle", isNew: true, color: "#8fe9dc", href: "AlienWordSearch/Alien-Word-Search.html", art: artWordSearch,
     desc: "Find the hidden words across 8 worlds and 120 levels. Blip keeps it easy, Jelly adds diagonals, and Runner hides words in any direction." },
-  { name: "Alien Pool", tag: "3D billiards", isNew: true, color: "#4fd1ff", href: "AlienPool/Alien-Pool.html", art: artPool,
+  { name: "Alien Pool", tag: "3D billiards", color: "#4fd1ff", href: "AlienPool/Alien-Pool.html", art: artPool,
     desc: "3D 8-ball, 9-ball, or three-way cut-throat against Blip, Jelly, and Runner on a 7 ft, 8 ft, or Olympic 9 ft table. Pick your cue and use spin." },
   { name: "Alien City Run 3D", tag: "3D runner", color: "#c77dff", href: "AlienCityRun/Alien-City-Run-3D.html", art: artCityRun,
     desc: "Run through Living Canopy, Crystal Badlands, and Tidal Reef. Jump between rooftops, roll under low gates, and follow coin trails." },
@@ -385,6 +387,19 @@ function artLob(c, w, h, t) { // goo arcs over a tall tower, bent by the wind, a
     const r = Math.min(1, (T - 1.8) * 3) * 22; c.fillStyle = "rgba(255,210,93,0.6)"; c.beginPath(); c.arc(x1, y1 - 4, r, 0, TAU); c.fill();
     c.fillStyle = "#ffd25d"; c.font = "900 18px system-ui"; c.textAlign = "center"; c.fillText("SPLAT!", w * 0.62, h * 0.24);
   }
+}
+function artStarhop(c, w, h, t) { // an alien hops between floating ledges, double-jumps for a star shard, then lands by the portal
+  sky(c, w, h, "#14204f", "#050817", 61);
+  const T = t % 3.2, u = Math.min(w, h), g = h * 0.86;
+  c.fillStyle = "#4d5f93"; c.fillRect(0, g, w * 0.34, h - g); c.fillRect(w * 0.62, g, w * 0.38, h - g);
+  c.fillStyle = "#d8f0ff"; c.fillRect(0, g, w * 0.34, 4); c.fillRect(w * 0.62, g, w * 0.38, 4);
+  c.fillStyle = "#8fa9d8"; c.fillRect(w * 0.4, h * 0.55, w * 0.16, 7);
+  c.fillStyle = "#d9dde8"; for (let x = w * 0.34; x < w * 0.62; x += 12) { c.beginPath(); c.moveTo(x, h); c.lineTo(x + 6, h * 0.93); c.lineTo(x + 12, h); c.fill(); }
+  const k = T / 3.2, px = w * (0.12 + 0.68 * k), py = g - u * 0.08 - Math.sin(k * Math.PI) * h * 0.55 - Math.max(0, Math.sin(k * Math.PI * 2)) * h * 0.1;
+  const got = k > 0.5;
+  if (!got) { c.save(); c.translate(w * 0.48, h * 0.24); c.rotate(t); c.fillStyle = "#ffd25d"; c.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? u * 0.025 : u * 0.06; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.fill(); c.restore(); }
+  c.strokeStyle = "#c77dff"; c.lineWidth = 3; c.beginPath(); c.ellipse(w * 0.86, g - u * 0.12, u * 0.06, u * 0.11, 0, t * 3, t * 3 + 4.5); c.stroke();
+  eyeAlien(c, px, py, u * 0.07, "#5dff9b", t);
 }
 function artWordSearch(c, w, h, t) { // a letter grid; highlight bands sweep over hidden words while an alien cheers
   sky(c, w, h, "#18204a", "#070915", 53);
