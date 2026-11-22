@@ -14,12 +14,14 @@ const STYLE = [ // Oort Gate ice station, Jupiter storm, Mars lava, Earth forest
   { sky: ["#170608", "#6b2018"], ground: "#7a3324", dark: "#401a13", top: "#ff9b6a", edge: "#ffc29e", plank: "#a8573c", accent: "#ff8a6a", music: [0, 3, 5, 7] },
   { sky: ["#0d2747", "#4fb0e8"], ground: "#5a3d2a", dark: "#33231a", top: "#5ccf5a", edge: "#a6f08f", plank: "#8b6a43", accent: "#7ce08a", music: [0, 4, 7, 11] },
 ];
+// g walker · h heavy (BASH it) · f flyer · t turret · s gunship (hovers and shoots). Mars and Earth flyers are ships too, so they shoot.
 const ENEMY = [
-  { g: "Goo", h: "Chonk", f: "Probe", t: "Hover Pod" },
-  { g: "Stalker", h: "Brute", f: "Shrieker", t: "Skitter" },
-  { g: "Ripper", h: "Hover Tank", f: "Saucer", t: "Probe" },
-  { g: "Tripod", h: "Juggernaut", f: "Phase Saucer", t: "Nanite Trio" },
+  { g: "Goo", h: "Chonk", f: "Probe", t: "Hover Pod", s: "Saucer" },
+  { g: "Stalker", h: "Brute", f: "Shrieker", t: "Skitter", s: "Hover Pod" },
+  { g: "Ripper", h: "Hover Tank", f: "Saucer", t: "Probe", s: "Interceptor" },
+  { g: "Tripod", h: "Juggernaut", f: "Phase Saucer", t: "Nanite Trio", s: "Saucer" },
 ];
+const SHIP_FLYERS = [false, false, true, true];
 
 // ===================== SAVE =====================
 const SAVE_KEY = "alien-starhop.v1";
@@ -133,6 +135,7 @@ function startLevel(index) {
     }
   }
   if (def.boss) L.boss = makeBoss(def.world, d);
+  addFoes(index, d);
   if (def.chase) L.chaseX = L.spawn.x - TILE * 9;
   L.respawn = { ...L.spawn }; L.chaseStart = L.chaseX;
   updatePlats(0);
@@ -146,9 +149,44 @@ function startLevel(index) {
 }
 const ATK_BOSS = ["Mother Blob", "Hive Queen", "Command Ship", "Mothership"];
 function makeEnemy(type, x, footY, d) {
-  const size = type === "h" ? 40 : 28;
-  return { type, x: x - size / 2, y: type === "f" ? footY - TILE * 1.6 - size / 2 : footY - size, w: size, h: size, vx: (type === "g" ? 60 : type === "h" ? 38 : 0) * d.enemy * -1,
-    home: x, homeY: footY - TILE * 1.6, t: Math.random() * 6, alive: true, squash: 0, fire: 1.5 + Math.random(), speed: d.enemy };
+  const size = type === "h" ? 40 : type === "s" ? 36 : 28, air = type === "f" || type === "s";
+  // Enemies get a little quicker deeper into each world and in later worlds.
+  const ramp = 1 + (level % LEVELS_PER_WORLD) * 0.035 + Math.floor(level / LEVELS_PER_WORLD) * 0.05, speed = d.enemy * ramp;
+  return { type, x: x - size / 2, y: air ? footY - TILE * 1.6 - size / 2 : footY - size, w: size, h: type === "s" ? 28 : size, vx: (type === "g" ? 60 : type === "h" ? 38 : 0) * speed * -1,
+    home: x, homeY: footY - TILE * 1.6, t: Math.random() * 6, alive: true, squash: 0, fire: 2 + Math.random() * 1.5, charge: 0, speed,
+    shoots: type === "s" || type === "t" || (type === "f" && SHIP_FLYERS[L.world]) };
+}
+// Extra enemies on top of the ones built into each level piece. Few early on, lots by the end of each world;
+// gunships start at level 1-4 and become common later. Placed with a fixed seed so a level always has the same foes.
+function addFoes(index, d) {
+  const k = index % LEVELS_PER_WORLD, w = L.world;
+  if (index === 0 || L.boss) return;
+  const rand = mulberry32(hashStr(`foes|${index}`));
+  let n = Math.round((2 + k * 1.05 + w * 1.7) * (L.chase ? 0.6 : 1));
+  const T = (x, y) => tileAt(L, x, y), empty = (x, y) => ".rlz".includes(T(x, y)), floor = (x, y) => T(x, y) === "#" || T(x, y) === "=";
+  const keepOut = [[L.spawn.x / TILE, 11], ...(L.exit ? [[L.exit.x / TILE, 5]] : []), ...L.checks.map(c => [c.x / TILE, 4]), ...(L.cage ? [[L.cage.x / TILE, 3]] : []), ...L.signs.map(s => [s.x / TILE, 3])];
+  const taken = L.enemies.map(e => (e.x + e.w / 2) / TILE);
+  const clear = x => keepOut.every(([kx, r]) => Math.abs(x - kx) > r) && taken.every(tx => Math.abs(x - tx) > 4.5);
+  const ground = [], air = [];
+  for (let x = 2; x < L.w - 2; x++) {
+    for (let y = 2; y < ROWS - 1; y++) {
+      // A walker needs a 3-wide stretch of plain floor with headroom.
+      if ([-1, 0, 1].every(dx => empty(x + dx, y) && empty(x + dx, y - 1) && floor(x + dx, y + 1))) ground.push({ x, y });
+      // Flyers and ships need open sky around them, and stay well above the floor.
+      if (y >= 2 && y <= 6 && [-1, 0, 1].every(dx => [-1, 0, 1].every(dy => empty(x + dx, y + dy))) && [1, 2, 3].every(dy => empty(x, y + dy))) air.push({ x, y });
+    }
+  }
+  const shipShare = Math.min(0.4, Math.max(0, (k - 2) * 0.06 + w * 0.09)), heavyShare = k >= 4 || w > 0 ? 0.15 : 0, flyShare = 0.25;
+  for (let i = 0; i < n; i++) {
+    const r = rand(), type = r < shipShare ? "s" : r < shipShare + flyShare ? "f" : r < shipShare + flyShare + heavyShare ? "h" : "g";
+    const pool = (type === "s" || type === "f" ? air : ground).filter(c => clear(c.x));
+    if (!pool.length) continue;
+    // Spread them out: aim for the i-th slice of the level, then take the nearest free spot.
+    const want = 12 + (L.w - 20) * (i + rand()) / n;
+    const c = pool.sort((a, b) => Math.abs(a.x - want) - Math.abs(b.x - want))[Math.floor(rand() * Math.min(3, pool.length))];
+    const e = makeEnemy(type, c.x * TILE + TILE / 2, type === "s" || type === "f" ? (c.y + 1) * TILE + TILE * 1.1 : (c.y + 1) * TILE, d);
+    L.enemies.push(e); taken.push(c.x);
+  }
 }
 function updatePlats(dt) {
   for (const m of L.plats) {
@@ -321,11 +359,19 @@ function enemyUpdate(e, dt) {
     if (isSolid(L, col, mid) || !floorAhead || hazard) e.vx *= -1;
   } else if (e.type === "f") {
     e.x = e.home - e.w / 2 + Math.sin(e.t * 1.1 * e.speed) * TILE * 2.2; e.y = e.homeY - e.h / 2 + Math.sin(e.t * 2.3) * 14;
-  } else if (e.type === "t") {
-    e.fire -= dt;
-    const dx = P.x + 10 - (e.x + e.w / 2), dy = P.y + 14 - (e.y + e.h / 2), dist = Math.hypot(dx, dy);
-    if (e.fire <= 0 && dist < TILE * 11 && deadT <= 0) { e.fire = 2.4 / e.speed; shots.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, vx: dx / dist * 170 * e.speed, vy: dy / dist * 170 * e.speed, r: 6, life: 5, enemy: true }); SFX.shoot(); }
+  } else if (e.type === "s") {
+    e.x = e.home - e.w / 2 + Math.sin(e.t * 0.55 * e.speed) * TILE * 3; e.y = e.homeY - e.h / 2 + Math.sin(e.t * 1.7) * 10;
   }
+  if (!e.shoots) return;
+  // Shooters glow red for half a second before an aimed shot, so there's time to dodge.
+  const dx = P.x + 10 - (e.x + e.w / 2), dy = P.y + 14 - (e.y + e.h / 2), dist = Math.hypot(dx, dy);
+  if (e.charge > 0) {
+    e.charge -= dt;
+    if (e.charge <= 0) { const sp = (e.type === "t" ? 170 : 190) * e.speed; shots.push({ x: e.x + e.w / 2, y: e.y + e.h / 2, vx: dx / dist * sp, vy: dy / dist * sp, r: 6, life: 5, enemy: true }); SFX.shoot(); }
+    return;
+  }
+  e.fire -= dt;
+  if (e.fire <= 0 && dist < TILE * 10 && deadT <= 0) { e.charge = 0.5; e.fire = (e.type === "t" ? 2.4 : 2.8) / e.speed + Math.random() * 0.6; }
 }
 function collide() {
   const px0 = P.x, py0 = P.y, px1 = P.x + PH.pw, py1 = P.y + PH.ph, near = (x, y, r) => x > px0 - r && x < px1 + r && y > py0 - r && y < py1 + r;
@@ -338,7 +384,7 @@ function collide() {
     if (!e.alive || !(P.x < e.x + e.w - 3 && P.x + PH.pw > e.x + 3 && P.y < e.y + e.h - 3 && P.y + PH.ph > e.y + 4)) continue;
     const fromAbove = P.vy > 0 && P.y + PH.ph - P.vy * DT * 3 <= e.y + 12;
     if (P.pound || (fromAbove && e.type !== "h") || (P.dashT > 0 && e.type !== "h")) { kill(e); if (!P.pound) { P.vy = -(held("jump", {}) ? 760 : 520); P.canDouble = true; P.dash = 1; } }
-    else if (fromAbove) { P.vy = -560; SFX.stomp(); e.squash = 0; showSignOnce("Chonks are too tough to stomp. Press ▼ in the air to ground-pound them!"); }
+    else if (fromAbove) { P.vy = -560; SFX.stomp(); e.squash = 0; showSignOnce("Too tough to stomp! Press BASH in the air to ground-pound it."); }
     else hurt(Math.sign(P.x - e.x) || 1);
   }
 }
@@ -497,7 +543,8 @@ function drawEntities(t) {
     if (!e.alive && e.squash > 0.4) continue;
     const name = ENEMY[L.world][e.type], ex = e.x + e.w / 2, ey = e.y + e.h / 2;
     c.save(); c.translate(ex, ey); if (!e.alive) { c.scale(1 + e.squash, 1 - e.squash * 2.2); c.globalAlpha = 1 - e.squash * 2; }
-    if (e.vx > 0) c.scale(-1, 1);
+    if (e.charge > 0 && e.alive) { c.save(); c.shadowColor = "#ff3d5a"; c.shadowBlur = 20; c.fillStyle = `rgba(255,61,90,${0.35 + 0.35 * Math.sin(t * 40)})`; c.beginPath(); c.arc(0, 0, e.w * 0.62, 0, TAU); c.fill(); c.restore(); }
+    if (e.vx > 0 || (e.shoots && e.type !== "t" && P.x > e.x)) c.scale(-1, 1);
     ATK.draw(name, c, t + e.home * 0.01, e.w * 0.48); c.restore();
   }
   if (L.boss && !(L.boss.dead && L.boss.deadT > 1.5)) {
@@ -638,9 +685,9 @@ function resultMenu(m, before) {
 const HELP = [
   { title: "Run and jump", text: "◀ ▶ (or arrow keys / A D) to run. JUMP (Space, Z or ↑) to hop. Hold it to jump higher, tap for a short hop. You can still jump just after running off a ledge.", art: "jump" },
   { title: "Double jump and wall jump", text: "Press JUMP again in the air for a double jump. Slide down a wall and press JUMP to kick off it, then kick off the other side to climb.", art: "wall" },
-  { title: "Dash and ground-pound", text: "DASH (X or Shift) zooms you forward and knocks out small aliens. Blue crystals refill your dash in mid-air. ▼ in the air ground-pounds: it smashes crates and flattens tough Chonk-type aliens.", art: "dash" },
+  { title: "Dash and ground-pound", text: "DASH (X or Shift) zooms you forward and knocks out small aliens. Blue crystals refill your dash in mid-air. BASH (▼ or S on a keyboard) in the air ground-pounds: it smashes crates and flattens tough Chonk-type aliens.", art: "dash" },
   { title: "Three stars every level", text: "★ Reach the portal. ★ Free the caged buddy. ★ Find all 3 hidden Star Shards. Shards and buddies stay found, so you can come back for them. Beacons are checkpoints.", art: "stars" },
-  { title: "Bosses and escapes", text: "Level 6 of each world is a goo escape: keep moving! Level 10 is a boss. Dodge its attacks, and when it gets tired and glows, stomp or ground-pound it.", art: "boss" },
+  { title: "Bosses and escapes", text: "Level 6 of each world is a goo escape: keep moving! Level 10 is a boss. Dodge its attacks, and when it gets tired and glows, stomp it or BASH it.", art: "boss" },
 ];
 let helpPage = 0, helpFrom = "main";
 function helpMenu() {

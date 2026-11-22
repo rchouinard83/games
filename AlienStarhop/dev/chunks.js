@@ -617,5 +617,5 @@ const SIGNS = [
   "Too high? Press JUMP again in the air for a double jump.",
   "Slide down a wall, then press JUMP to wall-jump. Bounce up the chimney!",
   "DASH gives a burst of speed. Jump, double jump, then dash to clear big gaps. A caged buddy waits on the far side: touch the cage to free them!",
-  "Press ▼ in the air to ground-pound. It smashes crates and flattens Chonks. Star Shards hide in secret spots.",
+  "Press BASH in the air (▼ on a keyboard) to ground-pound. It smashes crates and flattens Chonks. Star Shards hide in secret spots.",
 ];

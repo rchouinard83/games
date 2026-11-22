@@ -45,10 +45,12 @@ body.touch.playing .pad { display: flex; }
 .pad button { width: 70px; height: 70px; border-radius: 50%; border: 2px solid #ffffff33; background: #ffffff1c; color: #fff; font: 900 22px system-ui, sans-serif; touch-action: none; backdrop-filter: blur(2px); }
 .pad button.on { background: #ffffff44; border-color: #ffffff88; }
 .pad .stack { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.pad #bDown { width: 54px; height: 54px; font-size: 18px; }
+.pad #bLeft, .pad #bRight { width: 84px; height: 84px; font-size: 28px; }
+.pad #bDown { width: 62px; height: 62px; background: #ff8f5d2b; border-color: #ff8f5d88; font-size: 13px; }
 .pad #bJump { width: 86px; height: 86px; background: #5dff9b33; border-color: #5dff9b88; font-size: 15px; }
 .pad #bDash { width: 66px; height: 66px; background: #4fd1ff2b; border-color: #4fd1ff88; font-size: 13px; }
-@media (max-height: 420px) { .pad button { width: 60px; height: 60px; } .pad #bJump { width: 74px; height: 74px; } .pad #bDown { width: 46px; height: 46px; } }
+@media (max-height: 420px) { .pad button { width: 60px; height: 60px; } .pad #bLeft, .pad #bRight { width: 74px; height: 74px; } .pad #bJump { width: 74px; height: 74px; } .pad #bDown, .pad #bDash { width: 56px; height: 56px; font-size: 12px; } }
+@media (max-width: 420px) { .pad { gap: 6px; } .pad #bLeft, .pad #bRight { width: 72px; height: 72px; } .pad #bDown, .pad #bDash { width: 54px; height: 54px; font-size: 11px; } .pad #bJump { width: 72px; height: 72px; } }
 /* menus */
 #panel.arcade-panel .chars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
 #panel.arcade-panel button.charBtn { display: block; min-height: 0; padding: 6px 4px 8px; background: #0b1430; border: 2px solid #2f4274; border-radius: 14px; }
@@ -110,8 +112,8 @@ body.touch.playing .pad { display: flex; }
 </div>
 <div id="sign"></div>
 <div id="banner"></div>
-<div class="pad left"><button id="bLeft" type="button" aria-label="Left">◀</button><div class="stack"><button id="bDown" type="button" aria-label="Ground pound">▼</button><button id="bRight" type="button" aria-label="Right">▶</button></div></div>
-<div class="pad right"><button id="bDash" type="button">DASH</button><button id="bJump" type="button">JUMP</button></div>
+<div class="pad left"><button id="bLeft" type="button" aria-label="Left">◀</button><button id="bRight" type="button" aria-label="Right">▶</button></div>
+<div class="pad right"><button id="bDown" type="button" aria-label="Bash (ground pound)">BASH</button><button id="bDash" type="button">DASH</button><button id="bJump" type="button">JUMP</button></div>
 <section class="arcade-menu" id="overlay" aria-label="Game menu"><div class="arcade-panel" id="panel"></div></section>
 <script>
 "use strict";
