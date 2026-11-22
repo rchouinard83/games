@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090c24">
+<title>Alien Starhop</title>
+<style>
+/*ARCADE_CSS*/
+/* ---- Alien Starhop ---- */
+.arcade-menu[hidden] { display: none; }
+:root { --ink: #eef0ff; --dim: #aeb4dd; --line: #2c3758; --box: #10163af0; --good: #5dff9b; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; background: #070915; color: var(--ink); font-family: system-ui, sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: none; }
+#game { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; }
+.hud { position: fixed; z-index: 2; top: max(6px, env(safe-area-inset-top)); left: max(6px, env(safe-area-inset-left)); right: max(6px, env(safe-area-inset-right));
+  display: flex; gap: 6px; align-items: stretch; pointer-events: none; }
+.hud[hidden] { display: none; }
+.hud > * { background: var(--box); border: 1px solid var(--line); border-radius: 10px; padding: 4px 9px; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.hud small { display: block; color: var(--dim); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.hud strong { display: block; font-size: 16px; white-space: nowrap; }
+.hud .who { flex-direction: row; align-items: center; gap: 6px; }
+.hud .who canvas { width: 32px; height: 32px; }
+.hud #hudShards { color: #ffd25d; letter-spacing: .06em; }
+.hud #hudShards i { font-style: normal; color: #444b7a; }
+.hud #hudHearts { color: #ff6d86; letter-spacing: .04em; }
+.hud #hudHearts i { font-style: normal; color: #3c2534; }
+.hud #hudBuddy.got { color: var(--good); }
+.hud .grow { flex: 1; visibility: hidden; padding: 0; border: 0; background: none; }
+.hud #best { color: #ffd25d; }
+.hud button { pointer-events: auto; padding: 0 14px; border-radius: 10px; background: #161c35; border: 1px solid var(--line); color: var(--ink); font: 800 14px system-ui, sans-serif; cursor: pointer; }
+@media (max-width: 640px) { .hud .timeBox, .hud .bestBox { display: none; } .hud strong { font-size: 14px; } .hud > * { padding: 3px 7px; } }
+#sign { position: fixed; z-index: 2; left: 50%; top: calc(max(6px, env(safe-area-inset-top)) + 60px); transform: translateX(-50%); max-width: min(92vw, 560px); padding: 9px 14px;
+  border-radius: 12px; background: #0d1230f0; border: 1px solid #8fe9dc; color: #e6fbff; font: 700 15px/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; opacity: 0; transition: opacity .2s; }
+#sign.show { opacity: 1; }
+#banner { position: fixed; z-index: 2; left: 50%; top: 36%; transform: translate(-50%, -50%); font: 900 clamp(26px, 6vw, 48px) system-ui, sans-serif; letter-spacing: .02em; text-align: center;
+  color: #fff; text-shadow: 0 3px 0 #0008, 0 0 24px #ffd25d88; pointer-events: none; opacity: 0; transition: opacity .3s; white-space: nowrap; }
+#banner.show { opacity: 1; }
+#banner small { display: block; font-size: .42em; color: #ffe9a8; letter-spacing: .1em; text-transform: uppercase; }
+/* touch controls */
+.pad { position: fixed; z-index: 2; bottom: max(10px, env(safe-area-inset-bottom)); display: none; gap: 10px; align-items: flex-end; }
+body.touch.playing .pad { display: flex; }
+.pad.left { left: max(10px, env(safe-area-inset-left)); }
+.pad.right { right: max(10px, env(safe-area-inset-right)); }
+.pad button { width: 70px; height: 70px; border-radius: 50%; border: 2px solid #ffffff33; background: #ffffff1c; color: #fff; font: 900 22px system-ui, sans-serif; touch-action: none; backdrop-filter: blur(2px); }
+.pad button.on { background: #ffffff44; border-color: #ffffff88; }
+.pad .stack { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.pad #bDown { width: 54px; height: 54px; font-size: 18px; }
+.pad #bJump { width: 86px; height: 86px; background: #5dff9b33; border-color: #5dff9b88; font-size: 15px; }
+.pad #bDash { width: 66px; height: 66px; background: #4fd1ff2b; border-color: #4fd1ff88; font-size: 13px; }
+@media (max-height: 420px) { .pad button { width: 60px; height: 60px; } .pad #bJump { width: 74px; height: 74px; } .pad #bDown { width: 46px; height: 46px; } }
+/* menus */
+#panel.arcade-panel .chars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+#panel.arcade-panel button.charBtn { display: block; min-height: 0; padding: 6px 4px 8px; background: #0b1430; border: 2px solid #2f4274; border-radius: 14px; }
+#panel.arcade-panel button.charBtn[aria-pressed="true"] { border-color: var(--good); background: #10301f; }
+#panel.arcade-panel button.charBtn canvas { width: min(100%, 70px); aspect-ratio: 1; display: block; margin: 0 auto; }
+#panel.arcade-panel button.charBtn small { color: #7ff0b0; display: block; }
+#panel.arcade-panel .arcade-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+#panel.arcade-panel button.arcade-stage { display: flex; align-items: center; gap: 10px; text-align: left; justify-content: flex-start; padding: 8px 10px; min-height: 58px; }
+#panel.arcade-panel button.arcade-stage small { display: block; }
+#panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex: 0 0 40px; }
+#panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
+#panel.arcade-panel .levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin: 8px 0 12px; }
+#panel.arcade-panel .levels button { display: grid; place-items: center; gap: 0; min-height: 54px; padding: 4px 0; }
+#panel.arcade-panel .levels button span { font-size: 18px; font-weight: 900; }
+#panel.arcade-panel .levels button small { color: #ffd25d; font-size: 11px; letter-spacing: .05em; margin: 0; }
+#panel.arcade-panel .levels button.next { background: #1d4a3a; border-color: #2f7a5c; }
+#panel.arcade-panel .levels button.boss span { color: #ff8ba0; }
+#panel.arcade-panel p.bigstars { font-size: 40px; line-height: 1.1; letter-spacing: .14em; color: #ffd25d; margin: 2px 0; }
+#panel .bigstars i { font-style: normal; color: #39406b; }
+#panel .goals { display: grid; gap: 4px; margin: 6px 0 10px; text-align: left; }
+#panel .goals div { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 10px; background: #0b1430; font-size: 14px; }
+#panel .goals div b { color: #ffd25d; } #panel .goals div.miss b { color: #59608c; }
+#panel canvas.hero { display: block; width: 100%; height: clamp(90px, 22dvh, 150px); border-radius: 12px; background: #0b1231; }
+#panel svg.guide { display: block; width: 100%; height: 120px; border-radius: 12px; background: #0b1231; margin: 6px 0; }
+#panel.arcade-panel .arcade-footer { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#panel.arcade-panel .arcade-footer > * { flex: 1 1 135px; margin: 0; width: auto; }
+#panel.arcade-panel .arcade-footer > a.arcade { flex-basis: 100%; }
+/* No holes in two-column button rows: an odd last button spans the row. */
+#panel.arcade-panel .actions > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+#panel.arcade-panel button.charBtn > span { display: block; }
+@media (max-height: 820px), (max-width: 420px) {
+  #panel canvas.hero { display: none; }
+  #panel.arcade-panel h1 { font-size: clamp(28px, 8vw, 36px); margin: 2px 0; }
+  #panel.arcade-panel button.charBtn { display: flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 4px 6px; text-align: left; font-size: 14px; }
+  #panel.arcade-panel button.charBtn canvas { width: 38px; flex: 0 0 38px; margin: 0; }
+  #panel.arcade-panel button.charBtn small { font-size: 11px; }
+}
+@media (max-height: 700px) { #panel.arcade-panel p.blurb { display: none; } }
+@media (max-height: 520px) and (min-aspect-ratio: 5/4) {
+  #panel.arcade-panel:has(.mm) { width: min(100%, 780px); }
+  #panel .mm { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 14px; align-items: start; }
+  #panel.arcade-panel .chars { grid-template-columns: 1fr; }
+}
+@media (max-width: 400px) { #panel.arcade-panel .arcade-stages { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Alien Starhop"></canvas>
+<div class="hud" id="hud" hidden>
+  <div class="who"><canvas id="hudFace" width="64" height="64"></canvas><div><small id="hudWorld">Oort Gate</small><strong id="hudLevel">1-1</strong></div></div>
+  <div><small>Gems</small><strong id="hudGems">0</strong></div>
+  <div><small>Shards</small><strong id="hudShards">☆☆☆</strong></div>
+  <div><small>Buddy</small><strong id="hudBuddy">🔒</strong></div>
+  <div><small>Health</small><strong id="hudHearts">♥♥♥</strong></div>
+  <div class="timeBox"><small>Time</small><strong id="hudTime">0:00</strong></div>
+  <div class="grow"></div>
+  <div class="bestBox"><small>Best</small><strong id="best">—</strong></div>
+  <button id="pauseBtn" type="button">Pause</button>
+</div>
+<div id="sign"></div>
+<div id="banner"></div>
+<div class="pad left"><button id="bLeft" type="button" aria-label="Left">◀</button><div class="stack"><button id="bDown" type="button" aria-label="Ground pound">▼</button><button id="bRight" type="button" aria-label="Right">▶</button></div></div>
+<div class="pad right"><button id="bDash" type="button">DASH</button><button id="bJump" type="button">JUMP</button></div>
+<section class="arcade-menu" id="overlay" aria-label="Game menu"><div class="arcade-panel" id="panel"></div></section>
+<script>
+"use strict";
+const TAU = Math.PI * 2;
+/*CHARS*/
+/*ATK*/
+/*CHUNKS*/
+/*CORE*/
+const LEVEL_VARIANTS = /*VARIANTS*/;
+/*GAME*/
+</script>
+</body>
+</html>
