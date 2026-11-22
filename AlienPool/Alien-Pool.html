@@ -297,14 +297,13 @@ body.playing.cpu .ctl.mine { opacity: .35; pointer-events: none; }
 #panel.arcade-panel .modes button[aria-pressed="true"] { background: #193d37; border-color: #589d80; }
 #panel.arcade-panel .modes.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -2px; }
 #panel.arcade-panel .arcade-footer.pause > a.arcade { flex-basis: 100%; } /* the arcade link spans both buttons above it */
-#callPanel { position: fixed; z-index: 2; left: max(12px, env(safe-area-inset-left)); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 112px); width: 210px;
-  padding: 6px; border-radius: 12px; background: #0d1230e0; border: 1px solid #3a4680; display: none; flex-direction: column; gap: 4px; touch-action: none; }
-#callPanel.show { display: flex; }
-#callPanel canvas { width: 100%; height: auto; display: block; cursor: pointer; }
-#callPanel span { font: 800 12px system-ui, sans-serif; color: #c9ffe0; text-align: center; line-height: 1.25; }
+#callPanel { position: fixed; z-index: 2; left: 50%; transform: translateX(-50%); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 60px); max-width: min(64vw, 440px);
+  padding: 6px 12px; border-radius: 999px; background: #0d1230d9; border: 1px solid #3a4680; display: none; pointer-events: none; }
+#callPanel.show { display: block; }
+#callPanel span { display: block; font: 800 13px system-ui, sans-serif; color: #c9ffe0; text-align: center; line-height: 1.25; }
+#callPanel.need { border-color: #ffd23a; }
 #callPanel.need span { color: #ffe9a8; }
-@media (max-width: 560px) { #callPanel { width: 158px; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 96px); } #callPanel span { font-size: 11px; } }
-@media (max-height: 460px) { #callPanel { width: 150px; bottom: auto; top: calc(max(6px, env(safe-area-inset-top)) + 56px); } }
+@media (max-width: 560px) { #callPanel span { font-size: 12px; } }
 #panel.arcade-panel .chars.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #panel.arcade-panel .chars.two canvas { width: min(100%, 64px); }
 #panel canvas.cuehero { display: block; width: 100%; height: auto; aspect-ratio: 800 / 84; margin: 2px 0 6px; border-radius: 10px; background: radial-gradient(ellipse at 50% 50%, #26306a, #0b1231 75%); }
@@ -318,7 +317,7 @@ body.playing.cpu .ctl.mine { opacity: .35; pointer-events: none; }
 <canvas id="view" aria-label="3D pool table"></canvas>
 <div class="hud" id="hud" hidden></div>
 <div id="toast" role="status"></div>
-<div id="callPanel" aria-label="Call your shot: tap a ball, then a pocket"><canvas id="callMap" width="400" height="230"></canvas><span id="callTxt"></span></div>
+<div id="callPanel" role="status"><span id="callTxt"></span></div>
 <div class="ctl mine" id="spin" aria-label="Cue tip position: drag to set spin"><span id="spinDot"></span><span id="spinLbl">Center</span></div>
 <div class="ctl" id="aimRow">
   <button class="mine-btn" id="aimL" type="button" aria-label="Fine aim left">◀</button>
@@ -935,7 +934,7 @@ const HOWTO = [
   { title: "Spin", text: "Drag the dot on the cue-ball pad. Top = follow (rolls forward after contact), bottom = draw (spins back), sides = english that changes cushion rebounds.", art: "spin" },
   { title: "8-Ball", text: "The first ball you sink after the break makes you solids (1–7) or stripes (9–15). Clear your group, then sink the 8. Scratching, hitting the wrong ball first, or no rail after contact is a foul. After a foul your opponent places the cue ball behind the head string and must shoot out past it: the cue ball has to cross the line before it hits a ball. Sinking the 8 early or scratching on it loses.", art: "rules" },
   { title: "9-Ball", text: "Balls 1–9 only. Always hit the lowest-numbered ball first. Sink any ball on a legal shot to keep shooting. Whoever sinks the 9 on a legal shot wins, even on the break or with a combo. A foul gives ball in hand.", art: "nine" },
-  { title: "Slop or call shot", text: "Pick one in Match setup. Slop: any ball you sink on a legal shot counts. Call shot: before every shot except the break, tap the ball you're calling, then the pocket, on the little table map or right on the table. Only that ball in that pocket keeps your turn. Other balls that drop stay down. In 8-ball the 8 must go in the pocket you called, or you lose. In 9-ball an uncalled 9 comes back.", art: "call" },
+  { title: "Slop or call shot", text: "Pick one in Match setup. Slop: any ball you sink on a legal shot counts. Call shot: before every shot except the break, tap one of the glowing balls on the table, then one of the glowing pockets (Top view shows them all). The ball gets a green ring and the pocket a green beam. Only that ball in that pocket keeps your turn. Other balls that drop stay down. In 8-ball the 8 must go in the pocket you called, or you lose. In 9-ball an uncalled 9 comes back.", art: "call" },
   { title: "Cut-throat", text: "Three players: you own 1–5, the first alien owns 6–10, and the second owns 11–15. Sink the other players' balls to keep shooting. If you foul, each opponent gets one of their sunk balls back. When all your balls are gone you're out. The last player with balls left wins.", art: "cut" },
 ];
 
@@ -1480,8 +1479,8 @@ function drawCuePic(cv, def) {
 
 // ===================== CALL SHOT =====================
 const needCall = () => !!(game && game.callShot && !game.isBreak && !game.over);
-// Pocket names match the little table map (head string on the left).
-const pocketName = i => { const pk = T.pockets[i]; return pk.corner ? `${pk.sz < 0 ? "top" : "bottom"}-${pk.sx < 0 ? "left" : "right"} corner` : `${pk.sz < 0 ? "top" : "bottom"} side pocket`; };
+// Pocket names as seen from the break end: "near" is the head (kitchen) end, left/right looking down the table.
+const pocketName = i => { const pk = T.pockets[i]; return pk.corner ? `${pk.sx < 0 ? "near" : "far"} ${pk.sz < 0 ? "left" : "right"} corner` : `${pk.sz < 0 ? "left" : "right"} side pocket`; };
 const pocketMouth = pk => [pk.corner ? pk.sx * T.hx : 0, pk.sz * T.hz];
 // Balls you may call: in 9-ball any ball (combos count), otherwise the ones you're allowed to sink.
 const callable = () => !needCall() ? [] : game.mode === "nine" ? balls.filter(b => b.on && b.id).map(b => b.id) : legalTargets(game, balls, game.turn);
@@ -1498,66 +1497,40 @@ function pickCall(x, z, pocketTol, ballTol) {
   if (bid !== null) { if (!game.called || game.called.id !== bid) game.called = { id: bid, pocket: null }; return "ball"; }
   return null;
 }
-const callPanel = $("callPanel"), callMap = $("callMap"), callTxt = $("callTxt");
-let callGeom = null;
-function drawCallMap(t) {
-  const cv = callMap, c = cv.getContext("2d"), w = cv.width, h = cv.height, pad = 26;
-  const s = Math.min((w - 2 * pad) / T.L, (h - 2 * pad) / T.W), cx = w / 2, cy = h / 2;
-  callGeom = { s, cx, cy };
-  const X = x => cx + x * s, Y = z => cy + z * s;
-  c.clearRect(0, 0, w, h);
-  c.fillStyle = "#5a2e17"; c.beginPath(); c.roundRect(X(-T.hx) - 15, Y(-T.hz) - 15, T.L * s + 30, T.W * s + 30, 14); c.fill();
-  c.fillStyle = T.spec.felt; c.fillRect(X(-T.hx), Y(-T.hz), T.L * s, T.W * s);
-  c.strokeStyle = "#ffffff38"; c.lineWidth = 2; c.setLineDash([6, 6]); c.beginPath(); c.moveTo(X(T.headX), Y(-T.hz)); c.lineTo(X(T.headX), Y(T.hz)); c.stroke(); c.setLineDash([]);
-  const mine = !players[game.turn].cpu && phase === "aim", call = game.called, ids = mine ? callable() : [];
-  const cb = call && ballById(call.id);
-  if (cb && call.pocket !== null) {
-    const [mx, mz] = pocketMouth(T.pockets[call.pocket]);
-    c.strokeStyle = "#5dff9b"; c.lineWidth = 3; c.setLineDash([8, 6]); c.beginPath(); c.moveTo(X(cb.x), Y(cb.z)); c.lineTo(X(mx), Y(mz)); c.stroke(); c.setLineDash([]);
-  }
-  T.pockets.forEach((pk, i) => {
-    const [mx, mz] = pocketMouth(pk);
-    c.fillStyle = "#000"; c.beginPath(); c.arc(X(mx), Y(mz), 12, 0, TAU); c.fill();
-    if (call && call.pocket === i) { c.strokeStyle = "#5dff9b"; c.lineWidth = 5; c.beginPath(); c.arc(X(mx), Y(mz), 17, 0, TAU); c.stroke(); }
-    else if (mine && call && call.pocket === null) { c.strokeStyle = `rgba(255,227,107,${0.45 + 0.4 * Math.sin(t * 6)})`; c.lineWidth = 4; c.beginPath(); c.arc(X(mx), Y(mz), 16, 0, TAU); c.stroke(); }
-  });
-  for (const b of balls) {
-    if (!b.on) continue;
-    const x = X(b.x), y = Y(b.z), r = 7;
-    c.globalAlpha = mine && b.id && !ids.includes(b.id) ? 0.35 : 1;
-    c.fillStyle = b.id === 0 ? "#f4f1e6" : b.id > 8 ? "#f4f1e6" : colorOf(b.id); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill();
-    if (b.id > 8) { c.save(); c.clip(); c.fillStyle = colorOf(b.id); c.fillRect(x - r, y - r * 0.45, r * 2, r * 0.9); c.restore(); }
-    c.globalAlpha = 1;
-    if (call && call.id === b.id) { c.strokeStyle = "#5dff9b"; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r + 6, 0, TAU); c.stroke(); }
-    else if (mine && !call && ids.includes(b.id)) { c.strokeStyle = `rgba(255,227,107,${0.35 + 0.3 * Math.sin(t * 6)})`; c.lineWidth = 2; c.beginPath(); c.arc(x, y, r + 4, 0, TAU); c.stroke(); }
-  }
-  const who = players[game.turn];
+const callPanel = $("callPanel"), callTxt = $("callTxt");
+// Yellow hints while you call: rings under the balls you may call, then faint beams over every pocket.
+const hintMat = new THREE.MeshBasicMaterial({ color: 0xffe36b, transparent: true, opacity: 0.7, depthWrite: false });
+const hintRings = Array.from({ length: 15 }, () => { const m = new THREE.Mesh(callRing.geometry, hintMat); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); return m; });
+const hintBeamMat = callBeam.material.clone(); hintBeamMat.color.set(0xffd23a);
+const hintBeams = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(callBeam.geometry, hintBeamMat); m.visible = false; scene.add(m); return m; });
+function updateCallText() {
+  const mine = !players[game.turn].cpu && phase === "aim", call = game.called, who = players[game.turn];
   let txt, need = false;
   if (mine) {
-    if (!call) { txt = "Call your shot: tap a ball"; need = true; }
-    else if (call.pocket === null) { txt = `Now tap a pocket for the ${call.id}`; need = true; }
-    else txt = `${call.id} → ${pocketName(call.pocket)} ✓`;
-  } else if (who.cpu) txt = call ? `${who.name}: ${call.id} → ${pocketName(call.pocket)}` : phase === "cpu" && !(cpu && cpu.plan) ? `${who.name} is thinking…` : `${who.name} plays safe`;
+    if (!call) { txt = "Call your shot: tap a glowing ball"; need = true; }
+    else if (call.pocket === null) { txt = `Now tap a pocket for the ${call.id} (Top view shows all six)`; need = true; }
+    else txt = `Called: ${call.id} ball → ${pocketName(call.pocket)} ✓`;
+  } else if (who.cpu) txt = call ? `${who.name} calls the ${call.id} → ${pocketName(call.pocket)}` : phase === "cpu" && !(cpu && cpu.plan) ? `${who.name} is thinking…` : `${who.name} plays safe`;
   else txt = call ? `${call.id} → ${pocketName(call.pocket)}` : "Safety";
   if (callTxt.textContent !== txt) callTxt.textContent = txt;
   callPanel.classList.toggle("need", need);
 }
-callMap.addEventListener("pointerdown", e => {
-  e.stopPropagation();
-  if (!needCall() || players[game.turn].cpu || phase !== "aim" || !callGeom) return;
-  audio();
-  const r = callMap.getBoundingClientRect();
-  const x = ((e.clientX - r.left) / r.width * callMap.width - callGeom.cx) / callGeom.s, z = ((e.clientY - r.top) / r.height * callMap.height - callGeom.cy) / callGeom.s;
-  pickCall(x, z, 36 / callGeom.s, 30 / callGeom.s);
-});
 function updateCallMarkers(t) {
   const on = needCall() && document.body.classList.contains("playing") && ["aim", "cpu", "strike", "shot"].includes(phase);
   callPanel.classList.toggle("show", on);
+  if (on) updateCallText();
   const call = on && game.called, cb = call && ballById(call.id);
   callRing.visible = !!(cb && cb.on);
   if (callRing.visible) { callRing.position.set(cb.x, 0.0017, cb.z); callRing.material.opacity = 0.65 + 0.3 * Math.sin(t * 5); }
   callBeam.visible = !!(call && call.pocket !== null);
   if (callBeam.visible) { const pk = T.pockets[call.pocket]; callBeam.position.set(pk.x, 0.17, pk.z); callBeam.material.opacity = 0.55 + 0.25 * Math.sin(t * 4); }
+  const mine = on && !players[game.turn].cpu && phase === "aim";
+  const ids = mine && !call ? callable() : [];
+  hintRings.forEach((m, i) => { const b = ids[i] && ballById(ids[i]); m.visible = !!b; if (b) m.position.set(b.x, 0.0016, b.z); });
+  hintMat.opacity = 0.75 + 0.25 * Math.sin(t * 6);
+  const pickPocket = mine && call && call.pocket === null;
+  hintBeams.forEach((m, i) => { m.visible = !!pickPocket; if (pickPocket) m.position.set(T.pockets[i].x, 0.17, T.pockets[i].z); });
+  hintBeamMat.opacity = 0.3 + 0.2 * Math.sin(t * 6);
   return on;
 }
 
@@ -1918,7 +1891,7 @@ function frame(now) {
   if (handRing.visible) { handRing.position.set(c.x, 0.0015, c.z); handRing.material.opacity = 0.55 + 0.3 * Math.sin(tAll * 5); }
   kitchen.visible = !!(game && game.kitchen && game.turn === 0 && phase === "aim");
   if (headLineMesh) headLineMesh.visible = kitchen.visible;
-  const callOn = updateCallMarkers(tAll);
+  updateCallMarkers(tAll);
   // Alien opponents stand by the table; they bounce while it's their shot and when they score.
   for (let i = 0; i < 3; i++) { moods[i] = Math.max(0, moods[i] - dt * 0.35); if (game && game.turn === i && phase === "cpu") moods[i] = Math.max(moods[i], 0.25); }
   // Aliens sit on stools past the far corners of the table (both visible while you aim at the rack). When it's an
@@ -1945,7 +1918,6 @@ function frame(now) {
     faceTimer = 0;
     drawSpectator(spectators[0], game ? players[1].o.id : opp().id, tAll, moods[1]);
     if (game && players[2]) drawSpectator(spectators[1], players[2].o.id, tAll + 1, moods[2]);
-    if (callOn) drawCallMap(tAll);
     if (banner.classList.contains("show") && banner.dataset.char) drawFace($("bannerFace"), banner.dataset.char, tAll, 0.3);
     $("hud").querySelectorAll("canvas[data-char]").forEach(cv => drawFace(cv, cv.dataset.char, tAll));
     panel.querySelectorAll("canvas[data-char]").forEach(cv => drawFace(cv, cv.dataset.char, tAll + cv.dataset.char.length, cv.classList.contains("result-face") ? 0.3 : 0.3));
