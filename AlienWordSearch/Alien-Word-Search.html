@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#090c24">
+<title>Alien Word Search</title>
+<style>
+.arcade-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: rgba(5, 5, 16, .78);
+}
+#panel.arcade-panel {
+  box-sizing: border-box;
+  width: min(100%, 430px);
+  max-height: 100%;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 16px;
+  border: 1px solid #33336e;
+  border-radius: 18px;
+  background: #141436;
+  color: #eef0ff;
+  text-align: center;
+  box-shadow: 0 0 40px #7070ca26;
+}
+#panel.arcade-panel h1 {
+  margin: 8px 0 5px;
+  font-size: clamp(32px, 9vw, 46px);
+  letter-spacing: -.04em;
+  line-height: 1.04;
+  background: linear-gradient(90deg, #ff8bd0, #ffd25d 40%, #5dff9b 70%, #4fd1ff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+#panel.arcade-panel h2 { margin: 4px 0 6px; font-size: 26px; line-height: 1.14; }
+#panel.arcade-panel p { margin: 6px 0 10px; color: #dcdff7; font-size: 15px; line-height: 1.4; }
+#panel.arcade-panel .kicker,
+#panel.arcade-panel .eyebrow,
+#panel.arcade-panel .step {
+  margin: 6px 0 4px;
+  color: var(--menu-accent, #8fe9dc);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+#panel.arcade-panel :is(button, a.arcade, a.button) {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #33336e;
+  border-radius: 12px;
+  background: #22225a;
+  color: #eef0ff;
+  font: 800 16px/1.2 system-ui, sans-serif;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+}
+#panel.arcade-panel :is(button, a):focus-visible { outline: 2px solid #a7f5e5; outline-offset: 2px; }
+#panel.arcade-panel button.primary { background: #1d4a3a; border-color: #2f7a5c; color: #82f7b2; }
+#panel.arcade-panel button:disabled { opacity: .44; }
+#panel.arcade-panel button small {
+  display: block;
+  margin: 3px 0 0;
+  color: #aeb4dd;
+  font: 700 12px/1.25 system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+#panel.arcade-panel > :is(button, a) { margin: 8px 0 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds, .balls) { gap: 8px; margin: 8px 0; }
+#panel.arcade-panel :is(.actions, .choices, .menu-actions, .stage-list, .worlds) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#panel.arcade-panel :is(.choices, .stage-list) button:not(.arcade-stage) { display: block; }
+#panel.arcade-panel :is(.choices, .stage-list, .worlds).arcade-stages { grid-template-columns: 1fr; }
+#panel.arcade-panel button.arcade-stage {
+  justify-content: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+.arcade-stage > span:last-child { min-width: 0; }
+.arcade-planet {
+  --planet: #90e4ff;
+  --shade: #23436e;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 15% 16%, #acb6dc 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 72%, #acb6dc 0 1px, transparent 2px), #0d1331;
+}
+.arcade-planet::after {
+  content: "";
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 29% 27%, #ffffffaa, transparent 42%),
+    repeating-linear-gradient(-22deg, transparent 0 4px, #15264a35 5px 7px),
+    radial-gradient(circle at 32% 34%, var(--planet), var(--shade) 76%);
+  box-shadow: 0 0 8px var(--shade);
+}
+.arcade-planet[data-world="1"] { --planet: #f6cc9d; --shade: #874265; }
+.arcade-planet[data-world="2"] { --planet: #ff9276; --shade: #70283d; }
+.arcade-planet[data-world="3"] { --planet: #92efb3; --shade: #2552a0; }
+.arcade-hero {
+  display: block;
+  width: 100%;
+  height: clamp(75px, 22dvh, 145px);
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 80%, #272759, #0b1231 70%);
+}
+#panel.arcade-panel button.arcade-choice { justify-content: space-between; text-align: left; }
+#panel.arcade-panel button.arcade-choice > span:last-child { color: #94f0c4; font-size: 13px; }
+#panel.arcade-panel .balls button { justify-content: flex-start; text-align: left; }
+#panel.arcade-panel .balls button.on { background: #193d37; border-color: #589d80; }
+#panel.arcade-panel .stars { color: #ffd25d; }
+
+#panel.arcade-panel .arcade-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#panel.arcade-panel .arcade-footer > * {
+  width: auto;
+  flex: 1 1 135px;
+  margin: 0;
+}
+
+/* The phone menu has its own backdrop and keeps its actions outside scrolling lists. */
+@media (max-width: 520px), (max-height: 500px) and (pointer: coarse) {
+  .arcade-menu {
+    box-sizing: border-box;
+    bottom: auto;
+    height: 100vh;
+    height: 100dvh;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    background: radial-gradient(ellipse at 50% 18%, #20214a, #090c24 74%);
+    -webkit-text-size-adjust: 100%;
+  }
+  #panel.arcade-panel { padding: clamp(12px, 4vw, 16px); }
+  #panel.arcade-panel .arcade-hero { height: clamp(72px, 19dvh, 122px); }
+  #panel.arcade-panel h1 { font-size: clamp(29px, 8vw, 39px); }
+  #panel.arcade-panel h2 { font-size: clamp(23px, 6vw, 26px); }
+  #panel.arcade-panel p { font-size: 14px; }
+  #panel.arcade-panel :is(button, a.arcade, a.button) { font-size: 15px; }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  #panel.arcade-panel:has(> :is(.balls, .arcade-stages)) > :not(.balls, .arcade-stages) {
+    flex: 0 0 auto;
+  }
+  #panel.arcade-panel > :is(.balls, .arcade-stages) {
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  #panel.arcade-panel .balls i { width: 32px; height: 32px; }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  #panel.arcade-panel { width: min(100%, 580px); padding: 12px; }
+  #panel.arcade-panel:has(> .arcade-hero) {
+    display: grid;
+    grid-template-columns: minmax(105px, .42fr) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+  }
+  #panel.arcade-panel > .arcade-hero {
+    grid-row: 1 / 7;
+    height: clamp(92px, 37dvh, 155px);
+  }
+  #panel.arcade-panel:has(> .arcade-hero) > :not(.arcade-hero) { grid-column: 2; }
+  #panel.arcade-panel h1 { font-size: clamp(26px, 6dvh + 12px, 36px); }
+  #panel.arcade-panel p { margin: 4px 0 7px; }
+  #panel.arcade-panel > :is(button, a) { margin-top: 6px; }
+  #panel.arcade-panel :is(.actions, .choices, .menu-actions) { margin: 6px 0; }
+  #panel.arcade-panel :is(.balls, .arcade-stages) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #panel.arcade-panel button.arcade-stage { gap: 9px; padding: 7px 10px; }
+  #panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex-basis: 40px; }
+  #panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
+  #panel.arcade-panel :is(.guide svg, #howCv) { height: min(85px, 25dvh); }
+}
+
+/* ---- Alien Word Search ---- */
+.arcade-menu[hidden] { display: none; }
+:root { --ink: #eef0ff; --dim: #aeb4dd; --line: #2c3758; --box: #161c35e6; --good: #5dff9b; --accent: #8fe9dc; --cell: 32px; }
+html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; color: var(--ink); font-family: system-ui, sans-serif;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+body { background: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--accent) 22%, #141436), #090c24 60%), #090c24; }
+body::before { content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .55;
+  background-image: radial-gradient(1px 1px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 72% 12%, #fff, transparent), radial-gradient(1.5px 1.5px at 38% 64%, #cfe, transparent),
+    radial-gradient(1px 1px at 88% 52%, #fff, transparent), radial-gradient(1px 1px at 22% 86%, #fff, transparent), radial-gradient(1.5px 1.5px at 60% 92%, #ffd, transparent),
+    radial-gradient(1px 1px at 52% 34%, #fff, transparent), radial-gradient(1px 1px at 6% 52%, #fff, transparent), radial-gradient(1px 1px at 94% 84%, #fff, transparent); }
+#app { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); box-sizing: border-box; }
+.hud { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)) auto; gap: 6px; flex: 0 0 auto; }
+.hud > div { background: var(--box); border: 1px solid var(--line); border-radius: 10px; padding: 5px 9px; min-width: 0; }
+.hud small { display: block; color: var(--dim); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud strong { display: block; font-size: clamp(14px, 3.6vw, 18px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hud .who { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 7px; align-items: center; }
+.hud .who canvas { width: 36px; height: 36px; grid-row: span 2; }
+.hud #best { color: #ffd25d; letter-spacing: .08em; }
+.hud button { min-height: 0; padding: 0 14px; border-radius: 10px; background: #161c35; border: 1px solid var(--line); color: var(--ink); font: 800 14px system-ui, sans-serif; cursor: pointer; }
+.play { flex: 1 1 auto; min-height: 0; display: flex; gap: 10px; }
+.area { flex: 1 1 auto; min-width: 0; min-height: 0; display: grid; place-items: center; }
+.boardWrap { position: relative; border-radius: 16px; padding: 8px; box-sizing: border-box; background: #0d1230e6; border: 1px solid color-mix(in srgb, var(--accent) 45%, #2c3758);
+  box-shadow: 0 0 34px color-mix(in srgb, var(--accent) 22%, transparent), inset 0 0 30px #0008; touch-action: none; }
+#marks { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); pointer-events: none; overflow: visible; }
+#board { position: relative; display: grid; grid-template-columns: repeat(var(--n), var(--cell)); grid-auto-rows: var(--cell); cursor: pointer; }
+#board span { display: grid; place-items: center; font: 800 calc(var(--cell) * .56) / 1 ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif; color: #e8ecff; transition: color .2s, transform .2s; }
+#board span.found { color: #fff; text-shadow: 0 1px 2px #0008; }
+#board span.anchor { color: #10131f; background: #ffe36b; border-radius: 50%; }
+#board span.hint { animation: hint 0.7s ease-in-out 4; border-radius: 50%; }
+@keyframes hint { 50% { background: #ffd25d; color: #10131f; transform: scale(1.25); } }
+.boardWrap.shake { animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.side { flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.side .wordsBox { background: var(--box); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; min-height: 0; overflow-y: auto; }
+.side h3 { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+#words { display: flex; flex-wrap: wrap; gap: 5px 8px; }
+#words span { font: 800 15px system-ui, sans-serif; letter-spacing: .06em; padding: 3px 8px; border-radius: 8px; background: #ffffff0d; border: 1px solid transparent; }
+#words span.found { text-decoration: line-through; text-decoration-thickness: 2px; color: #9aa3cf; background: color-mix(in srgb, var(--wc) 22%, transparent); border-color: color-mix(in srgb, var(--wc) 60%, transparent); }
+.side .tools { display: flex; gap: 8px; }
+.side .tools button { flex: 1; min-height: 44px; border-radius: 12px; border: 1px solid #3a4680; background: #161c35e6; color: var(--ink); font: 800 15px system-ui, sans-serif; cursor: pointer; }
+.side .tools button:disabled { opacity: .4; cursor: default; }
+.side .tools #dirs { flex: 1; display: grid; place-items: center; border-radius: 12px; border: 1px dashed #3a4680; color: var(--dim); font: 800 12px system-ui, sans-serif; text-align: center; padding: 2px 6px; }
+#status { min-height: 18px; margin: 0; text-align: center; font: 800 13px system-ui, sans-serif; color: var(--dim); }
+#status.good { color: #c9ffe0; } #status.bad { color: #ffb3c2; }
+/* landscape / wide: words on the right */
+@media (min-aspect-ratio: 23/20) { .play { flex-direction: row; } .side { width: clamp(190px, 26vw, 300px); } }
+/* portrait: words under the board */
+@media (max-aspect-ratio: 23/20) { .play { flex-direction: column; } .side { max-height: 36%; } #words span { font-size: 13px; padding: 2px 6px; } }
+@media (max-width: 560px) {
+  .hud { grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) auto; }
+  .hud .bestBox { display: none; }
+  .hud #hudLevel { font-size: 0; } .hud #hudLevel::after { content: "Level " attr(data-short); font-size: 15px; }
+  .hud .who canvas { width: 30px; height: 30px; }
+}
+/* menus */
+#panel.arcade-panel .chars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+#panel.arcade-panel button.charBtn { display: block; min-height: 0; padding: 6px 4px 8px; background: #0b1430; border: 2px solid #2f4274; border-radius: 14px; }
+#panel.arcade-panel button.charBtn[aria-pressed="true"] { border-color: var(--good); background: #10301f; }
+#panel.arcade-panel button.charBtn canvas { width: min(100%, 78px); aspect-ratio: 1; display: block; margin: 0 auto; }
+#panel.arcade-panel button.charBtn small { color: #7ff0b0; }
+#panel.arcade-panel .arcade-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 8px 0; }
+#panel.arcade-panel button.arcade-stage { display: flex; align-items: center; gap: 10px; text-align: left; justify-content: flex-start; padding: 8px 10px; min-height: 58px; }
+#panel.arcade-panel button.arcade-stage small { display: block; }
+#panel.arcade-panel .arcade-planet { width: 40px; height: 40px; flex: 0 0 40px; }
+#panel.arcade-panel .arcade-planet::after { width: 25px; height: 25px; }
+.arcade-planet[data-world="4"] { --planet: #ffe0a3; --shade: #a0683a; }
+.arcade-planet[data-world="5"] { --planet: #7fd3ff; --shade: #1d3f9a; }
+.arcade-planet[data-world="6"] { --planet: #ff9ee6; --shade: #7a2a8c; }
+.arcade-planet[data-world="7"] { --planet: #c8d0e8; --shade: #3c4466; }
+#panel.arcade-panel .levels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin: 8px 0 12px; }
+#panel.arcade-panel .levels button { display: grid; place-items: center; gap: 0; min-height: 54px; padding: 4px 0; }
+#panel.arcade-panel .levels button span { font-size: 18px; font-weight: 900; }
+#panel.arcade-panel .levels button small { color: #ffd25d; font-size: 11px; letter-spacing: .05em; margin: 0; }
+#panel.arcade-panel .levels button.next { background: #1d4a3a; border-color: #2f7a5c; }
+#panel.arcade-panel p.bigstars { font-size: 40px; line-height: 1.1; letter-spacing: .14em; color: #ffd25d; margin: 2px 0; }
+#panel .bigstars i { font-style: normal; color: #39406b; }
+#panel canvas.hero { display: block; width: 100%; height: clamp(90px, 22dvh, 140px); border-radius: 12px; background: radial-gradient(ellipse at 50% 80%, #272759, #0b1231 70%); }
+#panel svg.guide { display: block; width: 100%; height: 120px; border-radius: 12px; background: #0b1231; margin: 6px 0; }
+#panel.arcade-panel .arcade-footer { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#panel.arcade-panel .arcade-footer > * { flex: 1 1 135px; margin: 0; width: auto; }
+#panel.arcade-panel .arcade-footer > a.arcade { flex-basis: 100%; }
+@media (max-width: 400px) { #panel.arcade-panel .arcade-stages { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hud">
+    <div class="who"><canvas id="hudAlien" width="80" height="80"></canvas><small id="hudStage">Stage</small><strong id="hudLevel">Level 1</strong></div>
+    <div><small>Found</small><strong id="hudFound">0/0</strong></div>
+    <div><small>Time</small><strong id="hudTime">0:00</strong></div>
+    <div class="bestBox"><small>Best</small><strong id="best">—</strong></div>
+    <button id="pauseBtn" type="button">Pause</button>
+  </div>
+  <div class="play">
+    <div class="area" id="area"><div class="boardWrap" id="wrap"><svg id="marks"></svg><div id="board" aria-label="Letter grid"></div></div></div>
+    <div class="side">
+      <div class="wordsBox"><h3 id="theme">Words</h3><div id="words"></div></div>
+      <p id="status" aria-live="polite"></p>
+      <div class="tools"><button id="hintBtn" type="button">Hint</button><span id="dirs" title="Directions words can run"></span></div>
+    </div>
+  </div>
+</div>
+<section class="arcade-menu" id="overlay" aria-label="Game menu"><div class="arcade-panel" id="panel"></div></section>
+<script>
+"use strict";
+const TAU = Math.PI * 2;
+const CHARS = (() => {
+  function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const m = f < 0 ? 0 : 255, a = Math.abs(f);
+    r = Math.round(r + (m - r) * a); g = Math.round(g + (m - g) * a); b = Math.round(b + (m - b) * a); return `rgb(${r},${g},${b})`; }
+  const circle = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, TAU); };
+  const oval = (c, x, y, rx, ry, rot = 0) => { c.beginPath(); c.ellipse(x, y, rx, ry, rot, 0, TAU); };
+  function shadow(c, s, y = 1.0, w = 0.9) { c.fillStyle = "rgba(0,0,0,0.35)"; oval(c, 0, s * y, s * w, s * 0.22); c.fill(); }
+  function eye(c, x, y, r, pupil = "#10131f", lx = 0.25, ly = 0) {
+    c.fillStyle = "#ffffff"; circle(c, x, y, r); c.fill();
+    c.fillStyle = pupil; circle(c, x + r * lx, y + r * ly, r * 0.52); c.fill();
+    c.fillStyle = "#ffffff"; circle(c, x + r * lx - r * 0.18, y + r * ly - r * 0.2, r * 0.16); c.fill();
+  }
+  const G = "#5dff9b", Y = "#ffe35d", P = "#ff8bd0", B = "#7ab8ff", O = "#ff8f5d", R = "#ff5d7a";
+  const list = [
+    { id: "blip", name: "Blip", color: G, fit: 1, desc: "One-eyed blob that bounces along, antennae bobbing.",
+      draw(c, t, s, hit = 0) {
+        const b = Math.sin(t * 8); c.translate(0, s * 0.1); c.scale(1 - 0.06 * b, 1 + 0.08 * b);
+        c.fillStyle = shade(G, -0.4); oval(c, -s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill(); oval(c, s * 0.4, s * 0.75, s * 0.25, s * 0.13); c.fill();
+        c.strokeStyle = shade(G, -0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (const sd of [-1, 1]) { const tx = sd * s * (0.5 + 0.06 * Math.sin(t * 5 + sd));
+          c.beginPath(); c.moveTo(sd * s * 0.25, -s * 0.7); c.quadraticCurveTo(sd * s * 0.35, -s * 1.05, tx, -s * 1.2); c.stroke();
+          c.fillStyle = "#fff7a0"; circle(c, tx, -s * 1.2, s * 0.1); c.fill(); }
+        c.fillStyle = G; c.beginPath(); c.moveTo(-s * 0.85, s * 0.7);
+        c.bezierCurveTo(-s * 1.0, -s * 0.3, -s * 0.5, -s * 0.85, 0, -s * 0.85); c.bezierCurveTo(s * 0.5, -s * 0.85, s * 1.0, -s * 0.3, s * 0.85, s * 0.7); c.closePath(); c.fill();
+        c.fillStyle = shade(G, 0.4); oval(c, -s * 0.4, -s * 0.38, s * 0.18, s * 0.09, -0.6); c.fill();
+        if (hit > 0.15 || Math.sin(t * 1.3) > 0.97) { c.strokeStyle = "#10261a"; c.lineWidth = s * 0.07; c.beginPath(); c.moveTo(-s * 0.3, -s * 0.15); c.lineTo(s * 0.3, -s * 0.15); c.stroke(); }
+        else eye(c, 0, -s * 0.15, s * 0.36, "#10261a", 0.25, 0.05);
+        c.strokeStyle = "#10261a"; c.lineWidth = s * 0.06; c.beginPath(); c.arc(0, s * 0.3, s * 0.15, 0.2, Math.PI - 0.2); c.stroke();
+      } },
+    { id: "runner", name: "Runner", color: Y, fit: 1, desc: "Skinny legs, wobbly eye stalks, always in a hurry.",
+      draw(c, t, s) {
+        c.translate(0, -s * 0.1);
+        c.strokeStyle = "rgba(255,227,93,0.35)"; c.lineWidth = s * 0.07; c.lineCap = "round";
+        for (let k = 0; k < 3; k++) { const y = -s * 0.3 + k * s * 0.3; c.beginPath(); c.moveTo(-s * 0.7, y); c.lineTo(-s * (1.05 + 0.2 * Math.sin(t * 20 + k)), y); c.stroke(); }
+        c.strokeStyle = shade(Y, -0.4); c.lineWidth = s * 0.12;
+        for (const ph of [0, Math.PI]) { const a = t * 16 + ph, fx = Math.sin(a) * s * 0.5, fy = s * 1.0 - Math.max(0, Math.cos(a)) * s * 0.3;
+          c.beginPath(); c.moveTo(0, s * 0.3); c.lineTo(fx * 0.5 + s * 0.1, s * 0.65); c.lineTo(fx, fy); c.stroke(); }
+        c.fillStyle = Y; oval(c, s * 0.05, 0, s * 0.55, s * 0.48, 0.15); c.fill();
+        c.fillStyle = shade(Y, 0.45); oval(c, -s * 0.15, -s * 0.2, s * 0.15, s * 0.08, -0.5); c.fill();
+        c.strokeStyle = shade(Y, -0.2); c.lineWidth = s * 0.08;
+        for (const [ex, ey, ph] of [[s * 0.1, -s * 0.95, 0], [s * 0.5, -s * 0.85, 1.5]]) { const w = Math.sin(t * 6 + ph) * s * 0.06;
+          c.beginPath(); c.moveTo(s * 0.15, -s * 0.35); c.quadraticCurveTo(ex - s * 0.1, ey + s * 0.3, ex + w, ey); c.stroke();
+          eye(c, ex + w, ey, s * 0.17, "#2a1a00", 0.4, 0.1); }
+        c.strokeStyle = "#2a1a00"; c.lineWidth = s * 0.05; c.beginPath(); c.arc(s * 0.3, s * 0.1, s * 0.1, 0.2, Math.PI - 0.4); c.stroke();
+      } },
+    { id: "goo", name: "Goo", color: P, fit: 1.15, desc: "Little wobbling slime drop. Squishy and bouncy.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 10); c.scale(1 + 0.1 * w, 1 - 0.1 * w);
+        c.fillStyle = P; c.beginPath(); c.moveTo(0, -s * 1.0);
+        c.bezierCurveTo(s * 0.5, -s * 0.4, s * 0.9, s * 0.1, s * 0.75, s * 0.55); c.quadraticCurveTo(0, s * 0.85, -s * 0.75, s * 0.55);
+        c.bezierCurveTo(-s * 0.9, s * 0.1, -s * 0.5, -s * 0.4, 0, -s * 1.0); c.fill();
+        c.fillStyle = shade(P, 0.45); oval(c, -s * 0.25, -s * 0.25, s * 0.12, s * 0.22, 0.4); c.fill();
+        c.fillStyle = "#3a0a22"; circle(c, -s * 0.2, s * 0.15, s * 0.11); c.fill(); circle(c, s * 0.25, s * 0.15, s * 0.11); c.fill();
+      } },
+    { id: "jelly", name: "Jelly", color: B, fit: 1, desc: "Floating jellyfish that drifts along, tentacles waving.",
+      draw(c, t, s, hit = 0) {
+        shadow(c, s, 1.0, 0.7); c.translate(0, Math.sin(t * 2.5) * s * 0.12 - s * 0.25);
+        c.strokeStyle = shade(B, 0.2); c.lineWidth = s * 0.08; c.lineCap = "round";
+        for (let k = 0; k < 5; k++) { const x = -s * 0.5 + k * s * 0.25; c.beginPath(); c.moveTo(x, s * 0.1);
+          c.quadraticCurveTo(x + Math.sin(t * 4 + k) * s * 0.2, s * (0.6 - hit * 0.27), x * (1 - hit * 0.4) + Math.sin(t * 4 + k + 1) * s * 0.15, s * (1 - hit * 0.57)); c.stroke(); }
+        const pul = 1 + 0.06 * Math.sin(t * 5);
+        const g = c.createRadialGradient(-s * 0.2, -s * 0.4, s * 0.1, 0, -s * 0.1, s * 0.8); g.addColorStop(0, shade(B, 0.55)); g.addColorStop(1, shade(B, -0.1));
+        c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, s * 0.75 * pul, s * 0.7 / pul, 0, Math.PI, TAU);
+        c.quadraticCurveTo(s * 0.4, s * 0.25, 0, s * 0.12); c.quadraticCurveTo(-s * 0.4, s * 0.25, -s * 0.75 * pul, 0); c.fill();
+        c.fillStyle = "#0d1830"; circle(c, -s * 0.2, -s * 0.25, s * 0.09); c.fill(); circle(c, s * 0.2, -s * 0.25, s * 0.09); c.fill();
+      } },
+    { id: "chonk", name: "Chonk", color: O, fit: 0.95, desc: "Big round three-eyed bruiser. Built like a bowling ball.",
+      draw(c, t, s, hit = 0) {
+        c.translate(0, -Math.abs(Math.sin(t * 3)) * s * 0.12 + s * 0.05);
+        c.fillStyle = shade(O, -0.3);
+        for (const sd of [-1, 1]) { oval(c, sd * s * 0.95, s * 0.05 + Math.sin(t * 3 + sd) * s * 0.08, s * 0.18, s * 0.28, sd * 0.4); c.fill(); }
+        oval(c, -s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill(); oval(c, s * 0.45, s * 0.82, s * 0.28, s * 0.14); c.fill();
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.4, s * 0.1, 0, 0, s); g.addColorStop(0, shade(O, 0.35)); g.addColorStop(1, shade(O, -0.15));
+        c.fillStyle = g; oval(c, 0, 0, s * 0.92, s * 0.85); c.fill();
+        c.fillStyle = shade(O, -0.2); circle(c, -s * 0.6, s * 0.35, s * 0.1); c.fill(); circle(c, s * 0.62, s * 0.3, s * 0.08); c.fill(); circle(c, s * 0.5, -s * 0.55, s * 0.07); c.fill();
+        eye(c, -s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, s * 0.35, -s * 0.2, s * 0.2, "#2a1205"); eye(c, 0, -s * 0.52, s * 0.16, "#2a1205");
+        if (hit > 0.15) { c.strokeStyle = "#3a1405"; c.lineWidth = s * 0.14; c.lineCap = "round"; c.beginPath(); c.moveTo(-s * 0.26, s * 0.38); c.quadraticCurveTo(0, s * 0.08, s * 0.26, s * 0.38); c.stroke(); }
+        else { c.fillStyle = "#3a1405"; oval(c, 0, s * 0.3, s * 0.25, s * (0.1 + 0.05 * Math.sin(t * 3))); c.fill(); }
+      } },
+    { id: "mother", name: "Mother Blob", color: R, fit: 0.85, desc: "Huge blob covered in eyes that all look in different directions.",
+      draw(c, t, s) {
+        const w = Math.sin(t * 2); c.scale(1 + 0.04 * w, 1 - 0.04 * w);
+        const g = c.createRadialGradient(-s * 0.3, -s * 0.35, s * 0.1, 0, 0, s * 1.05); g.addColorStop(0, shade(R, 0.35)); g.addColorStop(1, shade(R, -0.25));
+        c.fillStyle = g; c.beginPath(); c.moveTo(-s * 1.05, s * 0.75);
+        c.bezierCurveTo(-s * 1.2, -s * 0.4, -s * 0.6, -s * 1.0, 0, -s * 1.0); c.bezierCurveTo(s * 0.6, -s * 1.0, s * 1.2, -s * 0.4, s * 1.05, s * 0.75);
+        c.quadraticCurveTo(0, s * 0.95, -s * 1.05, s * 0.75); c.fill();
+        const eyes = [[0, -0.35, 0.24], [-0.5, -0.2, 0.16], [0.5, -0.2, 0.16], [-0.3, -0.7, 0.12], [0.3, -0.7, 0.12], [-0.62, 0.22, 0.1], [0.62, 0.22, 0.1]];
+        eyes.forEach(([x, y, r], i) => {
+          if (Math.sin(t * 1.7 + i * 1.9) > 0.95) { c.strokeStyle = "#3a0a12"; c.lineWidth = s * 0.05; c.beginPath(); c.moveTo((x - r) * s, y * s); c.lineTo((x + r) * s, y * s); c.stroke(); }
+          else eye(c, x * s, y * s, r * s, "#3a0a12", Math.cos(t + i) * 0.3, Math.sin(t * 1.3 + i) * 0.3);
+        });
+        c.fillStyle = "#3a0a12"; oval(c, 0, s * 0.45, s * 0.35, s * 0.12); c.fill();
+      } },
+  ];
+  return { list, shade, byId: id => list.find(ch => ch.id === id) || list[0],
+    draw(c, id, x, y, s, t, hop = 0, tilt = 0, hit = 0) { const ch = this.byId(id); c.save(); c.translate(x, y - hop); c.rotate(tilt); c.scale(ch.fit, ch.fit); c.lineCap = "round"; ch.draw(c, t, s, hit); c.restore(); } };
+})();
+// ===================== PUZZLES (pure JS, no DOM) =====================
+// 8 stages x 15 levels for each alien. Every level is generated from a fixed seed, so level 3-7 on Jelly is always the same puzzle.
+const STAGES = [
+  { id: "oort", name: "Oort Gate", theme: "Space", accent: "#8fe9dc", words: "COMET ORBIT GALAXY NEBULA PLANET ROCKET METEOR ASTEROID SATURN JUPITER VENUS MERCURY NEPTUNE PLUTO ECLIPSE CRATER LUNAR SOLAR COSMOS QUASAR PULSAR STAR MOON ALIEN SAUCER SHUTTLE GRAVITY ROVER PROBE STATION ASTRONAUT CAPSULE LAUNCH BOOSTER HELMET VOID DUST HALO AURORA ZENITH TELESCOPE SATELLITE MILKYWAY BLACKHOLE SUPERNOVA WORMHOLE STARDUST MOONBEAM SPACESUIT COUNTDOWN AIRLOCK THRUSTER CARGO BEACON SIGNAL RADAR PHOTON ION SUN" },
+  { id: "jupiter", name: "Jupiter", theme: "Weather", accent: "#ffb27a", words: "STORM THUNDER LIGHTNING CLOUD RAIN WIND GUST BREEZE TORNADO CYCLONE HURRICANE TYPHOON HAIL SLEET SNOW FROST FOG MIST DRIZZLE MONSOON RAINBOW FLASH BOLT VORTEX SWIRL SPIRAL FUNNEL SQUALL GALE BLIZZARD FLURRY SHOWER PUDDLE HUMID CLIMATE FORECAST BAROMETER PRESSURE DEWPOINT ICICLE SUNNY CLOUDY WINDY STORMY DOWNPOUR UPDRAFT JETSTREAM THERMAL ZEPHYR HAZE SMOG OVERCAST CELSIUS DEGREE SUNSHINE SNOWFLAKE" },
+  { id: "mars", name: "Mars", theme: "Rocks & desert", accent: "#ff8a6a", words: "CANYON DESERT DUNE SAND ROCK BOULDER PEBBLE GRAVEL CRATER VOLCANO LAVA MAGMA BASALT GRANITE QUARTZ CRYSTAL GEODE FOSSIL MINERAL IRON RUST CLAY MESA BUTTE CLIFF RIDGE VALLEY GORGE CAVE TUNNEL DRILL PICKAXE SHOVEL MINER ORE GEM RUBY JASPER AGATE OPAL FLINT SLATE MARBLE CHALK OBSIDIAN PUMICE SEDIMENT EROSION OLYMPUS LANDER OASIS MIRAGE CACTUS SCORPION PLATEAU BEDROCK LAYER" },
+  { id: "earth", name: "Earth", theme: "Animals", accent: "#7ce08a", words: "TIGER LION ZEBRA GIRAFFE ELEPHANT MONKEY PANDA KOALA KANGAROO RABBIT SQUIRREL BEAVER OTTER BADGER FOX WOLF BEAR MOOSE DEER BISON HORSE DONKEY COW SHEEP GOAT CHICKEN DUCK GOOSE EAGLE HAWK OWL PARROT PENGUIN FLAMINGO OSTRICH TURTLE FROG LIZARD SNAKE CROCODILE HIPPO RHINO CAMEL LLAMA SLOTH LEMUR GORILLA CHEETAH LEOPARD JAGUAR HAMSTER MOUSE HEDGEHOG RACCOON SKUNK WALRUS MEERKAT ARMADILLO PORCUPINE" },
+  { id: "saturn", name: "Saturn Rings", theme: "Snacks", accent: "#ffd27a", words: "PIZZA TACO BURGER NOODLE PRETZEL POPCORN COOKIE CUPCAKE DONUT WAFFLE PANCAKE MUFFIN BAGEL TOAST CHEESE HONEY CANDY TOFFEE FUDGE NACHO SALSA PICKLE APPLE BANANA MANGO CHERRY GRAPE LEMON PEACH PLUM MELON BERRY CARROT CELERY PEPPER TOMATO POTATO SANDWICH SPAGHETTI LASAGNA BURRITO SUSHI DUMPLING OMELET CEREAL YOGURT SMOOTHIE MILKSHAKE SUNDAE SPRINKLES CARAMEL BROWNIE CRACKER BISCUIT RAMEN CHILI SOUP PEANUT" },
+  { id: "neptune", name: "Neptune Deep", theme: "Ocean", accent: "#7fc8ff", words: "OCEAN WAVE TIDE CORAL REEF SHARK WHALE DOLPHIN OCTOPUS SQUID JELLYFISH STARFISH SEAHORSE CRAB LOBSTER SHRIMP CLAM OYSTER PEARL SHELL SEAWEED KELP ANCHOR SUBMARINE DIVER SNORKEL FLIPPER CURRENT TRENCH ABYSS LAGOON HARBOR ISLAND BEACH SURF SAIL BOAT SHIP CAPTAIN COMPASS LIGHTHOUSE BUOY NARWHAL MANATEE STINGRAY EEL PLANKTON SEAL ORCA MARLIN TUNA SALMON BARNACLE ANEMONE URCHIN TREASURE SPLASH BUBBLE DEPTH" },
+  { id: "carnival", name: "Comet Carnival", theme: "Games & fun", accent: "#ff9ee6", words: "CARNIVAL CIRCUS JUGGLE CLOWN BALLOON RIBBON PRIZE TICKET CAROUSEL FERRIS COASTER BUMPER ARCADE PINBALL JOYSTICK TROPHY MEDAL PUZZLE RIDDLE DOMINO CHECKERS CHESS KNIGHT BISHOP CASTLE PAWN DICE CARDS BINGO KITE MARBLES FRISBEE SOCCER HOCKEY TENNIS BOWLING GOLF PUTT BASEBALL FOOTBALL RACE RELAY SKATE SCOOTER TRAMPOLINE SLIDE SWING SEESAW HOPSCOTCH TAG PIRATE MAGIC WAND CONFETTI PARADE MASK DRUM TRUMPET LAUGH" },
+  { id: "mothership", name: "Mothership", theme: "Tech & robots", accent: "#c8d0ff", words: "ROBOT LASER CIRCUIT BATTERY ANTENNA SENSOR SCANNER MONITOR KEYBOARD CODE PIXEL BINARY CHIP WIRE CABLE GEAR SPROCKET PISTON ENGINE REACTOR PLASMA HOLOGRAM TELEPORT CLONE DRONE CYBORG ANDROID GADGET GIZMO WIDGET SWITCH BUTTON LEVER DIAL PANEL CONSOLE CONTROL SYSTEM NETWORK MODEM ROUTER SERVER MEMORY PROGRAM SOFTWARE HARDWARE TRACTORBEAM FORCEFIELD HYPERDRIVE WARP CLOAK BEAM POWER FUSION MAGNET VOLT TABLET" },
+].map(s => ({ ...s, words: [...new Set(s.words.split(/\s+/))] }));
+const LEVELS_PER_STAGE = 15, TOTAL_LEVELS = STAGES.length * LEVELS_PER_STAGE;
+const DIR8 = [[1, 0], [0, 1], [1, 1], [1, -1], [-1, 0], [0, -1], [-1, -1], [-1, 1]];
+// Grid size and word count ramp up across the 15 levels of a stage. par = seconds per word for 3 stars.
+const DIFF = {
+  blip:   { label: "Easy",   size: [8, 10],  words: [6, 8],   maxLen: 6,  dirs: DIR8.slice(0, 2), par: 16, hints: 3, overlap: 0.1, dirText: "→ ↓ only" },
+  jelly:  { label: "Medium", size: [10, 12], words: [8, 11],  maxLen: 8,  dirs: DIR8.slice(0, 4), par: 14, hints: 2, overlap: 0.4, dirText: "→ ↓ ↘ ↗" },
+  runner: { label: "Hard",   size: [12, 14], words: [10, 14], maxLen: 12, dirs: DIR8,             par: 12, hints: 1, overlap: 0.75, dirText: "Any way, even backwards" },
+};
+const ALIENS = ["blip", "jelly", "runner"];
+// Never let random filler spell these, in any direction.
+const BLOCK = ["ASS", "FUCK", "FUK", "SHIT", "CUNT", "DICK", "COCK", "PISS", "TIT", "FAG", "SEX", "CUM", "NAZI", "RAPE", "SLUT", "WHORE", "BITCH", "PORN", "KKK", "NIG", "FAP", "PUSSY", "DAMN", "HELL", "POO", "PEE", "BUTT", "KILL", "DIE", "GUN"];
+const FILL_COMMON = "EEEEAAAIIIOOONNNRRRTTTLLLSSSUUDDGGBBCCMMPPFHHVWWYKJXQZ";
+
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(a, rand) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const rev = w => [...w].reverse().join("");
+
+function levelSpec(alien, index) {
+  const d = DIFF[alien], stage = Math.floor(index / LEVELS_PER_STAGE), lv = index % LEVELS_PER_STAGE, t = lv / (LEVELS_PER_STAGE - 1);
+  // Later stages start a little bigger, so a whole stage never feels like a step back.
+  const boost = stage / (STAGES.length - 1) * 0.35;
+  const k = Math.min(1, t * 0.8 + boost);
+  return { d, stage, lv, N: Math.round(d.size[0] + (d.size[1] - d.size[0]) * k), count: Math.round(d.words[0] + (d.words[1] - d.words[0]) * k) };
+}
+// Counts how many times a word appears in the grid, every direction.
+function countWord(grid, N, w) {
+  let n = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if (grid[y * N + x] !== w[0]) continue;
+    for (const [dx, dy] of DIR8) {
+      let ok = true;
+      for (let i = 1; i < w.length; i++) { const xx = x + dx * i, yy = y + dy * i; if (xx < 0 || yy < 0 || xx >= N || yy >= N || grid[yy * N + xx] !== w[i]) { ok = false; break; } }
+      if (ok) n++;
+    }
+  }
+  return n;
+}
+// True if a blocked word shows up anywhere except inside one of the hidden words (SHEEP, GRAPE and KNIGHT are fine).
+function hasBlocked(grid, N, placed) {
+  const inside = (x, y, dx, dy, len) => placed.some(p => {
+    if (!((p.dx === dx && p.dy === dy) || (p.dx === -dx && p.dy === -dy))) return false;
+    const on = (qx, qy) => { for (let i = 0; i < p.word.length; i++) if (p.x + p.dx * i === qx && p.y + p.dy * i === qy) return true; return false; };
+    return on(x, y) && on(x + dx * (len - 1), y + dy * (len - 1));
+  });
+  for (const b of BLOCK) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    if (grid[y * N + x] !== b[0]) continue;
+    for (const [dx, dy] of DIR8) {
+      let ok = true;
+      for (let i = 1; i < b.length; i++) { const xx = x + dx * i, yy = y + dy * i; if (xx < 0 || yy < 0 || xx >= N || yy >= N || grid[yy * N + xx] !== b[i]) { ok = false; break; } }
+      if (ok && !inside(x, y, dx, dy, b.length)) return true;
+    }
+  }
+  return false;
+}
+function makePuzzle(alien, index) {
+  const { d, stage, N, count } = levelSpec(alien, index);
+  const pool0 = STAGES[stage].words.filter(w => w.length >= 3 && w.length <= Math.min(d.maxLen, N) && w !== rev(w));
+  let last = null;
+  for (let attempt = 0; attempt < 80; attempt++) {
+    const rand = mulberry32(hashStr(`${alien}|${index}|${attempt}`));
+    const pool = shuffle(pool0.slice(), rand), chosen = [];
+    for (const w of pool) {
+      if (chosen.length >= count) break;
+      if (chosen.some(c => c.includes(w) || w.includes(c) || c.includes(rev(w)) || w.includes(rev(c)))) continue;
+      chosen.push(w);
+    }
+    chosen.sort((a, b) => b.length - a.length);
+    const grid = Array(N * N).fill(null), placed = [];
+    let ok = true;
+    for (const w of chosen) {
+      const fits = [];
+      for (let k = 0; k < 400 && fits.length < 24; k++) {
+        const [dx, dy] = d.dirs[Math.floor(rand() * d.dirs.length)];
+        const x = Math.floor(rand() * N), y = Math.floor(rand() * N), ex = x + dx * (w.length - 1), ey = y + dy * (w.length - 1);
+        if (ex < 0 || ey < 0 || ex >= N || ey >= N) continue;
+        let over = 0, good = true;
+        for (let i = 0; i < w.length; i++) { const c = grid[(y + dy * i) * N + x + dx * i]; if (c === null) continue; if (c !== w[i]) { good = false; break; } over++; }
+        if (good && over < w.length) fits.push({ x, y, dx, dy, over });
+      }
+      if (!fits.length) { ok = false; break; }
+      // Harder aliens prefer words that cross each other.
+      const f = rand() < d.overlap ? fits.sort((p, q) => q.over - p.over)[0] : fits.find(p => p.over === 0) || fits[0];
+      for (let i = 0; i < w.length; i++) grid[(f.y + f.dy * i) * N + f.x + f.dx * i] = w[i];
+      placed.push({ word: w, x: f.x, y: f.y, dx: f.dx, dy: f.dy });
+    }
+    if (!ok || placed.length < count) continue;
+    // Filler: Easy uses everyday letters; harder aliens reuse letters from the hidden words as decoys.
+    const decoy = chosen.join(""), mix = alien === "blip" ? 0 : alien === "jelly" ? 0.35 : 0.6;
+    for (let f = 0; f < 12; f++) {
+      const g = grid.map(c => c !== null ? c : rand() < mix ? decoy[Math.floor(rand() * decoy.length)] : FILL_COMMON[Math.floor(rand() * FILL_COMMON.length)]);
+      if (placed.every(p => countWord(g, N, p.word) === 1) && !hasBlocked(g, N, placed)) {
+        return { alien, index, N, grid: g, words: placed.sort((a, b) => a.word.localeCompare(b.word)), stage, attempt };
+      }
+      last = { alien, index, N, grid: g, words: placed, stage, attempt, flawed: true };
+    }
+  }
+  return last;
+}
+const parTime = (alien, p) => Math.round(p.words.length * DIFF[alien].par * (0.7 + p.N / 30));
+// ===================== END PUZZLES =====================
+
+const $ = id => document.getElementById(id);
+const ARCADE_LINK = '<a class="arcade" href="../AlienGameLauncher/AlienGameLauncher.html">← Back to Alien Arcade</a>';
+const WORD_COLORS = ["#5dff9b", "#4fd1ff", "#ffd25d", "#ff8bd0", "#c77dff", "#ff9e5d", "#7ab8ff", "#b6ff5d", "#ff6d86", "#5dffe0", "#ffe35d", "#a3a8ff", "#ffb3e6", "#8affc1"];
+
+// ===================== SAVE =====================
+const SAVE_KEY = "alien-wordsearch.v1";
+let SAVE = { alien: "blip", sound: true, stars: {}, times: {} };
+try { SAVE = { ...SAVE, ...JSON.parse(localStorage.getItem(SAVE_KEY) || "{}") }; } catch { /* storage can be off */ }
+for (const a of ALIENS) {
+  SAVE.stars[a] = Array.from({ length: TOTAL_LEVELS }, (_, i) => (SAVE.stars[a] || [])[i] || 0);
+  SAVE.times[a] = Array.from({ length: TOTAL_LEVELS }, (_, i) => (SAVE.times[a] || [])[i] || 0);
+}
+if (!ALIENS.includes(SAVE.alien)) SAVE.alien = "blip";
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch { /* keep session progress */ } }
+const unlocked = (alien, i) => i === 0 || SAVE.stars[alien][i - 1] > 0;
+const stageStars = (alien, s) => SAVE.stars[alien].slice(s * LEVELS_PER_STAGE, (s + 1) * LEVELS_PER_STAGE).reduce((a, b) => a + b, 0);
+const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+// ===================== SOUND =====================
+let actx = null;
+function audio() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch { /* no audio */ } } if (actx && actx.state === "suspended") actx.resume(); }
+function tone(f, d = 0.12, type = "sine", v = 0.08, delay = 0) {
+  if (!SAVE.sound || !actx) return;
+  const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g).connect(actx.destination); o.start(t); o.stop(t + d + 0.02);
+}
+const SFX = {
+  tick: () => tone(660 + Math.random() * 60, 0.04, "triangle", 0.025),
+  found: n => [0, 4, 7, 12].forEach((s, i) => tone(523 * 2 ** ((s + (n % 5)) / 12), 0.16, "triangle", 0.07, i * 0.06)),
+  wrong: () => { tone(220, 0.14, "square", 0.04); tone(180, 0.18, "square", 0.04, 0.08); },
+  hint: () => tone(880, 0.25, "sine", 0.06),
+  win: () => [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(392 * 2 ** (s / 12), 0.22, "triangle", 0.07, i * 0.08)),
+};
+
+// ===================== GAME STATE =====================
+let puzzle = null, alien = SAVE.alien, level = 0, found = [], hintsUsed = 0, elapsed = 0, phase = "menu", started = false, alienHop = 0;
+const board = $("board"), marks = $("marks"), wrap = $("wrap"), area = $("area");
+let cells = [];
+
+function start(index) {
+  alien = SAVE.alien; level = index;
+  puzzle = makePuzzle(alien, index);
+  found = []; hintsUsed = 0; elapsed = 0; anchor = null; sel = null; started = true;
+  const st = STAGES[puzzle.stage];
+  document.documentElement.style.setProperty("--accent", st.accent);
+  board.style.setProperty("--n", puzzle.N);
+  board.innerHTML = puzzle.grid.map((c, i) => `<span data-i="${i}">${c}</span>`).join("");
+  cells = [...board.children];
+  marks.setAttribute("viewBox", `0 0 ${puzzle.N} ${puzzle.N}`);
+  marks.innerHTML = `<g id="foundMarks"></g><line id="selLine" stroke-linecap="round" stroke-width="0.78" opacity="0" />`;
+  $("theme").textContent = `${st.theme} · ${puzzle.words.length} words`;
+  $("words").innerHTML = puzzle.words.map((w, i) => `<span data-w="${i}">${w.word}</span>`).join("");
+  $("dirs").textContent = DIFF[alien].dirText;
+  $("hudStage").textContent = `${st.name} · ${DIFF[alien].label}`;
+  $("hudLevel").textContent = `Level ${puzzle.stage + 1}-${index % LEVELS_PER_STAGE + 1}`; $("hudLevel").dataset.short = `${puzzle.stage + 1}-${index % LEVELS_PER_STAGE + 1}`;
+  updateHud(); fit(); status("Drag across a word, or tap its first and last letter.", "");
+  closeMenu(); phase = "play";
+}
+function updateHud() {
+  $("hudFound").textContent = `${found.length}/${puzzle.words.length}`;
+  $("hudTime").textContent = fmtTime(elapsed);
+  const b = SAVE.stars[alien][level];
+  $("best").textContent = b ? "★".repeat(b) + "☆".repeat(3 - b) : "—";
+  const left = DIFF[alien].hints - hintsUsed;
+  $("hintBtn").textContent = left > 0 ? `Hint · costs 1★ (${left} left)` : "No hints left"; $("hintBtn").disabled = left <= 0 || phase !== "play";
+}
+let statusTimer = 0;
+function status(msg, kind) { const s = $("status"); s.textContent = msg; s.className = kind || ""; clearTimeout(statusTimer); if (kind) statusTimer = setTimeout(() => { s.textContent = ""; s.className = ""; }, 2600); }
+
+// Sizes the board to the biggest square that fits its area.
+function fit() {
+  if (!puzzle) return;
+  const size = Math.max(160, Math.min(area.clientWidth, area.clientHeight) - 2);
+  const cell = Math.floor((size - 16) / puzzle.N);
+  document.documentElement.style.setProperty("--cell", `${cell}px`);
+}
+new ResizeObserver(fit).observe(area);
+addEventListener("resize", fit);
+
+// ===================== SELECTING =====================
+let sel = null, anchor = null;
+function cellAt(e) {
+  const r = board.getBoundingClientRect(), N = puzzle.N;
+  const x = Math.floor((e.clientX - r.left) / r.width * N), y = Math.floor((e.clientY - r.top) / r.height * N);
+  return { x: Math.max(0, Math.min(N - 1, x)), y: Math.max(0, Math.min(N - 1, y)), inside: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom };
+}
+// Snaps a drag to the nearest of the 8 straight lines from the start cell.
+function snapLine(s, e) {
+  const dx = e.x - s.x, dy = e.y - s.y;
+  if (!dx && !dy) return { x: s.x, y: s.y, dx: 0, dy: 0, len: 1 };
+  const a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), ux = Math.round(Math.cos(a)), uy = Math.round(Math.sin(a));
+  let len = Math.max(Math.abs(dx), Math.abs(dy)) + 1;
+  while (len > 1 && (s.x + ux * (len - 1) < 0 || s.y + uy * (len - 1) < 0 || s.x + ux * (len - 1) >= puzzle.N || s.y + uy * (len - 1) >= puzzle.N)) len--;
+  return { x: s.x, y: s.y, dx: ux, dy: uy, len };
+}
+function drawSel() {
+  const l = $("selLine");
+  if (!sel || sel.len < 2) { l.setAttribute("opacity", "0"); return; }
+  l.setAttribute("x1", sel.x + 0.5); l.setAttribute("y1", sel.y + 0.5);
+  l.setAttribute("x2", sel.x + sel.dx * (sel.len - 1) + 0.5); l.setAttribute("y2", sel.y + sel.dy * (sel.len - 1) + 0.5);
+  l.setAttribute("stroke", "#ffe36b"); l.setAttribute("opacity", "0.5");
+}
+const lineText = l => Array.from({ length: l.len }, (_, i) => puzzle.grid[(l.y + l.dy * i) * puzzle.N + l.x + l.dx * i]).join("");
+function setAnchor(c) {
+  if (anchor) cells[anchor.y * puzzle.N + anchor.x].classList.remove("anchor");
+  anchor = c; if (c) cells[c.y * puzzle.N + c.x].classList.add("anchor");
+}
+let lastLen = 0;
+wrap.addEventListener("pointerdown", e => {
+  if (phase !== "play") return;
+  audio(); wrap.setPointerCapture(e.pointerId);
+  const c = cellAt(e); if (!c.inside) return;
+  sel = { ...snapLine(c, c), start: c, moved: false }; lastLen = 1; drawSel();
+});
+wrap.addEventListener("pointermove", e => {
+  if (!sel || phase !== "play") return;
+  const c = cellAt(e), l = snapLine(sel.start, c);
+  if (l.len > 1) sel.moved = true;
+  Object.assign(sel, l); drawSel();
+  if (sel.len !== lastLen) { lastLen = sel.len; SFX.tick(); }
+});
+function endSel() {
+  if (!sel) return;
+  const s = sel; sel = null; drawSel();
+  if (s.moved && s.len >= 2) { setAnchor(null); return tryLine(s); }
+  // A tap: first tap marks a letter, a second tap on the same line finishes the word.
+  const c = s.start;
+  if (anchor && (anchor.x !== c.x || anchor.y !== c.y)) {
+    const dx = c.x - anchor.x, dy = c.y - anchor.y;
+    if (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy)) { const a = anchor; setAnchor(null); return tryLine({ x: a.x, y: a.y, dx: Math.sign(dx), dy: Math.sign(dy), len: Math.max(Math.abs(dx), Math.abs(dy)) + 1 }); }
+    setAnchor(c); return;
+  }
+  setAnchor(anchor && anchor.x === c.x && anchor.y === c.y ? null : c);
+}
+wrap.addEventListener("pointerup", endSel);
+wrap.addEventListener("pointercancel", () => { sel = null; drawSel(); });
+
+function tryLine(l) {
+  const txt = lineText(l), back = rev(txt);
+  const i = puzzle.words.findIndex((w, k) => !found.includes(k) && (w.word === txt || w.word === back));
+  if (i < 0) {
+    if (puzzle.words.some((w, k) => found.includes(k) && (w.word === txt || w.word === back))) status("You already found that one.", "bad");
+    else if (l.len >= 3) { status(`“${txt}” isn't on the list.`, "bad"); SFX.wrong(); wrap.classList.remove("shake"); void wrap.offsetWidth; wrap.classList.add("shake"); }
+    return;
+  }
+  found.push(i);
+  const w = puzzle.words[i], color = WORD_COLORS[i % WORD_COLORS.length];
+  const ex = w.x + w.dx * (w.word.length - 1), ey = w.y + w.dy * (w.word.length - 1);
+  $("foundMarks").insertAdjacentHTML("beforeend", `<line x1="${w.x + 0.5}" y1="${w.y + 0.5}" x2="${ex + 0.5}" y2="${ey + 0.5}" stroke="${color}" stroke-width="0.78" stroke-linecap="round" opacity="0.5"/>`);
+  for (let k = 0; k < w.word.length; k++) cells[(w.y + w.dy * k) * puzzle.N + w.x + w.dx * k].classList.add("found");
+  const chip = $("words").querySelector(`[data-w="${i}"]`); chip.classList.add("found"); chip.style.setProperty("--wc", color);
+  SFX.found(found.length); alienHop = 1;
+  updateHud();
+  if (found.length === puzzle.words.length) return win();
+  const left = puzzle.words.length - found.length;
+  status(`${w.word}! ${left} to go.`, "good");
+}
+$("hintBtn").addEventListener("click", () => {
+  if (phase !== "play" || hintsUsed >= DIFF[alien].hints) return;
+  audio();
+  const left = puzzle.words.map((w, i) => i).filter(i => !found.includes(i));
+  const w = puzzle.words[left[Math.floor(Math.random() * left.length)]];
+  hintsUsed++;
+  const c = cells[w.y * puzzle.N + w.x]; c.classList.remove("hint"); void c.offsetWidth; c.classList.add("hint");
+  setTimeout(() => c.classList.remove("hint"), 3000);
+  SFX.hint(); status(`${w.word} starts at the flashing letter. Hints cost a star.`, "good"); updateHud();
+});
+
+function starsFor(time) {
+  const par = parTime(alien, puzzle);
+  const byTime = time <= par ? 3 : time <= par * 2 ? 2 : 1;
+  return Math.max(1, byTime - hintsUsed);
+}
+function win() {
+  phase = "done";
+  const earned = starsFor(elapsed), best = SAVE.stars[alien][level], wasBest = SAVE.times[alien][level];
+  if (earned > best) SAVE.stars[alien][level] = earned;
+  if (!wasBest || elapsed < wasBest) SAVE.times[alien][level] = Math.ceil(elapsed);
+  persist(); updateHud(); SFX.win(); alienHop = 1.6;
+  setTimeout(() => resultMenu(earned, !wasBest || elapsed < wasBest), 700);
+}
+
+// ===================== MENUS =====================
+const overlay = $("overlay"), panel = $("panel");
+function showMenu(html) {
+  if (phase === "play") phase = "paused";
+  panel.innerHTML = html; overlay.hidden = false; panel.scrollTop = 0;
+  panel.querySelector("button.primary, button")?.focus({ preventScroll: true });
+  drawMenuArt(0);
+}
+function closeMenu() { overlay.hidden = true; }
+const soundBtn = () => `<button data-act="sound" aria-pressed="${SAVE.sound}">Sound: ${SAVE.sound ? "On" : "Off"}</button>`;
+const alienName = id => CHARS.byId(id).name;
+function mainMenu() {
+  if (phase === "play") phase = "paused";
+  const a = SAVE.alien, d = DIFF[a], total = SAVE.stars[a].reduce((x, y) => x + y, 0);
+  const canResume = started && phase === "paused" && alien === a;
+  showMenu(`<canvas class="hero" data-hero="1" width="640" height="220"></canvas>
+    <p class="kicker">Alien Arcade</p><h1>Alien Word Search</h1>
+    <p>Find every hidden word before the star timer runs out. ${STAGES.length} worlds, ${TOTAL_LEVELS} puzzles for each alien.</p>
+    ${canResume ? `<button class="primary" data-act="resume">Resume level ${puzzle.stage + 1}-${level % LEVELS_PER_STAGE + 1}</button>` : ""}
+    <p class="kicker">Choose your alien</p>
+    <div class="chars">${ALIENS.map(id => `<button class="charBtn" data-act="alien" data-id="${id}" aria-pressed="${id === a}"><canvas data-char="${id}" width="160" height="160"></canvas>${alienName(id)}<small>${DIFF[id].label}</small></button>`).join("")}</div>
+    <p class="kicker">${alienName(a)} · ${d.label} · ${d.dirText} · ${total}/${TOTAL_LEVELS * 3} ★</p>
+    <div class="arcade-stages">${STAGES.map((s, i) => {
+      const first = i * LEVELS_PER_STAGE, open = unlocked(a, first);
+      return `<button class="arcade-stage" data-act="stage" data-id="${i}" ${open ? "" : "disabled"}><span class="arcade-planet" data-world="${i}" aria-hidden="true"></span><span>${i + 1} · ${s.name}<small>${open ? `${s.theme} · ${stageStars(a, i)}/${LEVELS_PER_STAGE * 3} ★` : "🔒 Clear the previous stage"}</small></span></button>`;
+    }).join("")}</div>
+    <div class="actions"><button data-act="help">How to Play</button>${soundBtn()}</div>
+    <div class="arcade-footer">${ARCADE_LINK}</div>`);
+}
+function stageMenu(s) {
+  const a = SAVE.alien, st = STAGES[s];
+  const nextOpen = SAVE.stars[a].findIndex((v, i) => !v && unlocked(a, i));
+  showMenu(`<p class="kicker">${alienName(a)} · ${DIFF[a].label} · ${stageStars(a, s)}/${LEVELS_PER_STAGE * 3} ★</p><h2>${s + 1} · ${st.name}</h2>
+    <p>${st.theme} words. Earn a star to unlock the next level.</p>
+    <div class="levels">${Array.from({ length: LEVELS_PER_STAGE }, (_, k) => {
+      const i = s * LEVELS_PER_STAGE + k, open = unlocked(a, i), n = SAVE.stars[a][i];
+      return `<button data-act="level" data-id="${i}" class="${i === nextOpen ? "next" : ""}" ${open ? "" : "disabled"} aria-label="Level ${k + 1}, ${open ? n + " stars" : "locked"}"><span>${open ? k + 1 : "🔒"}</span><small>${open ? (n ? "★".repeat(n) : "—") : ""}</small></button>`;
+    }).join("")}</div>
+    <div class="arcade-footer"><button data-act="main">Back</button>${ARCADE_LINK}</div>`);
+}
+function pauseMenu() {
+  if (phase !== "play") return;
+  showMenu(`<p class="kicker">${STAGES[puzzle.stage].name} · Level ${puzzle.stage + 1}-${level % LEVELS_PER_STAGE + 1} · ${alienName(alien)}</p><h2>Paused</h2>
+    <p>${found.length} of ${puzzle.words.length} found · ${fmtTime(elapsed)} · 3 ★ under ${fmtTime(parTime(alien, puzzle))}</p>
+    <button class="primary" data-act="resume">Resume</button>
+    <div class="actions"><button data-act="again">Restart level</button><button data-act="levels">All levels</button><button data-act="help">How to Play</button>${soundBtn()}</div>
+    <div class="arcade-footer"><button data-act="main">Back</button>${ARCADE_LINK}</div>`);
+}
+function resultMenu(earned, newBest) {
+  const s = puzzle.stage, lastInStage = level % LEVELS_PER_STAGE === LEVELS_PER_STAGE - 1, hasNext = level + 1 < TOTAL_LEVELS;
+  const par = parTime(alien, puzzle);
+  showMenu(`<canvas class="hero" data-hero="win" width="640" height="220"></canvas>
+    <p class="kicker">${STAGES[s].name} · Level ${s + 1}-${level % LEVELS_PER_STAGE + 1} · ${alienName(alien)}</p>
+    <h2>${earned === 3 ? "Perfect sweep!" : "All words found!"}</h2>
+    <p class="bigstars" aria-label="${earned} of 3 stars">${"★".repeat(earned)}<i>${"★".repeat(3 - earned)}</i></p>
+    <p>Time ${fmtTime(elapsed)}${newBest ? " · new best" : ` · best ${fmtTime(SAVE.times[alien][level])}`}. 3 ★ under ${fmtTime(par)}${hintsUsed ? ` · ${hintsUsed} hint${hintsUsed > 1 ? "s" : ""} used` : ""}.</p>
+    ${hasNext ? `<button class="primary" data-act="next">${lastInStage ? `Next stage: ${STAGES[s + 1].name}` : "Next level"}</button>` : `<p>You cleared every world with ${alienName(alien)}!${alien === "runner" ? " That's every Hard puzzle. Legend." : ` Try ${alienName(ALIENS[ALIENS.indexOf(alien) + 1])} next.`}</p>`}
+    <div class="actions"><button data-act="again">Play again</button><button data-act="levels">All levels</button></div>
+    <div class="arcade-footer"><button data-act="main">Back</button>${ARCADE_LINK}</div>`);
+}
+const HELP = [
+  { title: "Find the words", text: "Every level hides a list of words in the grid. Found words get a colored band and are crossed off the list.", art: "find" },
+  { title: "Drag across", text: "Press on the first letter and drag to the last one, in a straight line. Or tap the first letter, then tap the last.", art: "drag" },
+  { title: "Pick your alien", text: "Blip (Easy): small grids, words only run → and ↓. Jelly (Medium): bigger grids with diagonals. Runner (Hard): the biggest grids, any direction, even backwards, and lookalike letters.", art: "aliens" },
+  { title: "Stars & hints", text: "Find everything under the star time for 3 ★, within double it for 2 ★. A hint flashes a word's first letter but costs a star. One star unlocks the next level.", art: "stars" },
+];
+let helpPage = 0, helpFrom = "main";
+function helpMenu() {
+  const p = HELP[helpPage], last = helpPage === HELP.length - 1;
+  showMenu(`<p class="step">Step ${helpPage + 1} of ${HELP.length}</p><h2>${p.title}</h2>${helpArt(p.art)}<p>${p.text}</p>
+    <div class="actions"><button data-act="helpback">Back</button><button class="primary" data-act="${last ? "helpdone" : "helpnext"}">${last ? "Done" : "Next"}</button></div>`);
+}
+function helpArt(kind) {
+  const L = (x, y, ch, c = "#e8ecff") => `<text x="${x}" y="${y}" fill="${c}" font-size="17" font-weight="800" text-anchor="middle" font-family="system-ui">${ch}</text>`;
+  const grid = rows => rows.map((r, j) => [...r].map((ch, i) => L(40 + i * 26, 30 + j * 26, ch)).join("")).join("");
+  if (kind === "find") return `<svg class="guide" viewBox="0 0 360 120"><line x1="40" y1="24" x2="144" y2="24" stroke="#5dff9b" stroke-width="20" stroke-linecap="round" opacity=".45"/>${grid(["COMETQ", "XRAYLN", "PORBIT", "ESTARK"])}<text x="230" y="40" fill="#9aa3cf" font-size="15" font-weight="800" text-decoration="line-through">COMET</text><text x="230" y="64" fill="#fff" font-size="15" font-weight="800">ORBIT</text><text x="230" y="88" fill="#fff" font-size="15" font-weight="800">STAR</text></svg>`;
+  if (kind === "drag") return `<svg class="guide" viewBox="0 0 360 120"><line x1="66" y1="50" x2="170" y2="50" stroke="#ffe36b" stroke-width="20" stroke-linecap="round" opacity=".5"/>${grid(["KQWZPL", "XORBIT", "MNVSTE", "ESTARK"])}<circle cx="170" cy="50" r="7" fill="#fff"/><path d="M178 60 l10 22 l4 -9 l9 -2 z" fill="#fff"/><text x="290" y="54" fill="#c9ffe0" font-size="13" font-weight="800" text-anchor="middle">drag →</text></svg>`;
+  if (kind === "aliens") return `<svg class="guide" viewBox="0 0 360 120"><text x="60" y="30" fill="#5dff9b" font-size="13" font-weight="800" text-anchor="middle">Blip</text><text x="60" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓</text><text x="180" y="30" fill="#7ab8ff" font-size="13" font-weight="800" text-anchor="middle">Jelly</text><text x="180" y="70" fill="#fff" font-size="26" text-anchor="middle">→ ↓ ↘ ↗</text><text x="300" y="30" fill="#ffe35d" font-size="13" font-weight="800" text-anchor="middle">Runner</text><text x="300" y="62" fill="#fff" font-size="20" text-anchor="middle">→ ← ↑ ↓</text><text x="300" y="88" fill="#fff" font-size="20" text-anchor="middle">↘ ↖ ↗ ↙</text></svg>`;
+  return `<svg class="guide" viewBox="0 0 360 120"><text x="180" y="58" fill="#ffd25d" font-size="40" text-anchor="middle" letter-spacing="8">★★★</text><text x="180" y="92" fill="#c3cdee" font-size="13" font-weight="800" text-anchor="middle">beat the star time · hints cost ★</text></svg>`;
+}
+panel.addEventListener("click", e => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  audio();
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === "alien") { SAVE.alien = id; persist(); mainMenu(); }
+  else if (act === "stage") stageMenu(+id);
+  else if (act === "level") start(+id);
+  else if (act === "main") mainMenu();
+  else if (act === "resume") { closeMenu(); phase = "play"; }
+  else if (act === "again") start(level);
+  else if (act === "next") start(level + 1);
+  else if (act === "levels") stageMenu(Math.floor(level / LEVELS_PER_STAGE));
+  else if (act === "sound") { SAVE.sound = !SAVE.sound; persist(); b.textContent = `Sound: ${SAVE.sound ? "On" : "Off"}`; b.setAttribute("aria-pressed", SAVE.sound); }
+  else if (act === "help") { helpFrom = phase === "paused" && !overlay.hidden && panel.querySelector("h2")?.textContent === "Paused" ? "pause" : "main"; helpPage = 0; helpMenu(); }
+  else if (act === "helpnext") { helpPage++; helpMenu(); }
+  else if (act === "helpback") { if (helpPage) { helpPage--; helpMenu(); } else helpDone(); }
+  else if (act === "helpdone") helpDone();
+});
+function helpDone() { if (helpFrom === "pause") { phase = "play"; pauseMenu(); } else mainMenu(); }
+$("pauseBtn").addEventListener("click", () => { audio(); pauseMenu(); });
+addEventListener("keydown", e => {
+  if (e.key !== "Escape" && e.key !== "p") return;
+  if (phase === "play") pauseMenu();
+  else if (phase === "paused" && !overlay.hidden && panel.querySelector("[data-act=resume]")) { closeMenu(); phase = "play"; }
+});
+document.addEventListener("visibilitychange", () => { if (document.hidden && phase === "play") pauseMenu(); });
+
+// ===================== ART LOOP =====================
+function drawChar(cv, id, t, size = 0.3, hop = 0) {
+  const c = cv.getContext("2d"), w = cv.width, h = cv.height; c.clearRect(0, 0, w, h);
+  c.save(); c.translate(w / 2, h * 0.58 - hop * h * 0.15); CHARS.byId(id).draw(c, t, w * size, 0); c.restore();
+}
+function drawHero(cv, t) {
+  const c = cv.getContext("2d"), w = cv.width, h = cv.height; c.clearRect(0, 0, w, h);
+  const letters = "ALIENWORDSEARCHSTARCOMETORBITGALAXYNEBULA";
+  c.font = "800 22px system-ui"; c.textAlign = "center"; c.textBaseline = "middle";
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 20; x++) {
+    if (y === 2 && x >= 3 && x <= 7) continue; // room for the highlighted word
+    const ch = letters[(x * 7 + y * 13) % letters.length], a = 0.12 + 0.1 * Math.sin(t * 1.5 + x * 0.6 + y);
+    c.fillStyle = `rgba(200,210,255,${a})`; c.fillText(ch, 16 + x * 32, 18 + y * 31);
+  }
+  const win = cv.dataset.hero === "win";
+  c.strokeStyle = "rgba(93,255,155,.5)"; c.lineWidth = 24; c.lineCap = "round"; c.beginPath(); c.moveTo(16 + 32 * 3, 18 + 31 * 2); c.lineTo(16 + 32 * 7, 18 + 31 * 2); c.stroke();
+  c.fillStyle = "#fff"; for (let i = 0; i < 5; i++) c.fillText("ALIEN"[i], 16 + 32 * (3 + i), 18 + 31 * 2);
+  const ids = win ? [alien] : ALIENS;
+  ids.forEach((id, k) => {
+    const x = win ? w * 0.72 : w * (0.62 + k * 0.13), hop = Math.abs(Math.sin(t * (win ? 6 : 3) + k)) * (win ? 26 : 8);
+    c.save(); c.translate(x, h * 0.66 - hop); CHARS.byId(id).draw(c, t + k, win ? 52 : 34, 0); c.restore();
+  });
+}
+function drawMenuArt(t) {
+  panel.querySelectorAll("canvas[data-char]").forEach(cv => drawChar(cv, cv.dataset.char, t + cv.dataset.char.length, 0.3));
+  panel.querySelectorAll("canvas[data-hero]").forEach(cv => drawHero(cv, t));
+}
+let lastT = performance.now(), artTimer = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (phase === "play" && !document.hidden) { const before = Math.floor(elapsed); elapsed += dt; if (Math.floor(elapsed) !== before) $("hudTime").textContent = fmtTime(elapsed); }
+  alienHop = Math.max(0, alienHop - dt * 1.6);
+  artTimer += dt;
+  if (artTimer > 1 / 30) {
+    artTimer = 0; const t = now / 1000;
+    drawChar($("hudAlien"), started ? alien : SAVE.alien, t, 0.36, Math.abs(Math.sin(alienHop * Math.PI * 2)) * alienHop);
+    if (!overlay.hidden) drawMenuArt(t);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+mainMenu();
+
+</script>
+</body>
+</html>
