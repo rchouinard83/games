@@ -217,7 +217,36 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
   display: grid; grid-template-columns: repeat(var(--np, 2), minmax(0, 1fr)) auto auto; gap: 6px; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 .hud .pl, .hud .rec { background: var(--box); border: 1px solid var(--line); border-radius: 10px; padding: 6px 9px; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 7px; align-items: center; transition: border-color .2s, box-shadow .2s; }
-.hud .rec { grid-template-columns: 1fr; text-align: center; }
+.hud .rec { grid-template-columns: 1fr; text-align: center; color: var(--ink); font: inherit; cursor: pointer; }
+.hud .rec:hover { border-color: var(--good); }
+/* score history */
+#panel .hfil { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; justify-content: center; }
+#panel.arcade-panel .hfil button { width: auto; min-height: 0; padding: 6px 12px; font-size: 13px; border-radius: 999px; }
+#panel.arcade-panel .hfil button[aria-pressed="true"] { background: #193d37; border-color: #589d80; color: #c9ffe0; }
+#panel .hstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 8px 0; }
+#panel .hstats div { background: #0b1430; border: 1px solid #2f4274; border-radius: 10px; padding: 6px 4px; text-align: center; }
+#panel .hstats b { display: block; font-size: 20px; }
+#panel .hstats small { display: block; color: #aeb4dd; font: 800 10px system-ui; letter-spacing: .05em; text-transform: uppercase; }
+#panel .hstats .w b { color: #5dff9b; } #panel .hstats .l b { color: #ff8ba0; }
+#panel .hstrip { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin: 4px 0 8px; }
+#panel .hstrip i { width: 14px; height: 14px; border-radius: 4px; display: grid; place-items: center; font: 900 9px system-ui; font-style: normal; color: #071016; }
+#panel .hstrip i.w { background: #5dff9b; } #panel .hstrip i.l { background: #ff6d86; }
+#panel .hopp { width: 100%; border-collapse: collapse; font-size: 13px; margin: 4px 0 8px; }
+#panel .hopp td, #panel .hopp th { padding: 4px 6px; border-bottom: 1px solid #22305a; text-align: left; }
+#panel .hopp th { color: #aeb4dd; font: 800 10px system-ui; letter-spacing: .05em; text-transform: uppercase; }
+#panel .hopp td:not(:first-child), #panel .hopp th:not(:first-child) { text-align: right; }
+#panel .hlist { max-height: 210px; overflow-y: auto; margin: 4px 0 8px; display: grid; gap: 4px; overscroll-behavior: contain; }
+#panel .hlist div { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; background: #0b1430; border-radius: 8px; padding: 5px 8px; font-size: 13px; text-align: left; }
+#panel .hlist div > b { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: #071016; }
+#panel .hlist .w > b { background: #5dff9b; } #panel .hlist .l > b { background: #ff6d86; }
+#panel .hlist small { display: block; color: #aeb4dd; font-size: 11px; }
+#panel .hlist time { color: #8f97c4; font-size: 11px; white-space: nowrap; }
+#panel.arcade-panel button.reccard { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; padding: 8px 14px; margin: 6px 0; background: #0b1430; border-color: #2f4274; }
+#panel .reccard small { display: block; color: #aeb4dd; font: 800 10px system-ui; letter-spacing: .05em; text-transform: uppercase; }
+#panel .reccard b { display: block; font-size: 22px; color: var(--ink); }
+#panel .reccard b.w { color: #5dff9b; } #panel .reccard b.l { color: #ff8ba0; }
+#panel .reccard em { font-style: normal; color: #82f7b2; font-size: 14px; white-space: nowrap; }
+#panel.arcade-panel button.danger { background: #3a1422; border-color: #8a2f48; color: #ffb3c2; }
 .hud .pl.turn { border-color: var(--pc); box-shadow: 0 0 14px color-mix(in srgb, var(--pc) 40%, transparent); }
 .hud .pl.out { opacity: .45; }
 .hud small { display: block; color: var(--dim); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1394,7 +1423,10 @@ function endShot() {
 }
 function gameOver(winner, reason) {
   phase = "over"; game.over = true; document.body.classList.remove("cpu");
-  const r = rec(recKey()); if (winner === 0) r.w++; else r.l++; persist();
+  const r = rec(recKey()); if (winner === 0) r.w++; else r.l++;
+  (SAVE.history = SAVE.history || []).push({ t: Date.now(), mode: game.mode, opps: players.slice(1).map(p => p.o.id), table: T.spec.id, call: !!game.callShot, win: winner === 0, by: players[winner].cpu ? players[winner].o.id : "you", reason });
+  if (SAVE.history.length > 400) SAVE.history.splice(0, SAVE.history.length - 400);
+  persist();
   nextBreaker = winner; // winner breaks the next rack
   winner === 0 ? SFX.win() : SFX.lose(); if (winner > 0) moods[winner] = 1;
   updateHud();
@@ -1432,8 +1464,9 @@ function renderHud() {
   const hud = $("hud");
   hud.style.setProperty("--np", players.length);
   hud.innerHTML = players.map((p, i) => `<div class="pl" id="pl${i}" style="--pc:${p.color}">${p.cpu ? `<canvas class="face" data-char="${p.o.id}" width="68" height="68"></canvas>` : `<span class="youface">YOU</span>`}<small>${p.cpu ? `${p.name} · ${p.o.label}` : "You"}</small><strong id="plLabel${i}"></strong><span class="rack" id="plRack${i}"></span></div>`).join("")
-    + `<div class="rec"><small>Record</small><strong id="record">0–0</strong></div><button id="pauseBtn" type="button">Pause</button>`;
+    + `<button class="rec" id="recBtn" type="button" title="Score history"><small>Record ›</small><strong id="record">0–0</strong></button><button id="pauseBtn" type="button">Pause</button>`;
   $("pauseBtn").addEventListener("click", () => pauseMenu());
+  $("recBtn").addEventListener("click", () => { if (!game || game.over) return; histReturn = "pause"; historyMenu(); });
 }
 function updateHud() {
   if (!game) return;
@@ -1621,7 +1654,7 @@ $("viewBtn").addEventListener("click", () => { viewMode = viewMode === "top" ? "
 let spaceHeld = false;
 window.addEventListener("keydown", e => {
   if (phase === "menu" || !game) return;
-  if (e.key === "Escape" || e.key === "p") { if (phase === "paused" && !helpReturn) resume(); else if (phase !== "paused") pauseMenu(); return; }
+  if (e.key === "Escape" || e.key === "p") { if (phase === "paused" && histReturn) leaveHistory(); else if (phase === "paused" && !helpReturn) resume(); else if (phase !== "paused") pauseMenu(); return; }
   if (phase !== "aim") return;
   const k = e.key;
   if (k === "ArrowLeft") aim -= (e.shiftKey ? 0.0006 : 0.012);
@@ -1659,7 +1692,7 @@ function mainMenu() {
     <p>8-ball, 9-ball, or three-way cut-throat against alien hustlers.</p>
     <p class="kicker">Choose your opponent</p>
     <div class="chars">${OPPONENTS.map(o => `<button class="charBtn ${o.id === SAVE.opp ? "on" : ""}" data-act="opp" data-id="${o.id}" aria-pressed="${o.id === SAVE.opp}"><canvas data-char="${o.id}" width="160" height="160"></canvas>${o.name}<small>${o.label}</small></button>`).join("")}</div>
-    <div class="actions"><button data-act="help">How to play</button>${soundBtn()}</div>${ARCADE_LINK}`);
+    <div class="actions"><button data-act="help">How to play</button><button data-act="history">Score history</button>${soundBtn()}</div>${ARCADE_LINK}`);
 }
 const guideBtn = () => `<button data-act="guide" aria-pressed="${SAVE.guide}">Aim guide: ${SAVE.guide ? "On" : "Off"}</button>`;
 function setupMenu() {
@@ -1675,14 +1708,22 @@ function setupMenu() {
     <canvas class="cuehero" data-cue="${cueDef().id}" width="800" height="84" aria-label="${cueDef().name}"></canvas>
     <div class="cues">${CUES.map(c => `<button data-act="cue" data-id="${c.id}" aria-pressed="${c.id === SAVE.cue}"><canvas class="cuepic" data-cue="${c.id}" width="360" height="44"></canvas><b>${c.name}</b><small>${c.desc}</small>
       ${["power", "aim", "spin", "control"].map(k => `<span class="stat" style="--sc:${c.glow}">${k[0].toUpperCase() + k.slice(1)}<span>${[1, 2, 3, 4, 5].map(i => `<i class="${i <= c[k] ? "on" : ""}"></i>`).join("")}</span></span>`).join("")}</button>`).join("")}</div>
-    <div class="actions">${guideBtn()}${soundBtn()}</div>
+    <div class="actions">${guideBtn()}${soundBtn()}<button data-act="history">Score history</button></div>
     <button class="primary" data-act="start">Rack 'em ▶</button>
     <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
   panel.querySelectorAll("canvas[data-cue]").forEach(cv => drawCuePic(cv, CUES.find(c => c.id === cv.dataset.cue)));
 }
+// The current matchup's record and streak, as a button into the score history (the HUD hides the record on phones).
+function recordCard() {
+  const r = rec(recKey()), opps = players.slice(1).map(p => p.o.id).join("+");
+  const st = streaks((SAVE.history || []).filter(g => g.mode === game.mode && g.opps.join("+") === opps));
+  return `<button class="reccard" data-act="history"><span><small>Record vs ${players.slice(1).map(p => p.name).join(" &amp; ")}</small><b>${r.w}–${r.l}</b></span>
+    <span><small>Streak</small><b class="${st.cur ? (st.curWin ? "w" : "l") : ""}">${st.cur ? (st.curWin ? "W" : "L") + st.cur : "—"}</b></span><em>History ›</em></button>`;
+}
 function pauseMenu() {
   if (!game || game.over || phase === "menu") return;
   showMenu(`<p class="kicker">Alien Pool · ${MODES.find(m => m.id === game.mode).name} · ${game.callShot ? "Call shot" : "Slop"}</p><h2>Paused</h2>
+    ${recordCard()}
     <button class="primary" data-act="resume">Resume</button>
     <div class="actions"><button data-act="restart">Restart rack</button><button data-act="help">How to play</button>${guideBtn()}${soundBtn()}</div>
     <div class="arcade-footer pause"><button data-act="setup">Match setup</button><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
@@ -1694,9 +1735,57 @@ function resultMenu(winner, reason) {
   showMenu(`${w.cpu ? `<canvas class="result-face" data-char="${w.o.id}" width="220" height="220"></canvas>` : ""}<p class="kicker">Rack over · ${MODES.find(m => m.id === game.mode).name} · Record ${r.w}–${r.l}</p>
     <h2>${winner === 0 ? "You win!" : `${w.name} wins`}</h2><p>${why} ${winner === 0 ? "You break" : `${w.name} breaks`} next rack.</p>
     <button class="primary" data-act="again">Play again</button>
-    <div class="actions"><button data-act="setup">Match setup</button><button data-act="help">How to play</button></div>
+    <div class="actions"><button data-act="setup">Match setup</button><button data-act="history">Score history</button><button data-act="help">How to play</button></div>
     <div class="arcade-footer"><button data-act="menu">Back</button>${ARCADE_LINK}</div>`);
 }
+// ===================== SCORE HISTORY =====================
+let histReturn = null, histFilter = { mode: "all", opp: "all" };
+const oppName = id => (OPPONENTS.find(o => o.id === id) || { name: id }).name;
+// Current streak, best win run and worst losing run, oldest game first.
+function streaks(games) {
+  let cur = 0, best = 0, worst = 0, run = 0, last = null;
+  for (const g of games) { run = g.win === last ? run + 1 : 1; last = g.win; if (g.win) best = Math.max(best, run); else worst = Math.max(worst, run); }
+  cur = last === null ? 0 : run;
+  return { cur, curWin: last, best, worst };
+}
+function historyMenu() {
+  const all = SAVE.history || [];
+  const games = all.filter(g => (histFilter.mode === "all" || g.mode === histFilter.mode) && (histFilter.opp === "all" || g.opps.includes(histFilter.opp)));
+  const w = games.filter(g => g.win).length, l = games.length - w, st = streaks(games);
+  const chip = (kind, id, label) => `<button data-act="hfilter" data-kind="${kind}" data-id="${id}" aria-pressed="${histFilter[kind] === id}">${label}</button>`;
+  // Games from before history was kept only exist as win/loss totals.
+  const recW = Object.values(SAVE.record).reduce((a, r) => a + r.w, 0), recL = Object.values(SAVE.record).reduce((a, r) => a + r.l, 0);
+  const oldW = Math.max(0, recW - all.filter(g => g.win).length), oldL = Math.max(0, recL - all.filter(g => !g.win).length);
+  const rows = OPPONENTS.map(o => {
+    const gs = all.filter(g => g.opps.includes(o.id) && (histFilter.mode === "all" || g.mode === histFilter.mode)), ww = gs.filter(g => g.win).length;
+    const s2 = streaks(gs);
+    return `<tr><td>${o.name} <small style="color:#aeb4dd">${o.label}</small></td><td>${ww}–${gs.length - ww}</td><td>${gs.length ? Math.round(ww / gs.length * 100) + "%" : "—"}</td><td>${s2.best || "—"}</td></tr>`;
+  }).join("");
+  const fmt = t => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const list = games.slice().reverse().slice(0, 60).map(g => {
+    const m = MODES.find(x => x.id === g.mode), tb = TABLES[g.table];
+    const vs = g.opps.map(oppName).join(" & ");
+    return `<div class="${g.win ? "w" : "l"}"><b>${g.win ? "W" : "L"}</b><span>${g.win ? `Beat ${vs}` : g.opps.length > 1 && g.by !== "you" ? `${oppName(g.by)} won · vs ${vs}` : `Lost to ${vs}`}<small>${m ? m.name : g.mode} · ${g.call ? "Call shot" : "Slop"} · ${tb ? tb.name : ""} · ${g.reason}</small></span><time>${fmt(g.t)}</time></div>`;
+  }).join("");
+  showMenu(`<p class="kicker">Alien Pool</p><h2>Score history</h2>
+    <div class="hfil">${chip("mode", "all", "All games")}${MODES.map(m => chip("mode", m.id, m.name)).join("")}</div>
+    <div class="hfil">${chip("opp", "all", "Everyone")}${OPPONENTS.map(o => chip("opp", o.id, o.name)).join("")}</div>
+    <div class="hstats"><div><b>${games.length}</b><small>Played</small></div><div class="w"><b>${w}</b><small>Wins</small></div><div class="l"><b>${l}</b><small>Losses</small></div><div><b>${games.length ? Math.round(w / games.length * 100) + "%" : "—"}</b><small>Win rate</small></div>
+      <div class="${st.curWin ? "w" : st.cur ? "l" : ""}"><b>${st.cur ? (st.curWin ? "W" : "L") + st.cur : "—"}</b><small>Streak now</small></div><div class="w"><b>${st.best}</b><small>Best run</small></div><div class="l"><b>${st.worst}</b><small>Worst skid</small></div><div><b>${games.length ? games.filter(g => g.call).length : 0}</b><small>Call-shot</small></div></div>
+    ${games.length ? `<p class="kicker">Last ${Math.min(30, games.length)} racks (oldest → newest)</p><div class="hstrip">${games.slice(-30).map(g => `<i class="${g.win ? "w" : "l"}">${g.win ? "W" : "L"}</i>`).join("")}</div>` : `<p>No racks played${histFilter.mode !== "all" || histFilter.opp !== "all" ? " with these filters" : ""} yet.</p>`}
+    <p class="kicker">Against each alien${histFilter.mode !== "all" ? ` · ${MODES.find(m => m.id === histFilter.mode).name}` : ""}</p>
+    <table class="hopp"><tr><th>Opponent</th><th>W–L</th><th>Win %</th><th>Best run</th></tr>${rows}</table>
+    ${list ? `<p class="kicker">Racks, newest first</p><div class="hlist">${list}</div>` : ""}
+    ${oldW + oldL ? `<p style="font-size:12px;color:#aeb4dd">Plus ${oldW}–${oldL} from before history was kept (no details).</p>` : ""}
+    <div class="actions"><button class="danger" data-act="hreset">Reset history…</button><button class="primary" data-act="hback">Back</button></div>`);
+}
+function confirmResetMenu() {
+  const n = (SAVE.history || []).length, recN = Object.values(SAVE.record).reduce((a, r) => a + r.w + r.l, 0);
+  showMenu(`<p class="kicker">Score history</p><h2>Are you sure?</h2>
+    <p>This erases ${Math.max(n, recN)} rack${Math.max(n, recN) === 1 ? "" : "s"} of history, every win–loss record and all streaks. It can't be undone.</p>
+    <div class="actions"><button class="primary" data-act="hnoreset">No, keep it</button><button class="danger" data-act="hyesreset">Yes, reset everything</button></div>`);
+}
+function leaveHistory() { const r = histReturn; histReturn = null; r === "pause" ? pauseMenu() : r === "result" ? resultMenu(lastResult[0], lastResult[1]) : r === "setup" ? setupMenu() : mainMenu(); }
 let helpReturn = null;
 function helpMenu(page) {
   const p = HOWTO[page], last = page === HOWTO.length - 1;
@@ -1735,6 +1824,12 @@ panel.addEventListener("click", e => {
   else if (act === "menu") mainMenu();
   else if (act === "sound") { SAVE.sound = !SAVE.sound; persist(); b.textContent = `Sound: ${SAVE.sound ? "On" : "Off"}`; b.setAttribute("aria-pressed", SAVE.sound); }
   else if (act === "help") { if (!helpReturn) helpReturn = game && !game.over ? "pause" : game && game.over ? "result" : "main"; helpMenu(+(b.dataset.page || 0)); }
+  else if (act === "history") { histReturn = panel.querySelector("[data-act=start]") ? "setup" : game && !game.over ? "pause" : game && game.over ? "result" : "main"; historyMenu(); }
+  else if (act === "hfilter") { histFilter[b.dataset.kind] = b.dataset.id; historyMenu(); }
+  else if (act === "hback") leaveHistory();
+  else if (act === "hreset") confirmResetMenu();
+  else if (act === "hnoreset") historyMenu();
+  else if (act === "hyesreset") { SAVE.history = []; SAVE.record = {}; persist(); updateHud(); historyMenu(); toast("Score history reset.", ""); }
   else if (act === "helpdone") { const r = helpReturn; helpReturn = null; r === "pause" ? pauseMenu() : r === "result" ? resultMenu(lastResult[0], lastResult[1]) : mainMenu(); }
 });
 let lastResult = [0, ""];
